@@ -435,7 +435,7 @@ internal fun List<SongWithInfo>.toBuckets(labelOf: (SongWithInfo) -> String): Li
 
 internal fun formatLabel(song: Song, info: AudioInfo): String {
     val parsedFormat = normalizedAudioFormat(info.format)
-    if (parsedFormat in setOf("ALAC", "AAC", "AC3", "EC3", "EAC3")) return parsedFormat
+    if (parsedFormat in setOf("ALAC", "AAC", "AC3", "EC3", "EAC3", "AC4")) return parsedFormat
     val extension = song.fileExtension()
     return when {
         extension == "mp3" -> "MP3"
@@ -563,7 +563,7 @@ internal fun SongPlaybackStats.analyticsStatsKey(): String =
 internal fun String.analyticsKeyPart(): String =
     trim().lowercase().replace(Regex("\\s+"), " ")
 
-internal val qualityOrder = listOf("AC3", "EC3", "EAC3", "Surround", "MQ", "Hi-Res", "LOSSLESS", "HQ", "LQ", "UNKNOWN", "OTHER")
+internal val qualityOrder = listOf("AC3", "EC3", "EAC3", "AC4", "Surround", "MQ", "Hi-Res", "LOSSLESS", "HQ", "LQ", "UNKNOWN", "OTHER")
 
 internal val formatPalette = listOf(
     Color(0xFF4C6F9F),

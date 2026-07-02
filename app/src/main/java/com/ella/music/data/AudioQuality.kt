@@ -14,14 +14,15 @@ data class AudioQualitySummary(
 /**
  * Compact Dolby mark built from the right/left half black-circle glyphs (◗◖), mimicking the
  * facing "double-D" Dolby logo. Used as the list tag and as the player-badge prefix for
- * Dolby (AC3 / E-AC-3) streams.
+ * Dolby (AC3 / E-AC-3 / AC-4) streams.
  */
 const val DOLBY_MARK = "◗◖"
+private val DOLBY_A_JOC_REGEX = Regex("""\bA-?JOC\b""", RegexOption.IGNORE_CASE)
 
 fun audioQualitySummary(info: AudioInfo): AudioQualitySummary {
     val normalizedFormat = normalizedAudioFormat(info.format)
     val bitDepth = normalizedBitDepth(info)
-    val isDolby = normalizedFormat in setOf("AC3", "EC3", "EAC3")
+    val isDolby = normalizedFormat in setOf("AC3", "EC3", "EAC3", "AC4")
     val isSurround = isDolby || info.channels >= 6
     val isMq = bitDepth >= 24 && info.sampleRate >= 192_000
     val isHiRes = bitDepth >= 24 && info.sampleRate >= 48_000
@@ -92,6 +93,7 @@ fun normalizedAudioFormat(raw: String): String {
     val value = raw.uppercase()
     return when {
         "EAC3" in value || "E-AC-3" in value || "EC-3" in value || "AUDIO/EAC3" in value -> "EC3"
+        "AC4" in value || "AC-4" in value || "AUDIO/AC4" in value || "AUDIO/AC-4" in value -> "AC4"
         "AC3" in value || "AC-3" in value || "AUDIO/AC3" in value -> "AC3"
         "ALAC" in value -> "ALAC"
         "FLAC" in value -> "FLAC"
@@ -105,9 +107,26 @@ fun normalizedAudioFormat(raw: String): String {
     }
 }
 
+internal fun dolbyAtmosVariant(raw: String): String? {
+    if (raw.isBlank()) return null
+    return when {
+        raw.contains("immersive stereo", ignoreCase = true) -> "Immersive Stereo"
+        DOLBY_A_JOC_REGEX.containsMatchIn(raw) -> "A-JOC"
+        else -> null
+    }
+}
+
 private fun detailedAudioInfo(info: AudioInfo, bitDepth: Int): String {
     val parts = mutableListOf<String>()
-    parts += normalizedAudioFormat(info.format).lowercase()
+    val normalizedFormat = normalizedAudioFormat(info.format)
+    parts += normalizedFormat.lowercase()
+    if (normalizedFormat == "AC4") {
+        val variant = dolbyAtmosVariant(info.format)
+        when {
+            variant != null -> parts += "Dolby Atmos ($variant)"
+            info.format.contains("atmos", ignoreCase = true) -> parts += "Dolby Atmos"
+        }
+    }
     if (info.sampleRate > 0) parts += if (info.sampleRate % 1000 == 0) {
         "${info.sampleRate / 1000}kHz"
     } else {

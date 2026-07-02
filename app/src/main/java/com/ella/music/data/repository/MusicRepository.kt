@@ -1178,7 +1178,10 @@ class MusicRepository(private val context: Context) {
     }
 
     private fun Song.audioFormatLabel(mime: String?): String {
-        val source = (mime ?: mimeType).lowercase()
+        val source = listOf(mime, mimeType, album, fileName, path)
+            .mapNotNull { it?.takeIf(String::isNotBlank) }
+            .joinToString(" ")
+            .lowercase()
         val extensionSource = fileName.takeIf { it.substringAfterLast('.', "").isNotBlank() }
             ?: path.substringBefore('?').substringBefore('#')
         val extension = extensionSource.substringAfterLast('.', "").lowercase()
@@ -1187,6 +1190,11 @@ class MusicRepository(private val context: Context) {
             "mpeg" in source || "mp3" in source || extension == "mp3" -> "MP3"
             "wav" in source || extension == "wav" -> "WAV"
             "eac3" in source || "e-ac-3" in source || "ec-3" in source || extension == "ec3" || extension == "eac3" -> "EC3"
+            "ac4" in source || "ac-4" in source || extension == "ac4" -> when (com.ella.music.data.dolbyAtmosVariant(source)) {
+                "A-JOC" -> "AC4 A-JOC"
+                "Immersive Stereo" -> "AC4 Immersive Stereo"
+                else -> "AC4"
+            }
             "ac3" in source || "ac-3" in source || extension == "ac3" -> "AC3"
             "aac" in source || extension == "aac" -> "AAC"
             "alac" in source || "audio/alac" in source -> "ALAC"

@@ -730,12 +730,9 @@ fun MetadataCategoryDetailScreen(
                             selectionMode = selectionMode,
                             selected = selected,
                             onLongClick = {
-                                if (selectionMode) {
-                                    toggleSongSelection(song.id)
-                                    updateRangeAnchorsForManualSelection(song.id, selectedNow = song.id !in selectedIds)
-                                } else {
-                                    actionSong = song
-                                }
+                                selectionMode = true
+                                selectedIds = selectedIds + song.id
+                                updateRangeAnchorsForManualSelection(song.id, selectedNow = true)
                             },
                             onClick = {
                                 if (selectionMode) {
