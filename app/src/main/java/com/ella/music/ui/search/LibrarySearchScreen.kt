@@ -105,6 +105,7 @@ fun LibrarySearchScreen(
     val requestDeleteSongs = rememberSongDeleteRequester(mainViewModel)
     val lyricSourceMode by settingsManager.lyricSourceMode.collectAsState(initial = SettingsManager.LYRIC_SOURCE_AUTO)
     val showPlayNextInLists by settingsManager.showPlayNextInLists.collectAsState(initial = false)
+    val showAlbumArtists by settingsManager.showAlbumArtists.collectAsState(initial = true)
     val scanExcludeFolders by settingsManager.scanExcludeFolders.collectAsState(initial = "")
     val blockedFolders = remember(scanExcludeFolders) { scanExcludeFolders.toFolderSettingList() }
     var query by rememberSaveable(initialQuery) { mutableStateOf(initialQuery.orEmpty()) }
@@ -223,12 +224,24 @@ fun LibrarySearchScreen(
         if (duplicatesOnlyActive || trimmedQuery.isBlank()) emptyList()
         else albums.filter { it.matchesLibrarySearch(trimmedQuery) }
     }
-    val artistResults = remember(songs, trimmedQuery, duplicatesOnlyActive) {
+    val artistResults = remember(songs, trimmedQuery, duplicatesOnlyActive, showAlbumArtists) {
         if (duplicatesOnlyActive || trimmedQuery.isBlank()) {
             emptyList()
         } else {
             songs.asSequence()
-                .flatMap { song -> com.ella.music.data.splitArtistNames(song.artist).map { it to song } }
+                .flatMap { song ->
+                    // When "show album artists" is on, also surface each song's album artist(s) in the
+                    // artist tab (deduped per song so a track whose artist == album artist isn't
+                    // double-counted). Mirrors ArtistListScreen so search matches the library view.
+                    val names = if (showAlbumArtists) {
+                        (com.ella.music.data.splitArtistNames(song.artist) +
+                            com.ella.music.data.splitArtistNames(song.albumArtist))
+                            .distinctBy { it.tagIdentityKey() }
+                    } else {
+                        com.ella.music.data.splitArtistNames(song.artist)
+                    }
+                    names.asSequence().map { it to song }
+                }
                 .filter { (artist, _) -> artist.isNotBlank() && artist.contains(trimmedQuery, ignoreCase = true) }
                 .groupBy({ it.first }, { it.second })
                 .entries
