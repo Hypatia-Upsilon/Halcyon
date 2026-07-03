@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -24,7 +23,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,7 +46,6 @@ import com.ella.music.ui.components.EllaSmallTopAppBar
 import com.ella.music.ui.components.SongItem
 import com.ella.music.ui.components.ellaPageBackground
 import com.ella.music.viewmodel.PlayerViewModel
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -60,7 +57,6 @@ import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 private const val REMOTE_DIRECTORY_BATCH_SIZE = 240
-private const val REMOTE_DIRECTORY_PREFETCH_THRESHOLD = 40
 
 @Composable
 fun RemoteDirectoryScreen(
@@ -85,7 +81,6 @@ fun RemoteDirectoryScreen(
         initial = RemoteMusicSourceConfig(RemoteMusicProvider.Emby, "")
     )
     val config = if (provider == RemoteMusicProvider.Navidrome) navidromeConfig else embyConfig
-    val listState = rememberLazyListState()
     var items by remember(provider) { mutableStateOf<List<RemoteOnlineSong>>(emptyList()) }
     var loading by remember(provider) { mutableStateOf(false) }
     var loadingMore by remember(provider) { mutableStateOf(false) }
@@ -142,18 +137,6 @@ fun RemoteDirectoryScreen(
         }
     }
 
-    LaunchedEffect(listState, items.size, loading, loadingMore, reachedEnd, config.isConfigured) {
-        if (!config.isConfigured) return@LaunchedEffect
-        snapshotFlow {
-            listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-        }.collectLatest { lastVisibleIndex ->
-            if (loading || loadingMore || reachedEnd || items.isEmpty()) return@collectLatest
-            if (lastVisibleIndex >= items.lastIndex - REMOTE_DIRECTORY_PREFETCH_THRESHOLD) {
-                load(limit = items.size + REMOTE_DIRECTORY_BATCH_SIZE, reset = false)
-            }
-        }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -193,7 +176,6 @@ fun RemoteDirectoryScreen(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
             LazyColumn(
-                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 160.dp)
             ) {
@@ -218,8 +200,13 @@ fun RemoteDirectoryScreen(
                         onPlayNext = { playerViewModel.playNext(resolveSong(item)) }
                     )
                 }
-                if (loadingMore && items.isNotEmpty()) {
+                if (items.isNotEmpty() && !reachedEnd) {
                     item(key = "remote_loading_more") {
+                        LaunchedEffect(items.size, loading, loadingMore, reachedEnd, config) {
+                            if (config.isConfigured && !loading && !loadingMore && !reachedEnd) {
+                                load(limit = items.size + REMOTE_DIRECTORY_BATCH_SIZE, reset = false)
+                            }
+                        }
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
