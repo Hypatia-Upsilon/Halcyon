@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -23,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +48,7 @@ import com.ella.music.ui.components.EllaSmallTopAppBar
 import com.ella.music.ui.components.SongItem
 import com.ella.music.ui.components.ellaPageBackground
 import com.ella.music.viewmodel.PlayerViewModel
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -55,6 +58,9 @@ import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+
+private const val REMOTE_DIRECTORY_BATCH_SIZE = 240
+private const val REMOTE_DIRECTORY_PREFETCH_THRESHOLD = 40
 
 @Composable
 fun RemoteDirectoryScreen(
@@ -79,8 +85,11 @@ fun RemoteDirectoryScreen(
         initial = RemoteMusicSourceConfig(RemoteMusicProvider.Emby, "")
     )
     val config = if (provider == RemoteMusicProvider.Navidrome) navidromeConfig else embyConfig
+    val listState = rememberLazyListState()
     var items by remember(provider) { mutableStateOf<List<RemoteOnlineSong>>(emptyList()) }
     var loading by remember(provider) { mutableStateOf(false) }
+    var loadingMore by remember(provider) { mutableStateOf(false) }
+    var reachedEnd by remember(provider) { mutableStateOf(false) }
     var message by remember(provider) { mutableStateOf<String?>(null) }
     var showSettings by remember { mutableStateOf(false) }
 
@@ -90,21 +99,28 @@ fun RemoteDirectoryScreen(
         RemoteMusicProvider.Lx -> item.song
     }
 
-    fun load() {
+    fun load(limit: Int, reset: Boolean) {
         if (!config.isConfigured) {
+            if (reset) {
+                items = emptyList()
+                reachedEnd = false
+            }
             message = context.getString(R.string.remote_source_configure_first)
             return
         }
+        if ((loading || loadingMore) || (!reset && reachedEnd)) return
         scope.launch {
-            loading = true
+            if (reset) loading = true else loadingMore = true
             runCatching {
                 when (provider) {
-                    RemoteMusicProvider.Navidrome -> navidromeService.listSongs(config)
-                    RemoteMusicProvider.Emby -> embyService.listSongs(config)
+                    RemoteMusicProvider.Navidrome -> navidromeService.listSongs(config, limit = limit)
+                    RemoteMusicProvider.Emby -> embyService.listSongs(config, limit = limit)
                     RemoteMusicProvider.Lx -> emptyList()
                 }
             }.onSuccess { result ->
+                val previousSize = items.size
                 items = result
+                reachedEnd = result.size < limit || (!reset && result.size <= previousSize)
                 message = if (result.isEmpty()) context.getString(R.string.webdav_empty_directory)
                 else context.getString(R.string.lx_online_songs_found, result.size)
             }.onFailure { error ->
@@ -112,11 +128,30 @@ fun RemoteDirectoryScreen(
                 Toast.makeText(context, message.orEmpty(), Toast.LENGTH_SHORT).show()
             }
             loading = false
+            loadingMore = false
         }
     }
 
     LaunchedEffect(provider, config) {
-        if (config.isConfigured) load()
+        reachedEnd = false
+        if (config.isConfigured) {
+            load(limit = REMOTE_DIRECTORY_BATCH_SIZE, reset = true)
+        } else {
+            items = emptyList()
+            message = context.getString(R.string.remote_source_configure_first)
+        }
+    }
+
+    LaunchedEffect(listState, items.size, loading, loadingMore, reachedEnd, config.isConfigured) {
+        if (!config.isConfigured) return@LaunchedEffect
+        snapshotFlow {
+            listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+        }.collectLatest { lastVisibleIndex ->
+            if (loading || loadingMore || reachedEnd || items.isEmpty()) return@collectLatest
+            if (lastVisibleIndex >= items.lastIndex - REMOTE_DIRECTORY_PREFETCH_THRESHOLD) {
+                load(limit = items.size + REMOTE_DIRECTORY_BATCH_SIZE, reset = false)
+            }
+        }
     }
 
     Column(
@@ -134,7 +169,11 @@ fun RemoteDirectoryScreen(
                 }
             },
             actions = {
-                IconButton(onClick = { load() }) {
+                IconButton(onClick = {
+                    reachedEnd = false
+                    loadingMore = false
+                    load(limit = REMOTE_DIRECTORY_BATCH_SIZE, reset = true)
+                }) {
                     Icon(MiuixIcons.Regular.Refresh, contentDescription = stringResource(R.string.library_refresh), modifier = Modifier.size(24.dp))
                 }
                 IconButton(onClick = { showSettings = true }) {
@@ -154,6 +193,7 @@ fun RemoteDirectoryScreen(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 160.dp)
             ) {
@@ -178,6 +218,21 @@ fun RemoteDirectoryScreen(
                         onPlayNext = { playerViewModel.playNext(resolveSong(item)) }
                     )
                 }
+                if (loadingMore && items.isNotEmpty()) {
+                    item(key = "remote_loading_more") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 18.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(R.string.lx_online_processing),
+                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -189,7 +244,9 @@ fun RemoteDirectoryScreen(
             onDismiss = { showSettings = false },
             onSaved = {
                 showSettings = false
-                load()
+                reachedEnd = false
+                loadingMore = false
+                load(limit = REMOTE_DIRECTORY_BATCH_SIZE, reset = true)
             }
         )
     }

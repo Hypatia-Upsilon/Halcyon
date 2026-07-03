@@ -79,9 +79,23 @@ private fun LyricLine.preservesPrimaryOverlapWith(
     val currentAgent = agent?.trim()?.lowercase()?.takeIf { it.isNotBlank() } ?: return false
     val nextAgent = nextLine.agent?.trim()?.lowercase()?.takeIf { it.isNotBlank() } ?: return false
     if (currentAgent == nextAgent) return false
-    return (currentAgent == "v1" && nextAgent == "v2") ||
-        (currentAgent == "v2" && nextAgent == "v1")
+    if (!((currentAgent == "v1" && nextAgent == "v2") ||
+            (currentAgent == "v2" && nextAgent == "v1"))
+    ) {
+        return false
+    }
+
+    val currentText = normalizedDuetText()
+    val nextText = nextLine.normalizedDuetText()
+    return currentText.isNotBlank() && currentText == nextText
 }
+
+private fun LyricLine.normalizedDuetText(): String =
+    buildString {
+        append(text)
+        if (!backgroundText.isNullOrBlank()) append(backgroundText)
+    }.lowercase()
+        .replace(Regex("""\s+"""), "")
 
 fun List<LyricLine>.shiftedBy(offsetMs: Long): List<LyricLine> {
     if (offsetMs == 0L || isEmpty()) return this

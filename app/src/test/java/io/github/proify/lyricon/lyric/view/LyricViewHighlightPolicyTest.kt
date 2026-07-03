@@ -6,7 +6,7 @@ import org.junit.Test
 
 class LyricViewHighlightPolicyTest {
     @Test
-    fun previewedFutureLineStaysHighlightedAlongsideActiveLine() {
+    fun activeHighlightSetTakesPriorityOverPreviewedCurrentIndex() {
         val active = setOf(0)
 
         assertTrue(
@@ -23,7 +23,7 @@ class LyricViewHighlightPolicyTest {
                 activeHighlightIndices = active
             )
         )
-        assertTrue(
+        assertFalse(
             isLyricViewLineHighlighted(
                 index = 1,
                 currentIndex = 1,

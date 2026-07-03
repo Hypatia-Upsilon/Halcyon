@@ -74,22 +74,25 @@ class EmbyService(private val context: Context) {
             .filter { it.remoteId.isNotBlank() }
     }
 
-    suspend fun listSongs(config: RemoteMusicSourceConfig, limit: Int = 200): List<RemoteOnlineSong> = withContext(Dispatchers.IO) {
-        val root = get(
-            config,
-            "Users/${config.userId}/Items",
-            mapOf(
-                "Recursive" to "true",
-                "IncludeItemTypes" to "Audio",
-                "Fields" to "Genres,MediaSources,AlbumArtist",
-                "SortBy" to "SortName",
-                "SortOrder" to "Ascending",
-                "Limit" to limit.coerceIn(20, 500).toString()
+    suspend fun listSongs(config: RemoteMusicSourceConfig, limit: Int = Int.MAX_VALUE): List<RemoteOnlineSong> = withContext(Dispatchers.IO) {
+        fetchOffsetPagedResults(limit = limit) { offset, pageSize ->
+            val root = get(
+                config,
+                "Users/${config.userId}/Items",
+                mapOf(
+                    "Recursive" to "true",
+                    "IncludeItemTypes" to "Audio",
+                    "Fields" to "Genres,MediaSources,AlbumArtist",
+                    "SortBy" to "SortName",
+                    "SortOrder" to "Ascending",
+                    "StartIndex" to offset.toString(),
+                    "Limit" to pageSize.toString()
+                )
             )
-        )
-        val items = root.optJSONArray("Items") ?: return@withContext emptyList()
-        List(items.length()) { index -> itemFromJson(items.getJSONObject(index), config) }
-            .filter { it.remoteId.isNotBlank() }
+            val items = root.optJSONArray("Items") ?: return@fetchOffsetPagedResults emptyList()
+            List(items.length()) { index -> itemFromJson(items.getJSONObject(index), config) }
+                .filter { it.remoteId.isNotBlank() }
+        }
     }
 
     fun resolvePlayableSong(item: RemoteOnlineSong): Song =
