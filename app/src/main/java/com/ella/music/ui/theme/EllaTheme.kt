@@ -6,10 +6,9 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import com.ella.music.R
+import androidx.compose.ui.platform.LocalContext
 import com.ella.music.ui.settings.SYSTEM_FONT_PATH
 import java.io.File
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
@@ -63,13 +62,9 @@ fun EllaTheme(
             else -> ThemeController(colorSchemeMode = colorSchemeMode)
         }
     }
-    val appFontFamily = remember {
-        FontFamily(
-            Font(
-                resId = R.font.misans_semibold,
-                weight = FontWeight(800)
-            )
-        )
+    val context = LocalContext.current
+    val appFontFamily = remember(context) {
+        bundledMiSansSemiboldFontFamily(context)
     }
     val customAppFontFamily = remember(appFontPath, appFontWeight) {
         appFontPath.toCustomAppFontFamily(appFontWeight)

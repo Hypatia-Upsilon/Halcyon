@@ -6,11 +6,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import com.ella.music.R
 import com.ella.music.data.SettingsManager
+import com.ella.music.ui.theme.bundledMiSansSemiboldFontFamily
 
 internal data class PlayerLyricFontState(
     val fontFamily: FontFamily?,
@@ -63,16 +62,11 @@ internal fun rememberPlayerLyricFontState(
             else -> lyricFontWeightValue
         }
     }
-    val defaultLyricFontFamily = remember(preferBundledLyricFontByDefault) {
+    val defaultLyricFontFamily = remember(preferBundledLyricFontByDefault, context) {
         if (!preferBundledLyricFontByDefault) {
             null
         } else {
-            FontFamily(
-                Font(
-                    resId = R.font.misans_semibold,
-                    weight = FontWeight(800)
-                )
-            )
+            bundledMiSansSemiboldFontFamily(context)
         }
     }
     val lyricFontFamily = remember(effectiveLyricFontPath, effectiveLyricFontWeightValue, defaultLyricFontFamily) {
