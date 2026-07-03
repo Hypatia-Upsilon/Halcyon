@@ -1,5 +1,9 @@
 package com.ella.music.ui.settings
 
+import android.content.Intent
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -299,6 +303,24 @@ internal fun SettingsScanSection(
     val genreProtectedNames by settingsManager.genreProtectedNames.collectAsState(initial = "")
     val tagIgnoreCase by settingsManager.tagIgnoreCase.collectAsState(initial = false)
     val showAlbumArtists by settingsManager.showAlbumArtists.collectAsState(initial = true)
+    val artistCoverFolderUri by settingsManager.artistCoverFolderUri.collectAsState(initial = "")
+
+    val artistCoverFolderPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val readOnly = Intent.FLAG_GRANT_READ_URI_PERMISSION
+        val readWrite = readOnly or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        runCatching {
+            context.contentResolver.takePersistableUriPermission(uri, readWrite)
+        }.recoverCatching {
+            context.contentResolver.takePersistableUriPermission(uri, readOnly)
+        }
+        scope.launch {
+            settingsManager.setArtistCoverFolderUri(uri.toString())
+        }
+        Toast.makeText(context, context.getString(R.string.settings_artist_cover_folder_saved), Toast.LENGTH_SHORT).show()
+    }
 
     SmallTitle(text = stringResource(R.string.settings_scan))
 
@@ -373,6 +395,25 @@ internal fun SettingsScanSection(
                     scope.launch { settingsManager.setShowAlbumArtists(it) }
                 }
             )
+            ArrowPreference(
+                title = stringResource(R.string.settings_artist_cover_folder),
+                summary = if (artistCoverFolderUri.isBlank()) {
+                    stringResource(R.string.settings_artist_cover_folder_summary)
+                } else {
+                    stringResource(R.string.settings_artist_cover_folder_selected)
+                },
+                onClick = { artistCoverFolderPicker.launch(null) }
+            )
+            if (artistCoverFolderUri.isNotBlank()) {
+                ArrowPreference(
+                    title = stringResource(R.string.settings_artist_cover_folder_remove),
+                    summary = stringResource(R.string.settings_artist_cover_folder_remove_summary),
+                    onClick = {
+                        scope.launch { settingsManager.setArtistCoverFolderUri("") }
+                        Toast.makeText(context, context.getString(R.string.settings_artist_cover_folder_cleared), Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
         }
     }
 }

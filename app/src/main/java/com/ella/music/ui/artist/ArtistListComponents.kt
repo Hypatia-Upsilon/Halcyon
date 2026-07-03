@@ -52,6 +52,7 @@ internal fun ArtistRow(
     artist: Artist,
     representativeSong: Song?,
     mainViewModel: MainViewModel,
+    artistCoverFolderUri: String,
     coversEnabled: Boolean,
     selectionMode: Boolean,
     selected: Boolean,
@@ -73,7 +74,12 @@ internal fun ArtistRow(
         usage = ArtworkUsage.ArtistImage,
         showDefaultWhenMissing = false
     )
-    val coverModel: Any? = coverState.model
+    val customArtistCoverUri = rememberArtistCoverUri(
+        artistName = artist.name,
+        folderLocation = if (coversEnabled) artistCoverFolderUri else "",
+        mainViewModel = mainViewModel
+    )
+    val coverModel: Any? = customArtistCoverUri ?: coverState.model
 
     Row(
         modifier = Modifier

@@ -16,6 +16,7 @@ import com.ella.music.data.PlaybackHistoryEntry
 import com.ella.music.data.PlaybackStatsStore
 import com.ella.music.data.SongPlaybackStats
 import com.ella.music.data.matchesArtistName
+import com.ella.music.data.ArtistCoverRepository
 import com.ella.music.data.model.Album
 import com.ella.music.data.model.Artist
 import com.ella.music.data.model.AudioInfo
@@ -46,6 +47,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val repository = MusicRepository.getInstance(application)
     val settingsManager = SettingsManager.getInstance(application)
+    private val artistCoverRepository = ArtistCoverRepository.getInstance(application)
     private val playlistStore = PlaylistStore.getInstance(application)
     private val playbackStatsStore = PlaybackStatsStore.getInstance(application)
     private val aiCoordinator = MainViewModelAiCoordinator(getApplication(), settingsManager, repository)
@@ -339,6 +341,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun getSongTagInfo(song: Song): SongTagInfo {
         return repository.getSongTagInfo(song)
+    }
+
+    fun getArtistCoverUri(artistName: String, folderLocation: String): Uri? {
+        return artistCoverRepository.getArtistCoverUri(artistName, folderLocation)
     }
 
     suspend fun getFiveStarSongs(): List<Song> = withContext(Dispatchers.IO) {

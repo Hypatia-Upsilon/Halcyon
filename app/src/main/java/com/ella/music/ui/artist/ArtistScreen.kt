@@ -148,6 +148,7 @@ fun ArtistScreen(
     val openPlayerOnPlay by mainViewModel.settingsManager.openPlayerOnPlay.collectAsState(initial = false)
     val showPlayNextInLists by mainViewModel.settingsManager.showPlayNextInLists.collectAsState(initial = false)
     val showAlbumArtists by mainViewModel.settingsManager.showAlbumArtists.collectAsState(initial = true)
+    val artistCoverFolderUri by mainViewModel.settingsManager.artistCoverFolderUri.collectAsState(initial = "")
     var sortExpanded by remember { mutableStateOf(false) }
     var searchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -303,6 +304,11 @@ fun ArtistScreen(
         usage = ArtworkUsage.ArtistImage,
         showDefaultWhenMissing = false
     )
+    val customArtistCoverUri = rememberArtistCoverUri(
+        artistName = artistName,
+        folderLocation = artistCoverFolderUri,
+        mainViewModel = mainViewModel
+    )
     val librarySongsByAlbumId = remember(songs) {
         songs.groupBy { it.albumIdentityId() }
     }
@@ -449,7 +455,7 @@ fun ArtistScreen(
             item {
                 ArtistHeader(
                     artistName = artistName,
-                    coverModel = artistCoverState.model,
+                    coverModel = customArtistCoverUri ?: artistCoverState.model,
                     songCount = sortedArtistSongs.size,
                     albumCount = (participatedAlbums + releaseAlbums).distinctBy { it.id }.size,
                     onPlayAll = {

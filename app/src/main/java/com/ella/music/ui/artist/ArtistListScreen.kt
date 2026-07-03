@@ -207,6 +207,7 @@ fun ArtistListScreen(
     val detailSongSortIndex by mainViewModel.settingsManager.artistDetailSongSortIndex.collectAsState(initial = LibrarySortUiState.artistDetailSongSortIndex)
     val detailSongSortMode = ArtistDetailSongSortMode.entries.getOrElse(detailSongSortIndex) { ArtistDetailSongSortMode.Title }
     val showAlbumArtists by mainViewModel.settingsManager.showAlbumArtists.collectAsState(initial = true)
+    val artistCoverFolderUri by mainViewModel.settingsManager.artistCoverFolderUri.collectAsState(initial = "")
     val tagIgnoreCase by mainViewModel.settingsManager.tagIgnoreCase.collectAsState(initial = false)
     val pinnedArtistKeys by mainViewModel.settingsManager.pinnedKeysFlow("artist").collectAsState(initial = emptyList())
     val requestDeleteSongs = rememberSongDeleteRequester(mainViewModel)
@@ -554,6 +555,7 @@ fun ArtistListScreen(
                             artist = artist,
                             representativeSong = representativeSongsByArtist[artistKey],
                             mainViewModel = mainViewModel,
+                            artistCoverFolderUri = artistCoverFolderUri,
                             coversEnabled = listCoversEnabled,
                             selectionMode = selectionMode,
                             selected = selected,

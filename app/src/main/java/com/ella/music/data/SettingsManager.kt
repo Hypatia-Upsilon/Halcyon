@@ -143,6 +143,7 @@ class SettingsManager(private val context: Context) {
         val KEY_USB_DAC_MODE = booleanPreferencesKey("usb_dac_mode")
         val KEY_DYNAMIC_COVER_ENABLED = booleanPreferencesKey("dynamic_cover_enabled")
         val KEY_DYNAMIC_COVER_CUSTOM_FOLDERS = stringPreferencesKey("dynamic_cover_custom_folders")
+        val KEY_ARTIST_COVER_FOLDER_URI = stringPreferencesKey("artist_cover_folder_uri")
         val KEY_STARTUP_POSTER_ENABLED = booleanPreferencesKey("startup_poster_enabled")
         val KEY_STARTUP_POSTER_URI = stringPreferencesKey("startup_poster_uri")
         val KEY_APP_WALLPAPER_ENABLED = booleanPreferencesKey("app_wallpaper_enabled")
@@ -697,6 +698,8 @@ class SettingsManager(private val context: Context) {
         context.dataStore.data.map { normalizeDynamicCoverCustomFolders(it[KEY_DYNAMIC_COVER_CUSTOM_FOLDERS]) }
     val dynamicCoverCustomFolders: Flow<List<String>> =
         dynamicCoverCustomFoldersRaw.map(::parseDynamicCoverCustomFolders)
+    val artistCoverFolderUri: Flow<String> =
+        context.dataStore.data.map { it[KEY_ARTIST_COVER_FOLDER_URI].orEmpty() }
     val mcpServerEnabled: Flow<Boolean> =
         context.dataStore.data.map { it[KEY_MCP_SERVER_ENABLED] ?: false }
     val startupPosterEnabled: Flow<Boolean> =
@@ -1290,6 +1293,17 @@ class SettingsManager(private val context: Context) {
                 prefs.remove(KEY_DYNAMIC_COVER_CUSTOM_FOLDERS)
             } else {
                 prefs[KEY_DYNAMIC_COVER_CUSTOM_FOLDERS] = normalized
+            }
+        }
+    }
+
+    suspend fun setArtistCoverFolderUri(uri: String) {
+        context.dataStore.edit { prefs ->
+            val safeUri = uri.trim()
+            if (safeUri.isBlank()) {
+                prefs.remove(KEY_ARTIST_COVER_FOLDER_URI)
+            } else {
+                prefs[KEY_ARTIST_COVER_FOLDER_URI] = safeUri
             }
         }
     }
@@ -2236,6 +2250,7 @@ class SettingsManager(private val context: Context) {
             setString(KEY_PLAYLIST_CUSTOM_ORDER)
             setString(KEY_EQ_BANDS)
             setString(KEY_DYNAMIC_COVER_CUSTOM_FOLDERS)
+            setString(KEY_ARTIST_COVER_FOLDER_URI)
 
             fun clearMissingCustomImage(
                 enabledKey: Preferences.Key<Boolean>,
