@@ -176,10 +176,6 @@
     <string name="settings_language_korean">한국어</string>
     <string name="settings_language_german">Deutsch</string>
     <string name="settings_language_russian">Русский</string>
-    <string name="settings_language_turkish">Türkçe</string>
-    <string name="settings_language_indonesian">Bahasa Indonesia</string>
-    <string name="settings_language_vietnamese">Tiếng Việt</string>
-    <string name="settings_language_thai">ไทย</string>
     <string name="settings_language_french">Français</string>
     <string name="settings_language_summary_system">使用系统语言</string>
     <string name="settings_language_summary_simplified_chinese">强制使用简体中文</string>
@@ -189,10 +185,6 @@
     <string name="settings_language_summary_korean">强制使用韩语界面</string>
     <string name="settings_language_summary_german">强制使用德语界面</string>
     <string name="settings_language_summary_russian">强制使用俄语界面</string>
-    <string name="settings_language_summary_turkish">强制使用土耳其语界面</string>
-    <string name="settings_language_summary_indonesian">强制使用印尼语界面</string>
-    <string name="settings_language_summary_vietnamese">强制使用越南语界面</string>
-    <string name="settings_language_summary_thai">强制使用泰语界面</string>
     <string name="settings_language_summary_french">强制使用法语界面</string>
     <string name="settings_preferences">应用偏好</string>
     <string name="settings_preferences_summary">外观、主页和个性化设置</string>
@@ -204,6 +196,8 @@
     <string name="settings_appearance_home_summary">主题、语言、液态玻璃、自定义图片和首页布局</string>
     <string name="settings_library_scan">音乐库与扫描</string>
     <string name="settings_library_scan_summary">扫描来源、文件夹、分隔符、标签刮削和桌面快捷方式</string>
+    <string name="settings_library_source_summary">歌曲、歌手、专辑、流派、年份等库内容来自本地，还是 Navidrome / Emby 服务器（可缓存到本地，用刷新按钮更新缓存）</string>
+    <string name="settings_library_source_local">本地</string>
     <string name="settings_integrations">AI 与集成</string>
     <string name="settings_integrations_summary">Ella 助手、OpenAI 兼容接口和 MCP 服务器</string>
     <string name="settings_library_source">音乐来源</string>
@@ -920,9 +914,9 @@
     <string name="settings_player_background_dim">播放页背景压暗</string>
     <string name="settings_player_background_dim_summary">在播放页自定义背景上叠加暗色遮罩</string>
     <string name="settings_beautiful_lyrics_background">播放与歌词页背景</string>
-    <string name="settings_beautiful_lyrics_background_summary">静态背景，节省资源；动态背景，取色更鲜艳</string>
-    <string name="settings_beautiful_lyrics_background_static">静态背景</string>
-    <string name="settings_beautiful_lyrics_background_dynamic">动态背景</string>
+    <string name="settings_beautiful_lyrics_background_summary">Apple Music 动态背景，低功耗；Beautiful Lyrics 动态背景，取色更鲜艳</string>
+    <string name="settings_beautiful_lyrics_background_static">Apple Music 动态背景</string>
+    <string name="settings_beautiful_lyrics_background_dynamic">Beautiful Lyrics 动态背景</string>
     <string name="settings_beautiful_lyrics_speed">动态背景动画速度</string>
     <string name="settings_beautiful_lyrics_speed_summary">数值越大，背景圆形纹理移动越快</string>
     <string name="settings_beautiful_lyrics_blur">动态背景模糊程度</string>

@@ -140,11 +140,7 @@ internal fun SettingsAppearanceSection(
         SettingsManager.APP_LANGUAGE_KO to stringResource(R.string.settings_language_korean),
         SettingsManager.APP_LANGUAGE_DE to stringResource(R.string.settings_language_german),
         SettingsManager.APP_LANGUAGE_FR to stringResource(R.string.settings_language_french),
-        SettingsManager.APP_LANGUAGE_RU to stringResource(R.string.settings_language_russian),
-        SettingsManager.APP_LANGUAGE_TR to stringResource(R.string.settings_language_turkish),
-        SettingsManager.APP_LANGUAGE_ID to stringResource(R.string.settings_language_indonesian),
-        SettingsManager.APP_LANGUAGE_VI to stringResource(R.string.settings_language_vietnamese),
-        SettingsManager.APP_LANGUAGE_TH to stringResource(R.string.settings_language_thai)
+        SettingsManager.APP_LANGUAGE_RU to stringResource(R.string.settings_language_russian)
     )
     val selectedLanguageIndex = languageOptions.indexOfFirst { it.first == appLanguage }.takeIf { it >= 0 } ?: 0
     val languageEntries = remember(languageOptions) {
@@ -159,10 +155,6 @@ internal fun SettingsAppearanceSection(
         SettingsManager.APP_LANGUAGE_DE -> stringResource(R.string.settings_language_summary_german)
         SettingsManager.APP_LANGUAGE_FR -> stringResource(R.string.settings_language_summary_french)
         SettingsManager.APP_LANGUAGE_RU -> stringResource(R.string.settings_language_summary_russian)
-        SettingsManager.APP_LANGUAGE_TR -> stringResource(R.string.settings_language_summary_turkish)
-        SettingsManager.APP_LANGUAGE_ID -> stringResource(R.string.settings_language_summary_indonesian)
-        SettingsManager.APP_LANGUAGE_VI -> stringResource(R.string.settings_language_summary_vietnamese)
-        SettingsManager.APP_LANGUAGE_TH -> stringResource(R.string.settings_language_summary_thai)
         else -> stringResource(R.string.settings_language_summary_system)
     }
 
