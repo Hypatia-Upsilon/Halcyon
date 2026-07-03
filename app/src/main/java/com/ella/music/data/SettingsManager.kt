@@ -66,6 +66,7 @@ class SettingsManager(private val context: Context) {
         val KEY_MONET_COLOR_MODE = intPreferencesKey("monet_color_mode")
         val KEY_PLAYER_BACKGROUND_THEME = intPreferencesKey("player_background_theme")
         val KEY_APP_LANGUAGE = stringPreferencesKey("app_language")
+        val KEY_LIBRARY_SOURCE = stringPreferencesKey("library_source")
         val KEY_BOTTOM_BAR_GLASS_EFFECT = stringPreferencesKey("bottom_bar_glass_effect")
         val KEY_BOTTOM_DOCK_ITEMS = stringPreferencesKey("bottom_dock_items")
         val KEY_TICKER_ENABLED = booleanPreferencesKey("ticker_enabled")
@@ -332,6 +333,12 @@ class SettingsManager(private val context: Context) {
 
         const val PLAYER_FLOW_EFFECT_DARK = 0
         const val APP_LANGUAGE_SYSTEM = "system"
+        // Music-library source: the whole library (songs/artists/albums/genres/years) is served from
+        // local storage, or streamed from a configured Navidrome / Emby server.
+        const val LIBRARY_SOURCE_LOCAL = "local"
+        const val LIBRARY_SOURCE_NAVIDROME = "navidrome"
+        const val LIBRARY_SOURCE_EMBY = "emby"
+
         const val APP_LANGUAGE_ZH_CN = "zh-CN"
         const val APP_LANGUAGE_ZH_TW = "zh-TW"
         const val APP_LANGUAGE_EN = "en"
@@ -340,10 +347,6 @@ class SettingsManager(private val context: Context) {
         const val APP_LANGUAGE_DE = "de"
         const val APP_LANGUAGE_FR = "fr"
         const val APP_LANGUAGE_RU = "ru"
-        const val APP_LANGUAGE_TR = "tr"
-        const val APP_LANGUAGE_ID = "id"
-        const val APP_LANGUAGE_VI = "vi"
-        const val APP_LANGUAGE_TH = "th"
         const val BOTTOM_DOCK_ITEM_HOME = "home"
         const val BOTTOM_DOCK_ITEM_LIBRARY = "library"
         // Search stays as a fixed action pill outside the configurable dock tabs.
@@ -811,6 +814,9 @@ class SettingsManager(private val context: Context) {
             serverName = it[KEY_EMBY_SERVER_NAME].orEmpty()
         )
     }
+    val librarySource: Flow<String> = context.dataStore.data.map {
+        it[KEY_LIBRARY_SOURCE] ?: LIBRARY_SOURCE_LOCAL
+    }
     val openAiApiKey: Flow<String> = context.dataStore.data.map { it[KEY_OPENAI_API_KEY] ?: "" }
     val openAiBaseUrl: Flow<String> =
         context.dataStore.data.map { it[KEY_OPENAI_BASE_URL] ?: DEFAULT_OPENAI_BASE_URL }
@@ -987,10 +993,6 @@ class SettingsManager(private val context: Context) {
             APP_LANGUAGE_DE -> APP_LANGUAGE_DE
             APP_LANGUAGE_FR -> APP_LANGUAGE_FR
             APP_LANGUAGE_RU -> APP_LANGUAGE_RU
-            APP_LANGUAGE_TR -> APP_LANGUAGE_TR
-            APP_LANGUAGE_ID, "in" -> APP_LANGUAGE_ID
-            APP_LANGUAGE_VI -> APP_LANGUAGE_VI
-            APP_LANGUAGE_TH -> APP_LANGUAGE_TH
             else -> APP_LANGUAGE_SYSTEM
         }
         context.dataStore.edit { it[KEY_APP_LANGUAGE] = normalized }
@@ -1455,6 +1457,15 @@ class SettingsManager(private val context: Context) {
 
     suspend fun setLyricShareUseLyricFont(enabled: Boolean) {
         context.dataStore.edit { it[KEY_LYRIC_SHARE_USE_LYRIC_FONT] = enabled }
+    }
+
+    suspend fun setLibrarySource(source: String) {
+        val normalized = when (source) {
+            LIBRARY_SOURCE_NAVIDROME -> LIBRARY_SOURCE_NAVIDROME
+            LIBRARY_SOURCE_EMBY -> LIBRARY_SOURCE_EMBY
+            else -> LIBRARY_SOURCE_LOCAL
+        }
+        context.dataStore.edit { it[KEY_LIBRARY_SOURCE] = normalized }
     }
 
     suspend fun setShowAlbumArtists(enabled: Boolean) {

@@ -103,8 +103,41 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun scanMusic(fullRescan: Boolean = false, deepRescan: Boolean = fullRescan) {
         if (scanJob?.isActive == true || isScanning.value) return
         scanJob = viewModelScope.launch {
+            val source = settingsManager.librarySource.first()
+            if (source != SettingsManager.LIBRARY_SOURCE_LOCAL) {
+                // Remote library: the refresh button re-fetches the whole remote library.
+                loadRemoteLibrarySource(source, forceRefresh = true)
+                return@launch
+            }
             scanFromCurrentSettings(fullRescan = fullRescan, deepRescan = deepRescan)
         }
+    }
+
+    fun setLibrarySource(source: String) {
+        viewModelScope.launch {
+            settingsManager.setLibrarySource(source)
+            if (scanJob?.isActive == true || isScanning.value) return@launch
+            scanJob = viewModelScope.launch {
+                if (source == SettingsManager.LIBRARY_SOURCE_LOCAL) {
+                    repository.loadCachedLibrary()
+                    scanFromCurrentSettings(fullRescan = false, deepRescan = false)
+                } else {
+                    loadRemoteLibrarySource(source, forceRefresh = false)
+                }
+            }
+        }
+    }
+
+    private suspend fun loadRemoteLibrarySource(source: String, forceRefresh: Boolean) {
+        repository.startScanning()
+        val summary = try {
+            repository.loadRemoteLibrary(source, forceRefresh = forceRefresh)
+        } finally {
+            repository.finishScanning()
+        }
+        repository.emitScanSummary(summary)
+        _libraryCacheLoaded.value = true
+        preloadLibrarySearchSnapshot()
     }
 
     fun fullRescanMusic() {
@@ -162,6 +195,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         autoScanRequested = true
         if (scanJob?.isActive == true || isScanning.value) return
         scanJob = viewModelScope.launch {
+            val source = settingsManager.librarySource.first()
+            if (source != SettingsManager.LIBRARY_SOURCE_LOCAL) {
+                loadRemoteLibrarySource(source, forceRefresh = false)
+                return@launch
+            }
             if (!settingsManager.autoScan.first()) return@launch
             scanFromCurrentSettings(fullRescan = false, deepRescan = false)
         }
@@ -234,7 +272,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadCachedLibrary() {
         viewModelScope.launch {
-            repository.loadCachedLibrary()
+            val source = settingsManager.librarySource.first()
+            if (source != SettingsManager.LIBRARY_SOURCE_LOCAL) {
+                // Load the cached remote library instantly on startup (network refresh happens via
+                // scanMusicIfAutoEnabled / the refresh button).
+                repository.loadRemoteLibrary(source, forceRefresh = false)
+            } else {
+                repository.loadCachedLibrary()
+            }
             _libraryCacheLoaded.value = true
             preloadLibrarySearchSnapshot()
         }

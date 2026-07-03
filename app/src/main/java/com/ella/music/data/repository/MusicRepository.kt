@@ -54,6 +54,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.ella.music.data.remote.EmbyService
+import com.ella.music.data.remote.NavidromeService
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -497,6 +499,73 @@ class MusicRepository(private val context: Context) {
             _albums.value = songs.toAlbums()
         }.onFailure {
             Log.w("MusicRepo", "Failed to load music library cache", it)
+        }
+    }
+
+    private fun remoteLibraryCacheFile(source: String): File =
+        File(context.filesDir, "remote_library_$source.json")
+
+    /**
+     * Load the whole library from a remote source (Navidrome / Emby) into [_songs] / [_albums] so all
+     * the local library views (artist / album / genre / year …) work against streamed songs.
+     *
+     * With [forceRefresh] = false a cached snapshot is loaded instantly (and only fetched over the
+     * network when there is no cache); the library refresh button passes true to re-fetch. The
+     * remote library is cached per-source so switching back is instant and works offline.
+     */
+    suspend fun loadRemoteLibrary(source: String, forceRefresh: Boolean): MusicScanSummary = withContext(Dispatchers.IO) {
+        val cacheFile = remoteLibraryCacheFile(source)
+
+        fun applyCache(): Boolean {
+            if (!cacheFile.exists()) return false
+            val cached = runCatching { readLibraryCacheSongs(cacheFile) }.getOrDefault(emptyList())
+            if (cached.isEmpty()) return false
+            _songs.value = cached
+            _albums.value = cached.toAlbums()
+            return true
+        }
+
+        if (!forceRefresh && applyCache()) {
+            return@withContext MusicScanSummary(total = _songs.value.size)
+        }
+
+        val config = when (source) {
+            SettingsManager.LIBRARY_SOURCE_NAVIDROME -> settingsManager.navidromeConfig.first()
+            SettingsManager.LIBRARY_SOURCE_EMBY -> settingsManager.embyConfig.first()
+            else -> return@withContext MusicScanSummary(total = _songs.value.size)
+        }
+        if (!config.isConfigured) {
+            // Not configured yet — fall back to any cache, otherwise leave the library empty.
+            if (_songs.value.isEmpty()) applyCache()
+            return@withContext MusicScanSummary(total = _songs.value.size)
+        }
+
+        val remoteSongs = runCatching {
+            when (source) {
+                SettingsManager.LIBRARY_SOURCE_NAVIDROME -> NavidromeService(context).listSongs(config)
+                else -> EmbyService(context).listSongs(config)
+            }.map { it.song }
+        }.getOrElse { error ->
+            Log.w("MusicRepo", "Failed to load remote library ($source)", error)
+            if (_songs.value.isEmpty()) applyCache()
+            return@withContext MusicScanSummary(total = _songs.value.size)
+        }
+
+        _songs.value = remoteSongs
+        _albums.value = remoteSongs.toAlbums()
+        saveLibraryCacheTo(cacheFile, remoteSongs, _albums.value)
+        MusicScanSummary(total = remoteSongs.size, added = remoteSongs.size)
+    }
+
+    private fun saveLibraryCacheTo(file: File, songs: List<Song>, albums: List<Album>) {
+        runCatching {
+            val root = JSONObject()
+                .put("version", 1)
+                .put("songs", songsToLibraryCacheJsonArray(songs))
+                .put("albums", albumsToLibraryCacheJsonArray(albums))
+            file.writeText(root.toString())
+        }.onFailure {
+            Log.w("MusicRepo", "Failed to save remote library cache", it)
         }
     }
 
@@ -1209,12 +1278,21 @@ class MusicRepository(private val context: Context) {
     }
 
     private suspend fun saveLibraryCache(songs: List<Song>, albums: List<Album>) = withContext(Dispatchers.IO) {
+        // Persist to the source-appropriate cache: keep the local cache intact while a remote
+        // library is active so mutations (e.g. remove-from-library) don't clobber the local cache
+        // that restores when switching back to Local.
+        val source = settingsManager.librarySource.first()
+        val targetFile = if (source == SettingsManager.LIBRARY_SOURCE_LOCAL) {
+            libraryCacheFile
+        } else {
+            remoteLibraryCacheFile(source)
+        }
         runCatching {
             val root = JSONObject()
                 .put("version", 1)
                 .put("songs", songsToLibraryCacheJsonArray(songs))
                 .put("albums", albumsToLibraryCacheJsonArray(albums))
-            libraryCacheFile.writeText(root.toString())
+            targetFile.writeText(root.toString())
         }.onFailure {
             Log.w("MusicRepo", "Failed to save music library cache", it)
         }

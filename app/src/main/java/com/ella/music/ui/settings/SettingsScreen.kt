@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,13 +30,16 @@ import com.ella.music.BuildConfig
 import com.ella.music.R
 import com.ella.music.ui.components.EllaSmallTopAppBar
 import com.ella.music.ui.components.EllaSearchBar
+import com.ella.music.data.SettingsManager
 import com.ella.music.viewmodel.MainViewModel
 import com.ella.music.viewmodel.PlayerViewModel
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.SmallTitle
+import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.preference.ArrowPreference
@@ -71,6 +75,8 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val settingsManager = remember(context) { SettingsManager.getInstance(context) }
+    val librarySource by settingsManager.librarySource.collectAsState(initial = SettingsManager.LIBRARY_SOURCE_LOCAL)
     var searchQuery by remember { mutableStateOf("") }
     val isDark = MiuixTheme.colorScheme.background.luminance() < 0.5f
     val pageBackground = if (isDark) Color(0xFF101014) else Color(0xFFF4F4F7)
@@ -183,8 +189,29 @@ fun SettingsScreen(
 
                 SmallTitle(text = stringResource(R.string.settings_music_playback))
 
+                val librarySourceOptions = listOf(
+                    SettingsManager.LIBRARY_SOURCE_LOCAL to stringResource(R.string.settings_library_source_local),
+                    SettingsManager.LIBRARY_SOURCE_NAVIDROME to stringResource(R.string.remote_source_navidrome),
+                    SettingsManager.LIBRARY_SOURCE_EMBY to stringResource(R.string.remote_source_emby)
+                )
+                val librarySourceEntries = librarySourceOptions.map { DropdownItem(title = it.second) }
+                val selectedLibrarySourceIndex = librarySourceOptions
+                    .indexOfFirst { it.first == librarySource }
+                    .takeIf { it >= 0 } ?: 0
+
                 SettingsCardGroup {
                     Column {
+                        WindowSpinnerPreference(
+                            title = stringResource(R.string.settings_library_source),
+                            summary = stringResource(R.string.settings_library_source_summary),
+                            items = librarySourceEntries,
+                            selectedIndex = selectedLibrarySourceIndex,
+                            onSelectedIndexChange = { index ->
+                                librarySourceOptions.getOrNull(index)?.first?.let { source ->
+                                    mainViewModel?.setLibrarySource(source)
+                                }
+                            }
+                        )
                         ArrowPreference(
                             title = stringResource(R.string.settings_audio),
                             summary = stringResource(R.string.settings_audio_summary),
