@@ -76,23 +76,40 @@ class EmbyService(private val context: Context) {
 
     suspend fun listSongs(config: RemoteMusicSourceConfig, limit: Int = Int.MAX_VALUE): List<RemoteOnlineSong> = withContext(Dispatchers.IO) {
         fetchOffsetPagedResults(limit = limit) { offset, pageSize ->
-            val root = get(
-                config,
-                "Users/${config.userId}/Items",
-                mapOf(
-                    "Recursive" to "true",
-                    "IncludeItemTypes" to "Audio",
-                    "Fields" to "Genres,MediaSources,AlbumArtist",
-                    "SortBy" to "SortName",
-                    "SortOrder" to "Ascending",
-                    "StartIndex" to offset.toString(),
-                    "Limit" to pageSize.toString()
-                )
-            )
-            val items = root.optJSONArray("Items") ?: return@fetchOffsetPagedResults emptyList()
-            List(items.length()) { index -> itemFromJson(items.getJSONObject(index), config) }
-                .filter { it.remoteId.isNotBlank() }
+            fetchSongsPage(config, offset, pageSize)
         }
+    }
+
+    /** Fetch a single page of the library starting at [offset]. Used for incremental "load more". */
+    suspend fun listSongsPage(
+        config: RemoteMusicSourceConfig,
+        offset: Int,
+        count: Int
+    ): List<RemoteOnlineSong> = withContext(Dispatchers.IO) {
+        fetchSongsPage(config, offset.coerceAtLeast(0), count.coerceAtLeast(1))
+    }
+
+    private fun fetchSongsPage(
+        config: RemoteMusicSourceConfig,
+        offset: Int,
+        pageSize: Int
+    ): List<RemoteOnlineSong> {
+        val root = get(
+            config,
+            "Users/${config.userId}/Items",
+            mapOf(
+                "Recursive" to "true",
+                "IncludeItemTypes" to "Audio",
+                "Fields" to "Genres,MediaSources,AlbumArtist",
+                "SortBy" to "SortName",
+                "SortOrder" to "Ascending",
+                "StartIndex" to offset.toString(),
+                "Limit" to pageSize.toString()
+            )
+        )
+        val items = root.optJSONArray("Items") ?: return emptyList()
+        return List(items.length()) { index -> itemFromJson(items.getJSONObject(index), config) }
+            .filter { it.remoteId.isNotBlank() }
     }
 
     fun resolvePlayableSong(item: RemoteOnlineSong): Song =
@@ -109,6 +126,10 @@ class EmbyService(private val context: Context) {
         val durationMs = if (ticks > 0L) ticks / 10_000L else 0L
         val stream = streamUrl(config, id)
         val cover = imageUrl(config, id)
+        // Populate album/genre/year/track metadata so remote songs feed the same artist / album /
+        // genre / year library views as local songs.
+        val genre = item.optJSONArray("Genres")?.optString(0).orEmpty()
+        val year = item.optInt("ProductionYear", 0).takeIf { it > 0 }?.toString().orEmpty()
         return RemoteOnlineSong(
             song = Song(
                 id = stableId("emby:$id"),
@@ -120,6 +141,11 @@ class EmbyService(private val context: Context) {
                 path = stream,
                 fileName = "$title.mp3",
                 mimeType = "audio/*",
+                trackNumber = item.optInt("IndexNumber", 0),
+                discNumber = item.optInt("ParentIndexNumber", 0),
+                albumArtist = item.optString("AlbumArtist"),
+                genre = genre,
+                year = year,
                 coverUrl = cover,
                 onlineSource = RemoteMusicProvider.Emby.id,
                 onlineId = id

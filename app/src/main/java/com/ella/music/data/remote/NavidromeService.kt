@@ -40,32 +40,67 @@ class NavidromeService(private val context: Context) {
         val targetCount = normalizeRemoteFetchLimit(limit)
         val songs = mutableListOf<RemoteOnlineSong>()
         val seenSongIds = LinkedHashSet<String>()
-        var albumOffset = 0
+        var songOffset = 0
 
+        // Enumerate the whole library by paging songs directly via search3 with an empty query
+        // (Navidrome/Subsonic returns all songs, 500 per page). The previous approach walked
+        // getAlbumList2 and issued one getAlbum per album, which on libraries of mostly single-song
+        // albums meant one HTTP request per song (thousands of sequential calls) — so "load more"
+        // effectively stalled and the list was stuck at the first page.
         while (songs.size < targetCount) {
-            val albumPageSize = if (targetCount == Int.MAX_VALUE) {
+            val pageSize = if (targetCount == Int.MAX_VALUE) {
                 REMOTE_LIBRARY_PAGE_SIZE
             } else {
                 minOf(REMOTE_LIBRARY_PAGE_SIZE, targetCount - songs.size).coerceAtLeast(1)
             }
-            val albumIds = fetchAlbumIds(config, albumOffset, albumPageSize)
-            if (albumIds.isEmpty()) break
+            val page = fetchAllSongsPage(config, songOffset, pageSize)
+            if (page.isEmpty()) break
 
-            for (albumId in albumIds) {
-                val albumSongs = fetchAlbumSongs(config, albumId)
-                albumSongs.forEach { song ->
-                    if (song.remoteId.isBlank()) return@forEach
-                    if (!seenSongIds.add(song.remoteId)) return@forEach
-                    songs += song
-                    if (songs.size >= targetCount) return@withContext songs
-                }
+            for (song in page) {
+                if (song.remoteId.isBlank()) continue
+                if (!seenSongIds.add(song.remoteId)) continue
+                songs += song
+                if (songs.size >= targetCount) return@withContext songs
             }
 
-            if (albumIds.size < albumPageSize) break
-            albumOffset += albumIds.size
+            if (page.size < pageSize) break
+            songOffset += page.size
         }
 
         songs
+    }
+
+    /** Fetch a single page of the library starting at [offset]. Used for incremental "load more". */
+    suspend fun listSongsPage(
+        config: RemoteMusicSourceConfig,
+        offset: Int,
+        count: Int
+    ): List<RemoteOnlineSong> = withContext(Dispatchers.IO) {
+        fetchAllSongsPage(config, offset.coerceAtLeast(0), count.coerceAtLeast(1))
+    }
+
+    private fun fetchAllSongsPage(
+        config: RemoteMusicSourceConfig,
+        offset: Int,
+        pageSize: Int
+    ): List<RemoteOnlineSong> {
+        val root = request(
+            config,
+            "search3",
+            mapOf(
+                "query" to "",
+                "artistCount" to "0",
+                "albumCount" to "0",
+                "songCount" to pageSize.toString(),
+                "songOffset" to offset.toString()
+            )
+        )
+        val songs = root.optJSONObject("subsonic-response")
+            ?.optJSONObject("searchResult3")
+            ?.optJSONArray("song")
+            ?: return emptyList()
+        return List(songs.length()) { index -> songFromJson(songs.getJSONObject(index), config) }
+            .filter { it.remoteId.isNotBlank() }
     }
 
     fun resolvePlayableSong(item: RemoteOnlineSong): Song =
@@ -82,6 +117,12 @@ class NavidromeService(private val context: Context) {
         val cover = item.optString("coverArt").takeIf { it.isNotBlank() }
             ?.let { endpoint(config, "getCoverArt", mapOf("id" to it, "size" to "512")) }
             .orEmpty()
+        // Populate album/artist/genre/year/track metadata so remote songs can feed the same
+        // artist / album / genre / year library views as local songs.
+        val year = item.optInt("year", 0).takeIf { it > 0 }?.toString().orEmpty()
+        val genre = item.optString("genre").ifBlank {
+            item.optJSONArray("genres")?.optJSONObject(0)?.optString("name").orEmpty()
+        }
         return RemoteOnlineSong(
             song = Song(
                 id = stableId("navidrome:$id"),
@@ -93,6 +134,13 @@ class NavidromeService(private val context: Context) {
                 path = stream,
                 fileName = "$title.$suffix",
                 mimeType = item.optString("contentType"),
+                trackNumber = item.optInt("track", 0),
+                discNumber = item.optInt("discNumber", 0),
+                albumArtist = item.optString("albumArtist")
+                    .ifBlank { item.optString("displayAlbumArtist") }
+                    .ifBlank { item.optJSONArray("albumArtists")?.optJSONObject(0)?.optString("name").orEmpty() },
+                genre = genre,
+                year = year,
                 coverUrl = cover,
                 onlineSource = RemoteMusicProvider.Navidrome.id,
                 onlineId = id
@@ -102,45 +150,6 @@ class NavidromeService(private val context: Context) {
             streamUrl = stream,
             coverUrl = cover
         )
-    }
-
-    private fun fetchAlbumIds(
-        config: RemoteMusicSourceConfig,
-        offset: Int,
-        pageSize: Int
-    ): List<String> {
-        val root = request(
-            config,
-            "getAlbumList2",
-            mapOf(
-                "type" to "alphabeticalByArtist",
-                "size" to pageSize.toString(),
-                "offset" to offset.toString()
-            )
-        )
-        val albums = root.optJSONObject("subsonic-response")
-            ?.optJSONObject("albumList2")
-            ?.optJSONArray("album")
-            ?: return emptyList()
-        return buildList(albums.length()) {
-            repeat(albums.length()) { index ->
-                val id = albums.optJSONObject(index)?.optString("id").orEmpty()
-                if (id.isNotBlank()) add(id)
-            }
-        }
-    }
-
-    private fun fetchAlbumSongs(
-        config: RemoteMusicSourceConfig,
-        albumId: String
-    ): List<RemoteOnlineSong> {
-        val root = request(config, "getAlbum", mapOf("id" to albumId))
-        val songs = root.optJSONObject("subsonic-response")
-            ?.optJSONObject("album")
-            ?.optJSONArray("song")
-            ?: return emptyList()
-        return List(songs.length()) { index -> songFromJson(songs.getJSONObject(index), config) }
-            .filter { it.remoteId.isNotBlank() }
     }
 
     private fun request(

@@ -56,7 +56,7 @@ import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-private const val REMOTE_DIRECTORY_BATCH_SIZE = 240
+private const val REMOTE_DIRECTORY_BATCH_SIZE = 500
 
 @Composable
 fun RemoteDirectoryScreen(
@@ -94,7 +94,10 @@ fun RemoteDirectoryScreen(
         RemoteMusicProvider.Lx -> item.song
     }
 
-    fun load(limit: Int, reset: Boolean) {
+    // Incremental paging: each call fetches ONE page starting at the current item count and appends
+    // it, instead of re-fetching the whole [0, total) range on every "load more" (which made loading
+    // cost grow quadratically and stall on large libraries).
+    fun load(reset: Boolean) {
         if (!config.isConfigured) {
             if (reset) {
                 items = emptyList()
@@ -106,18 +109,24 @@ fun RemoteDirectoryScreen(
         if ((loading || loadingMore) || (!reset && reachedEnd)) return
         scope.launch {
             if (reset) loading = true else loadingMore = true
+            val offset = if (reset) 0 else items.size
             runCatching {
                 when (provider) {
-                    RemoteMusicProvider.Navidrome -> navidromeService.listSongs(config, limit = limit)
-                    RemoteMusicProvider.Emby -> embyService.listSongs(config, limit = limit)
+                    RemoteMusicProvider.Navidrome -> navidromeService.listSongsPage(config, offset, REMOTE_DIRECTORY_BATCH_SIZE)
+                    RemoteMusicProvider.Emby -> embyService.listSongsPage(config, offset, REMOTE_DIRECTORY_BATCH_SIZE)
                     RemoteMusicProvider.Lx -> emptyList()
                 }
-            }.onSuccess { result ->
-                val previousSize = items.size
-                items = result
-                reachedEnd = result.size < limit || (!reset && result.size <= previousSize)
-                message = if (result.isEmpty()) context.getString(R.string.webdav_empty_directory)
-                else context.getString(R.string.lx_online_songs_found, result.size)
+            }.onSuccess { page ->
+                val merged = if (reset) {
+                    page
+                } else {
+                    val seen = items.mapTo(HashSet()) { it.remoteId }
+                    items + page.filter { seen.add(it.remoteId) }
+                }
+                items = merged
+                reachedEnd = page.size < REMOTE_DIRECTORY_BATCH_SIZE
+                message = if (merged.isEmpty()) context.getString(R.string.webdav_empty_directory)
+                else context.getString(R.string.lx_online_songs_found, merged.size)
             }.onFailure { error ->
                 message = error.localizedMessage ?: context.getString(R.string.webdav_load_failed)
                 Toast.makeText(context, message.orEmpty(), Toast.LENGTH_SHORT).show()
@@ -130,7 +139,7 @@ fun RemoteDirectoryScreen(
     LaunchedEffect(provider, config) {
         reachedEnd = false
         if (config.isConfigured) {
-            load(limit = REMOTE_DIRECTORY_BATCH_SIZE, reset = true)
+            load(reset = true)
         } else {
             items = emptyList()
             message = context.getString(R.string.remote_source_configure_first)
@@ -155,7 +164,7 @@ fun RemoteDirectoryScreen(
                 IconButton(onClick = {
                     reachedEnd = false
                     loadingMore = false
-                    load(limit = REMOTE_DIRECTORY_BATCH_SIZE, reset = true)
+                    load(reset = true)
                 }) {
                     Icon(MiuixIcons.Regular.Refresh, contentDescription = stringResource(R.string.library_refresh), modifier = Modifier.size(24.dp))
                 }
@@ -204,7 +213,7 @@ fun RemoteDirectoryScreen(
                     item(key = "remote_loading_more") {
                         LaunchedEffect(items.size, loading, loadingMore, reachedEnd, config) {
                             if (config.isConfigured && !loading && !loadingMore && !reachedEnd) {
-                                load(limit = items.size + REMOTE_DIRECTORY_BATCH_SIZE, reset = false)
+                                load(reset = false)
                             }
                         }
                         Box(
@@ -233,7 +242,7 @@ fun RemoteDirectoryScreen(
                 showSettings = false
                 reachedEnd = false
                 loadingMore = false
-                load(limit = REMOTE_DIRECTORY_BATCH_SIZE, reset = true)
+                load(reset = true)
             }
         )
     }
