@@ -64,6 +64,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.lifecycleScope
 import com.ella.music.R
 import com.ella.music.data.LibraryAlbumAggregator
 import com.ella.music.data.exception.WritePermissionRequiredException
@@ -72,6 +73,7 @@ import com.ella.music.data.model.FAVORITES_PLAYLIST_ID
 import com.ella.music.data.model.Song
 import com.ella.music.data.model.UserPlaylist
 import com.ella.music.data.model.playlistIdentityKey
+import com.ella.music.ui.LibrarySortUiState
 import com.ella.music.viewmodel.MainViewModel
 import com.ella.music.viewmodel.MetadataCategoryItem
 import com.ella.music.viewmodel.PlayerViewModel
@@ -107,6 +109,7 @@ import com.ella.music.ui.folder.normalizeFolderPath
 import com.ella.music.ui.folder.toFolderSettingList
 import com.ella.music.ui.listmodel.SortDirection
 import com.ella.music.ui.navigation.Screen
+import com.ella.music.ui.settings.findComponentActivity
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -146,7 +149,7 @@ fun MetadataCategoryScreen(
     }
     var sortExpanded by remember { mutableStateOf(false) }
     val sortIndexFlow = remember(type) { mainViewModel.settingsManager.metadataCategorySortIndex(type) }
-    val sortIndex by sortIndexFlow.collectAsState(initial = 0)
+    val sortIndex by sortIndexFlow.collectAsState(initial = LibrarySortUiState.metadataCategorySortIndex(type))
     val availableSortModes = remember(type) { MetadataCategorySortMode.entries.filter { it.availableFor(type) } }
     val sortMode = availableSortModes.getOrElse(sortIndex) { MetadataCategorySortMode.Name }
     val sortedItems = remember(items, type, sortMode) { items.sortedForCategory(type, sortMode) }
@@ -199,6 +202,7 @@ fun MetadataCategoryScreen(
     val pageBackground = ellaPageBackground()
     val gridState = rememberSaveable(saver = LazyGridState.Saver) { LazyGridState() }
     val scope = rememberCoroutineScope()
+    val saveScope = context.findComponentActivity()?.lifecycleScope ?: scope
     val currentSelectionKeys = remember(displayedItems) { displayedItems.map { it.name } }
     val currentSelectionIndexByName = remember(currentSelectionKeys) {
         buildMap {
@@ -291,6 +295,9 @@ fun MetadataCategoryScreen(
         if (!selectionMode) return@LaunchedEffect
         val visibleKeys = currentSelectionKeys.toSet()
         selectedNames = selectedNames.filterTo(linkedSetOf()) { it in visibleKeys }
+    }
+    LaunchedEffect(type, sortIndex) {
+        LibrarySortUiState.updateMetadataCategorySortIndex(type, sortIndex)
     }
 
     val overlayColor = wallpaperContentOverlayColor()
@@ -428,7 +435,9 @@ fun MetadataCategoryScreen(
                                 descendingSummary = stringResource(R.string.common_sort_descending)
                             ) { field, direction ->
                                 val mode = field.toMode(direction == SortDirection.Descending)
-                                scope.launch { mainViewModel.settingsManager.setMetadataCategorySortIndex(type, availableSortModes.indexOf(mode)) }
+                                val nextSortIndex = availableSortModes.indexOf(mode)
+                                LibrarySortUiState.updateMetadataCategorySortIndex(type, nextSortIndex)
+                                saveScope.launch { mainViewModel.settingsManager.setMetadataCategorySortIndex(type, nextSortIndex) }
                             }
                         )
                     }
@@ -479,7 +488,9 @@ fun MetadataCategoryScreen(
                             .fillMaxWidth()
                             .clickable {
                                 sortExpanded = false
-                                scope.launch { mainViewModel.settingsManager.setMetadataCategorySortIndex(type, availableSortModes.indexOf(mode)) }
+                                val nextSortIndex = availableSortModes.indexOf(mode)
+                                LibrarySortUiState.updateMetadataCategorySortIndex(type, nextSortIndex)
+                                saveScope.launch { mainViewModel.settingsManager.setMetadataCategorySortIndex(type, nextSortIndex) }
                             }
                             .padding(vertical = 10.dp)
                     )

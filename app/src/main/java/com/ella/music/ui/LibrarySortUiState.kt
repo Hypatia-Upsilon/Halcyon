@@ -2,6 +2,7 @@ package com.ella.music.ui
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.ella.music.data.SettingsManager
@@ -28,9 +29,13 @@ object LibrarySortUiState {
     var pendingFolderDetailSongSortIndex by mutableStateOf<Int?>(null)
     var folderPlaylistListSortIndex by mutableIntStateOf(2)
     var playlistListSortIndex by mutableIntStateOf(2)
+    var pendingPlaylistListSortIndex by mutableStateOf<Int?>(null)
 
     val metadataCategoryScrollPositions = mutableMapOf<String, Pair<Int, Int>>()
     val metadataCategoryDetailScrollPositions = mutableMapOf<String, Pair<Int, Int>>()
+    private val metadataCategorySortIndices = mutableStateMapOf<String, Int>()
+    private val metadataCategoryDetailSongSortIndices = mutableStateMapOf<String, Int>()
+    private val metadataCategoryDetailAlbumSortIndices = mutableStateMapOf<String, Int>()
 
     /**
      * 从 DataStore 预热所有排序索引到进程级单例。
@@ -56,5 +61,31 @@ object LibrarySortUiState {
         pendingFolderDetailSongSortIndex = null
         folderPlaylistListSortIndex = settingsManager.folderPlaylistListSortIndex.first()
         playlistListSortIndex = settingsManager.playlistListSortIndex.first()
+        pendingPlaylistListSortIndex = null
+        metadataCategoryTypes.forEach { type ->
+            metadataCategorySortIndices[type] = settingsManager.metadataCategorySortIndex(type).first()
+            metadataCategoryDetailSongSortIndices[type] = settingsManager.metadataCategoryDetailSongSortIndex(type).first()
+            metadataCategoryDetailAlbumSortIndices[type] = settingsManager.metadataCategoryDetailAlbumSortIndex(type).first()
+        }
     }
+
+    fun metadataCategorySortIndex(type: String): Int = metadataCategorySortIndices[type] ?: 0
+
+    fun updateMetadataCategorySortIndex(type: String, index: Int) {
+        metadataCategorySortIndices[type] = index.coerceAtLeast(0)
+    }
+
+    fun metadataCategoryDetailSongSortIndex(type: String): Int = metadataCategoryDetailSongSortIndices[type] ?: 0
+
+    fun updateMetadataCategoryDetailSongSortIndex(type: String, index: Int) {
+        metadataCategoryDetailSongSortIndices[type] = index.coerceAtLeast(0)
+    }
+
+    fun metadataCategoryDetailAlbumSortIndex(type: String): Int = metadataCategoryDetailAlbumSortIndices[type] ?: 0
+
+    fun updateMetadataCategoryDetailAlbumSortIndex(type: String, index: Int) {
+        metadataCategoryDetailAlbumSortIndices[type] = index.coerceAtLeast(0)
+    }
+
+    private val metadataCategoryTypes = listOf("folder", "genre", "year", "composer", "lyricist")
 }

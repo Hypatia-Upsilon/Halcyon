@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
 import com.ella.music.R
 import com.ella.music.data.model.FIVE_STAR_PLAYLIST_ID
 import com.ella.music.data.model.FAVORITES_PLAYLIST_ID
@@ -60,6 +61,7 @@ import com.ella.music.ui.components.ellaPageBackground
 import com.ella.music.ui.components.toFastIndexSection
 import com.ella.music.ui.folder.musicSortKey
 import com.ella.music.ui.navigation.Screen
+import com.ella.music.ui.settings.findComponentActivity
 import com.ella.music.viewmodel.MainViewModel
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
@@ -82,12 +84,18 @@ fun PlaylistScreen(
     var sortExpanded by remember { mutableStateOf(false) }
     var searchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    val playlistSortIndex by mainViewModel.settingsManager.playlistListSortIndex.collectAsState(initial = LibrarySortUiState.playlistListSortIndex)
+    val persistedPlaylistSortIndex by mainViewModel.settingsManager.playlistListSortIndex.collectAsState(initial = LibrarySortUiState.playlistListSortIndex)
     val playlistCustomOrderIds by mainViewModel.settingsManager.playlistCustomOrder.collectAsState(initial = emptyList())
     val specialPlaylistEntriesVisible by mainViewModel.settingsManager.playlistSpecialEntriesVisible.collectAsState(initial = false)
+    val playlistSortIndex = LibrarySortUiState.pendingPlaylistListSortIndex ?: persistedPlaylistSortIndex
     val playlistSortMode = PlaylistSortMode.entries.getOrElse(playlistSortIndex) { PlaylistSortMode.UpdatedAt }
     LaunchedEffect(playlistSortIndex) {
         LibrarySortUiState.playlistListSortIndex = playlistSortIndex
+    }
+    LaunchedEffect(persistedPlaylistSortIndex) {
+        if (LibrarySortUiState.pendingPlaylistListSortIndex == persistedPlaylistSortIndex) {
+            LibrarySortUiState.pendingPlaylistListSortIndex = null
+        }
     }
     var pendingImportUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var showImportModeSheet by remember { mutableStateOf(false) }
@@ -108,6 +116,7 @@ fun PlaylistScreen(
     var rangeTargetPlaylistId by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val saveScope = context.findComponentActivity()?.lifecycleScope ?: scope
     val favorites = playlists.firstOrNull { it.id == FAVORITES_PLAYLIST_ID }
     val storedCustomPlaylists = remember(playlists) {
         playlists.filterNot { it.id == FAVORITES_PLAYLIST_ID || it.id == FIVE_STAR_PLAYLIST_ID }
@@ -407,8 +416,9 @@ fun PlaylistScreen(
                     text = stringResource(mode.labelRes),
                     selected = playlistSortMode == mode,
                     onClick = {
+                        LibrarySortUiState.pendingPlaylistListSortIndex = mode.ordinal
                         LibrarySortUiState.playlistListSortIndex = mode.ordinal
-                        scope.launch { mainViewModel.settingsManager.setPlaylistListSortIndex(mode.ordinal) }
+                        saveScope.launch { mainViewModel.settingsManager.setPlaylistListSortIndex(mode.ordinal) }
                     }
                 )
             },
@@ -486,8 +496,9 @@ fun PlaylistScreen(
             selectedMode = playlistSortMode,
         onModeSelected = { mode ->
             sortExpanded = false
+            LibrarySortUiState.pendingPlaylistListSortIndex = mode.ordinal
             LibrarySortUiState.playlistListSortIndex = mode.ordinal
-            scope.launch { mainViewModel.settingsManager.setPlaylistListSortIndex(mode.ordinal) }
+            saveScope.launch { mainViewModel.settingsManager.setPlaylistListSortIndex(mode.ordinal) }
         }
         )
 

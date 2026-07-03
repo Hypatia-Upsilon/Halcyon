@@ -69,6 +69,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.lifecycleScope
 import com.ella.music.R
 import com.ella.music.data.LibraryAlbumAggregator
 import com.ella.music.data.exception.WritePermissionRequiredException
@@ -111,6 +112,7 @@ import com.ella.music.ui.components.rememberSongArtworkState
 import com.ella.music.ui.components.requestPinnedEllaShortcut
 import com.ella.music.ui.folder.folderDisplayName
 import com.ella.music.ui.navigation.Screen
+import com.ella.music.ui.settings.findComponentActivity
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -158,8 +160,8 @@ fun MetadataCategoryDetailScreen(
     var sortExpanded by remember { mutableStateOf(false) }
     val detailSongSortIndexFlow = remember(type) { mainViewModel.settingsManager.metadataCategoryDetailSongSortIndex(type) }
     val detailAlbumSortIndexFlow = remember(type) { mainViewModel.settingsManager.metadataCategoryDetailAlbumSortIndex(type) }
-    val sortIndex by detailSongSortIndexFlow.collectAsState(initial = 0)
-    val albumSortIndex by detailAlbumSortIndexFlow.collectAsState(initial = 0)
+    val sortIndex by detailSongSortIndexFlow.collectAsState(initial = LibrarySortUiState.metadataCategoryDetailSongSortIndex(type))
+    val albumSortIndex by detailAlbumSortIndexFlow.collectAsState(initial = LibrarySortUiState.metadataCategoryDetailAlbumSortIndex(type))
     val sortMode = MetadataDetailSongSortMode.entries.getOrElse(sortIndex) { MetadataDetailSongSortMode.AlbumTrack }
         .let { mode ->
             if (type == "folder" && mode == MetadataDetailSongSortMode.AlbumTrack) MetadataDetailSongSortMode.Title else mode
@@ -270,6 +272,7 @@ fun MetadataCategoryDetailScreen(
     }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val saveScope = context.findComponentActivity()?.lifecycleScope ?: scope
     var fastScrollJob by remember { mutableStateOf<Job?>(null) }
     val deleteRequestLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
@@ -409,11 +412,23 @@ fun MetadataCategoryDetailScreen(
         if (rangeTargetId !in visibleIds) rangeTargetId = null
     }
     LaunchedEffect(type, sortIndex) {
+        LibrarySortUiState.updateMetadataCategoryDetailSongSortIndex(type, sortIndex)
+    }
+    LaunchedEffect(type, albumSortIndex) {
+        LibrarySortUiState.updateMetadataCategoryDetailAlbumSortIndex(type, albumSortIndex)
+    }
+    LaunchedEffect(type, sortIndex) {
         if (type == "folder" && sortIndex == MetadataDetailSongSortMode.AlbumTrack.ordinal) {
-            mainViewModel.settingsManager.setMetadataCategoryDetailSongSortIndex(
+            LibrarySortUiState.updateMetadataCategoryDetailSongSortIndex(
                 type,
                 MetadataDetailSongSortMode.Title.ordinal
             )
+            saveScope.launch {
+                mainViewModel.settingsManager.setMetadataCategoryDetailSongSortIndex(
+                    type,
+                    MetadataDetailSongSortMode.Title.ordinal
+                )
+            }
         }
     }
     Column(
@@ -516,7 +531,8 @@ fun MetadataCategoryDetailScreen(
                                     text = mode.label(),
                                     selected = albumSortMode == mode,
                                     onClick = {
-                                        scope.launch { mainViewModel.settingsManager.setMetadataCategoryDetailAlbumSortIndex(type, mode.ordinal) }
+                                        LibrarySortUiState.updateMetadataCategoryDetailAlbumSortIndex(type, mode.ordinal)
+                                        saveScope.launch { mainViewModel.settingsManager.setMetadataCategoryDetailAlbumSortIndex(type, mode.ordinal) }
                                     }
                                 )
                             }
@@ -528,7 +544,8 @@ fun MetadataCategoryDetailScreen(
                                         text = mode.label(),
                                         selected = sortMode == mode,
                                         onClick = {
-                                            scope.launch { mainViewModel.settingsManager.setMetadataCategoryDetailSongSortIndex(type, mode.ordinal) }
+                                            LibrarySortUiState.updateMetadataCategoryDetailSongSortIndex(type, mode.ordinal)
+                                            saveScope.launch { mainViewModel.settingsManager.setMetadataCategoryDetailSongSortIndex(type, mode.ordinal) }
                                         }
                                     )
                                 }
@@ -583,7 +600,8 @@ fun MetadataCategoryDetailScreen(
                                 .fillMaxWidth()
                                 .clickable {
                                     sortExpanded = false
-                                    scope.launch { mainViewModel.settingsManager.setMetadataCategoryDetailAlbumSortIndex(type, mode.ordinal) }
+                                    LibrarySortUiState.updateMetadataCategoryDetailAlbumSortIndex(type, mode.ordinal)
+                                    saveScope.launch { mainViewModel.settingsManager.setMetadataCategoryDetailAlbumSortIndex(type, mode.ordinal) }
                                 }
                                 .padding(vertical = 10.dp)
                         )
@@ -601,7 +619,8 @@ fun MetadataCategoryDetailScreen(
                             .fillMaxWidth()
                             .clickable {
                                 sortExpanded = false
-                                scope.launch { mainViewModel.settingsManager.setMetadataCategoryDetailSongSortIndex(type, mode.ordinal) }
+                                LibrarySortUiState.updateMetadataCategoryDetailSongSortIndex(type, mode.ordinal)
+                                saveScope.launch { mainViewModel.settingsManager.setMetadataCategoryDetailSongSortIndex(type, mode.ordinal) }
                             }
                             .padding(vertical = 10.dp)
                     )

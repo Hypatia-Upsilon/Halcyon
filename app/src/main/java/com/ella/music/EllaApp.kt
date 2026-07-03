@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class EllaApp : Application() {
     override fun onCreate() {
@@ -32,7 +33,7 @@ class EllaApp : Application() {
         // 预热进程级排序单例：进程重启后单例会回到默认值，导致各列表页 collectAsState(initial=...)
         // 先用默认值渲染再被 DataStore 异步值覆盖，表现为"排序乱跳/不记忆"（#210/#126）。
         // #133 的"设置恢复默认"同因——OOM 触发进程重启后单例全回默认。
-        appScope.launch {
+        runBlocking {
             runCatching { LibrarySortUiState.warmUp(settingsManager) }
         }
 
@@ -44,4 +45,3 @@ class EllaApp : Application() {
         }
     }
 }
-
