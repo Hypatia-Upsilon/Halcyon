@@ -101,6 +101,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.ella.music.data.BottomBarGlassEffect
 import com.ella.music.data.SettingsManager
+import com.ella.music.data.repository.MusicScanSummary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -429,25 +430,42 @@ fun EllaApp(
     var showLocalPlaylistScanPrompt by remember { mutableStateOf(false) }
     var localPlaylistAutoScanHandled by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(isScanning) {
-        if (isScanning) {
-            Toast.makeText(context, context.getString(R.string.library_scan_started), Toast.LENGTH_SHORT).show()
-        }
-    }
+    // #200: a single scan — or a burst of quick back-to-back scans (e.g. after toggling several
+    // folders) — should show the "scanning" / "scan finished" toasts at most once each, not once per
+    // individual scan/summary. Treat the whole scanning burst as one unit: show "scanning" on the
+    // first rising edge, and "finished" only once the library has stayed idle for a short grace
+    // window (LaunchedEffect(isScanning) is cancelled + relaunched whenever isScanning flips, so a
+    // new scan starting within the grace window seamlessly extends the same burst).
+    var scanBurstActive by remember { mutableStateOf(false) }
+    var latestScanSummary by remember { mutableStateOf<MusicScanSummary?>(null) }
 
     LaunchedEffect(mainViewModel) {
-        mainViewModel.scanSummaryEvents.collect { summary ->
-            Toast.makeText(
-                context,
-                context.getString(
-                    R.string.library_scan_finished_summary,
-                    summary.total,
-                    summary.added,
-                    summary.updated,
-                    summary.deleted
-                ),
-                Toast.LENGTH_LONG
-            ).show()
+        mainViewModel.scanSummaryEvents.collect { summary -> latestScanSummary = summary }
+    }
+
+    LaunchedEffect(isScanning) {
+        if (isScanning) {
+            if (!scanBurstActive) {
+                scanBurstActive = true
+                latestScanSummary = null
+                Toast.makeText(context, context.getString(R.string.library_scan_started), Toast.LENGTH_SHORT).show()
+            }
+        } else if (scanBurstActive) {
+            delay(900)
+            scanBurstActive = false
+            latestScanSummary?.let { summary ->
+                Toast.makeText(
+                    context,
+                    context.getString(
+                        R.string.library_scan_finished_summary,
+                        summary.total,
+                        summary.added,
+                        summary.updated,
+                        summary.deleted
+                    ),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         }
     }
 
