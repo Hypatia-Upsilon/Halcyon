@@ -266,7 +266,12 @@ class ExoPlayerManager(private val context: Context) {
                 // onTimelineChanged with SOURCE_UPDATE, but the real playback state (isPlaying,
                 // position, queue, current song) is unchanged. Skip the full refresh to avoid
                 // spurious StateFlow emissions that flicker the lyrics page.
-                if (mediaController?.currentMediaItem?.isMetadataOnlyPatch() == true) return
+                if (shouldIgnoreDisplayOnlyTimelineUpdate(
+                        reason = reason,
+                        currentItem = mediaController?.currentMediaItem,
+                        currentSong = _currentSong.value
+                    )
+                ) return
                 refreshStateFromController()
             }
 
@@ -1351,6 +1356,13 @@ class ExoPlayerManager(private val context: Context) {
             itemSong
         }
         val previousSong = _currentSong.value
+        if (currentItem?.isMetadataOnlyPatch() == true &&
+            previousSong.isSamePlaybackIdentity(restoredSong)
+        ) {
+            _duration.value = controller.duration.coerceAtLeast(0)
+            savePlaybackState(force = true)
+            return
+        }
         _currentSong.value = restoredSong
         _duration.value = controller.duration.coerceAtLeast(0)
         if (!previousSong.isSamePlaybackIdentity(restoredSong)) {
