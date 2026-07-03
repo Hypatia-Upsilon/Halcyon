@@ -31,7 +31,7 @@ internal data class PlayerScreenSettings(
     val playerBackgroundUri: String = "",
     val playerBackgroundOpacity: Int = 100,
     val playerBackgroundDim: Int = 26,
-    val beautifulLyricsBackground: Boolean = true,
+    val beautifulLyricsBackground: Boolean = false,
     val showSongAnnotation: Boolean = true,
     val coverSwipeEnabled: Boolean = true,
     val lyricParserEngine: Int = SettingsManager.LYRIC_PARSER_ENGINE_ELLA,

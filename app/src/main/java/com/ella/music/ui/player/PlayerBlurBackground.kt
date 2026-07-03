@@ -46,7 +46,9 @@ internal fun FluidLyricBackground(
     LaunchedEffect(animate) {
         Log.d("PlayerScreenPerf", "flow background ${if (animate) "animated" else "static"}")
     }
-    val drift = if (animate) {
+    // Freeze the drift while the player surface is hidden but still resident.
+    val animateActive = animate && LocalPlayerSurfaceActive.current
+    val drift = if (animateActive) {
         val transition = rememberInfiniteTransition(label = "fluid_lyric_background")
         val value by transition.animateFloat(
             initialValue = 0f,
@@ -61,7 +63,7 @@ internal fun FluidLyricBackground(
     } else {
         0.36f
     }
-    val pulse = if (animate && isPlaying) {
+    val pulse = if (animateActive && isPlaying) {
         0.5f + 0.5f * kotlin.math.sin(positionMs / 900.0).toFloat()
     } else {
         0.28f
@@ -134,7 +136,10 @@ internal fun BeautifulLyricsDynamicBackground(
     val activeDrift = rememberSharedFlowProgress(
         durationMillis = durationMs,
         animate = animate,
-        fallback = 0.42f
+        fallback = 0.42f,
+        // Output is heavily blurred, so ~15 fps drift is indistinguishable from full refresh rate
+        // while roughly halving the per-frame full-screen blur cost.
+        frameIntervalMs = 64L
     )
     val pulse = if (isPlaying) {
         0.5f + 0.5f * kotlin.math.sin(positionMs / 760.0).toFloat()

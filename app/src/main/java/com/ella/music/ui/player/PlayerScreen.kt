@@ -462,7 +462,10 @@ fun PlayerScreen(
         }
     ) { dismissingPlayer ->
         Box(modifier = Modifier.fillMaxSize()) {
-          CompositionLocalProvider(LocalPlayerContentColor provides palette.onBackground) {
+          CompositionLocalProvider(
+              LocalPlayerContentColor provides palette.onBackground,
+              LocalPlayerSurfaceActive provides playerVisible
+          ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

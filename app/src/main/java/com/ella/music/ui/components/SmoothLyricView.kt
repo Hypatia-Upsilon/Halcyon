@@ -18,6 +18,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.ella.music.R
 import com.ella.music.data.SettingsManager
 import com.ella.music.data.model.LyricLine
+import com.ella.music.ui.player.LocalPlayerSurfaceActive
 import io.github.proify.lyricon.lyric.view.LyricView
 import top.yukonga.miuix.kmp.basic.Text
 import kotlin.math.abs
@@ -66,6 +67,7 @@ fun SmoothLyricView(
     }
 
     val density = LocalDensity.current
+    val surfaceActive = LocalPlayerSurfaceActive.current
     val lyriconSong = remember(songId, songTitle, songArtist, lyrics) {
         lyrics.toLyriconSong(songId, songTitle, songArtist)
     }
@@ -153,8 +155,10 @@ fun SmoothLyricView(
             view.setNonCurrentLineBlurDistance(nonCurrentLineBlurDistance)
             view.setEdgeFadeEnabled(false)
             view.setLineAlphaAnimationsEnabled(false)
-            view.setContinuousFrameUpdatesEnabled(hasTimedWordAnimations)
-            view.setPlaybackActive(isPlaying)
+            view.setContinuousFrameUpdatesEnabled(hasTimedWordAnimations && surfaceActive)
+            // Treat a hidden-but-resident player surface as not playing so the Choreographer frame
+            // loop (karaoke word sweep) stops instead of animating full-speed behind another screen.
+            view.setPlaybackActive(isPlaying && surfaceActive)
             view.setPronunciationAboveMainEnabled(true)
             view.setAutoScrollResumeEnabled(autoScrollResumeEnabled)
             view.setUserScrollEnabled(userScrollEnabled)

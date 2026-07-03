@@ -87,6 +87,13 @@ internal fun SharedPlayerPageBackground(
             isPlaying = isPlaying,
             modifier = modifier
         )
+        (embeddedCover ?: paletteBitmap) != null -> AppleCoverFlowBackground(
+            coverBitmap = embeddedCover ?: paletteBitmap,
+            backgroundColor = palette.middle,
+            isDark = !palette.isLight,
+            isPlaying = isPlaying,
+            modifier = modifier
+        )
         else -> Box(
             modifier = modifier.background(
                 Brush.verticalGradient(

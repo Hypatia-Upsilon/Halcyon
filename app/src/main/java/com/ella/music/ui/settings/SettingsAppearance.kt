@@ -72,7 +72,7 @@ internal fun SettingsAppearanceSection(
     val playerBackgroundUri by settingsManager.playerBackgroundUri.collectAsState(initial = "")
     val playerBackgroundOpacity by settingsManager.playerBackgroundOpacity.collectAsState(initial = 100)
     val playerBackgroundDim by settingsManager.playerBackgroundDim.collectAsState(initial = 26)
-    val beautifulLyricsBackground by settingsManager.playerBeautifulLyricsBackground.collectAsState(initial = true)
+    val beautifulLyricsBackground by settingsManager.playerBeautifulLyricsBackground.collectAsState(initial = false)
     val beautifulLyricsSpeed by settingsManager.playerBeautifulLyricsSpeed.collectAsState(initial = 25)
     val beautifulLyricsBlur by settingsManager.playerBeautifulLyricsBlur.collectAsState(initial = 32)
     val beautifulLyricsBrightness by settingsManager.playerBeautifulLyricsBrightness.collectAsState(initial = 70)

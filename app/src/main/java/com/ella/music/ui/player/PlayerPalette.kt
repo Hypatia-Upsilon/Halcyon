@@ -44,6 +44,18 @@ private fun Bitmap.scaledForPalette(): Bitmap {
  */
 internal val LocalPlayerContentColor = androidx.compose.runtime.compositionLocalOf { androidx.compose.ui.graphics.Color.White }
 
+/**
+ * Whether the player surface is currently visible to the user.
+ *
+ * The player surface stays resident in the composition tree once opened (see MainActivity's
+ * `playerResident`), and is merely slid off-screen via `translationY` when closed. Without this
+ * signal, every continuous background animation (flow drift, beautiful-lyrics blobs, visualizer)
+ * keeps redrawing full-screen — often blurred — canvases at the display refresh rate even while the
+ * user is looking at another screen, wasting significant power. Animations gate on this so they
+ * freeze the moment the surface is hidden and resume when it is shown again.
+ */
+internal val LocalPlayerSurfaceActive = androidx.compose.runtime.compositionLocalOf { true }
+
 internal data class PlayerPalette(
     val top: Color,
     val middle: Color,

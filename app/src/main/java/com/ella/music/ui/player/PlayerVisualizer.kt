@@ -37,11 +37,14 @@ internal fun AudioVisualizer(
     var levels by remember { mutableStateOf<List<Float>>(emptyList()) }
     var visualizerFailed by remember { mutableStateOf(false) }
     val playingState by rememberUpdatedState(isPlaying)
+    // Release the Visualizer and stop capturing FFT while the player surface is hidden but resident;
+    // otherwise it keeps polling audio and redrawing the spectrum behind the visible screen.
+    val surfaceActive = LocalPlayerSurfaceActive.current
 
-    LaunchedEffect(enabled, audioSessionId) {
+    LaunchedEffect(enabled, audioSessionId, surfaceActive) {
         levels = emptyList()
         visualizerFailed = false
-        if (!enabled || audioSessionId <= 0) return@LaunchedEffect
+        if (!enabled || audioSessionId <= 0 || !surfaceActive) return@LaunchedEffect
         val visualizer = runCatching {
             Visualizer(audioSessionId).apply {
                 captureSize = Visualizer.getCaptureSizeRange()[1].coerceAtMost(512)

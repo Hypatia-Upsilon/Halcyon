@@ -725,7 +725,7 @@ class SettingsManager(private val context: Context) {
     val playerBackgroundDim: Flow<Int> =
         context.dataStore.data.map { it[KEY_PLAYER_BACKGROUND_DIM]?.coerceIn(0, 80) ?: 26 }
     val playerBeautifulLyricsBackground: Flow<Boolean> =
-        context.dataStore.data.map { it[KEY_PLAYER_BEAUTIFUL_LYRICS_BACKGROUND] ?: true }
+        context.dataStore.data.map { it[KEY_PLAYER_BEAUTIFUL_LYRICS_BACKGROUND] ?: false }
     val playerBeautifulLyricsSpeed: Flow<Int> =
         context.dataStore.data.map { it[KEY_PLAYER_BEAUTIFUL_LYRICS_SPEED]?.coerceIn(5, 60) ?: 25 }
     val playerBeautifulLyricsBlur: Flow<Int> =
