@@ -1191,6 +1191,7 @@
     <string name="player_enable_playback_keep_screen_on">开启播放页常亮</string>
     <string name="player_lyric_font_size">歌词字号</string>
     <string name="player_lyric_font_scale">歌词缩放</string>
+    <string name="player_lyric_style_settings">歌词样式</string>
     <string name="player_lyric_secondary_font_size">翻译/罗马音字号</string>
     <string name="player_lyric_secondary_font_scale">翻译/罗马音缩放</string>
     <string name="player_lyric_source">歌词来源</string>

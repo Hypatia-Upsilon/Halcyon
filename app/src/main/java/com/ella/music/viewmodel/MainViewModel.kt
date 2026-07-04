@@ -117,8 +117,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setLibrarySource(source: String) {
         viewModelScope.launch {
             settingsManager.setLibrarySource(source)
-            if (scanJob?.isActive == true || isScanning.value) return@launch
+            scanJob?.cancel()
             scanJob = viewModelScope.launch {
+                repository.clearInMemoryLibrary()
                 if (source == SettingsManager.LIBRARY_SOURCE_LOCAL) {
                     repository.loadCachedLibrary()
                     scanFromCurrentSettings(fullRescan = false, deepRescan = false)

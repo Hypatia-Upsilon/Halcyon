@@ -339,11 +339,15 @@ internal object EllaLyricsParser {
                 trySetFeature("http://xml.org/sax/features/external-parameter-entities", false)
             }.newDocumentBuilder().parse(InputSource(StringReader(content.preformatTtml())))
 
-            val metadata = parseTtmlMetadata(document.documentElement)
-            val agentInfo = parseAgentInfo(document.documentElement)
-            val translations = parseTimedTextMap(document.documentElement, "translations", "translation")
-            val transliterations = parseTransliterations(document.documentElement)
-            val paragraphs = document.documentElement.allElements()
+            val root = document.documentElement
+            val metadata = parseTtmlMetadata(root)
+            val agentInfo = parseAgentInfo(root)
+            val translations = parseTimedTextMap(root, "translations", "translation")
+            val transliterations = parseTransliterations(root)
+            val forceLineTiming = root.attr("itunes:timing")
+                .ifBlank { root.attr("timing") }
+                .equals("Line", ignoreCase = true)
+            val paragraphs = root.allElements()
                 .filter { it.localTagName() == "p" }
 
             val lines = paragraphs.mapNotNull { p ->
@@ -357,6 +361,12 @@ internal object EllaLyricsParser {
                 val rubyPronunciationWords = mutableListOf<LyricWord>()
                 val text = collectTtmlMainText(p, words, end, rubyPronunciationWords).cleanLyricText()
                 val displayText = text.takeUnless { it.isIgnorableLyricText() }.orEmpty()
+                val displayWords = words.toTtmlDisplayWords(
+                    lineText = displayText,
+                    lineStart = start,
+                    lineEnd = end,
+                    forceLineTiming = forceLineTiming
+                )
                 val inlineTranslation = p.childrenElements()
                     .firstOrNull { it.hasRole("x-translation") && !it.hasRole("x-bg") }
                     ?.textContent
@@ -370,7 +380,7 @@ internal object EllaLyricsParser {
                     ?.cleanLyricText()
                 val transliteration = transliterations[key]
                 val pronunciationWords = when {
-                    transliteration?.words?.isNotEmpty() == true -> transliteration.words.alignPronunciationWords(words, text)
+                    transliteration?.words?.isNotEmpty() == true -> transliteration.words.alignPronunciationWords(displayWords, text)
                     rubyPronunciationWords.isNotEmpty() -> rubyPronunciationWords
                     else -> emptyList()
                 }
@@ -384,7 +394,7 @@ internal object EllaLyricsParser {
                 LyricLine(
                     timeMs = start,
                     text = displayText,
-                    words = if (displayText.isBlank()) emptyList() else words.toDisplayWords(displayText),
+                    words = displayWords,
                     translation = inlineTranslation?.takeUsefulText() ?: translations[key]?.splitAppleTranslation()?.first,
                     pronunciation = pronunciation?.takeUsefulText(),
                     pronunciationWords = pronunciationWords.toDisplayWords(pronunciation.orEmpty()),
@@ -1170,6 +1180,22 @@ internal object EllaLyricsParser {
         } else {
             withSpacing(normalized)
         }
+    }
+
+    private fun List<LyricWord>.toTtmlDisplayWords(
+        lineText: String,
+        lineStart: Long,
+        lineEnd: Long?,
+        forceLineTiming: Boolean
+    ): List<LyricWord> {
+        if (lineText.isBlank()) return emptyList()
+        if (forceLineTiming) return emptyList()
+        val displayWords = toDisplayWords(lineText)
+        val onlyWord = displayWords.singleOrNull() ?: return displayWords
+        val sameText = onlyWord.text.cleanLyricText() == lineText.cleanLyricText()
+        val sameStart = abs(onlyWord.startMs - lineStart) <= 25L
+        val sameEnd = lineEnd == null || abs(onlyWord.endMs - lineEnd) <= 25L
+        return if (sameText && sameStart && sameEnd) emptyList() else displayWords
     }
 
     private fun List<LyricWord>.withSpacing(lineText: String): List<LyricWord> {

@@ -231,9 +231,28 @@ internal fun PlayerActionMenu(
                     onSecondaryFontScale = onLyricSecondaryFontScale,
                     onPrimaryTextSize = onLyricPrimaryTextSize,
                     onSecondaryTextSize = onLyricSecondaryTextSize,
+                    onStyleSettings = { page = PlayerActionSheetPage.LyricStyle },
                     showSheetHeader = true,
                     onBack = { page = PlayerActionSheetPage.Main },
                     applyScrollableContainer = false,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            PlayerActionSheetPage.LyricStyle -> {
+                LyricStyleSettingsContent(
+                    layoutProfile = lyricLayoutProfile,
+                    fontScale = lyricFontScale,
+                    secondaryFontScale = lyricSecondaryFontScale,
+                    primaryTextSizeSp = lyricPrimaryTextSizeSp,
+                    secondaryTextSizeSp = lyricSecondaryTextSizeSp,
+                    perspectiveEffect = lyricPerspectiveEffect,
+                    perspectiveYAngle = lyricPerspectiveYAngle,
+                    onPerspectiveYAngle = onLyricPerspectiveYAngle,
+                    onFontScale = onLyricFontScale,
+                    onSecondaryFontScale = onLyricSecondaryFontScale,
+                    onPrimaryTextSize = onLyricPrimaryTextSize,
+                    onSecondaryTextSize = onLyricSecondaryTextSize,
+                    onBack = { page = PlayerActionSheetPage.LyricDisplay },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -247,5 +266,6 @@ internal enum class PlayerActionSheetPage {
     Speed,
     LyricOffset,
     Visualizer,
-    LyricDisplay
+    LyricDisplay,
+    LyricStyle
 }

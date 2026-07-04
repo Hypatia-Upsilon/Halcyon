@@ -1086,6 +1086,7 @@
     <string name="player_disable_playback_keep_screen_on">Disable player always-on</string>
     <string name="player_enable_playback_keep_screen_on">Enable player always-on</string>
     <string name="player_lyric_font_size">Lyric font size</string>
+    <string name="player_lyric_style_settings">Lyric style</string>
     <string name="player_lyric_secondary_font_size">Translation/Romanization size</string>
     <string name="player_lyric_source">Lyric source</string>
     <string name="player_lyric_format">Lyric format</string>

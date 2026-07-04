@@ -90,37 +90,16 @@ internal fun LyricActionMenu(
     onSecondaryFontScale: (Float) -> Unit,
     onPrimaryTextSize: (Float) -> Unit,
     onSecondaryTextSize: (Float) -> Unit,
+    onStyleSettings: (() -> Unit)? = null,
     showSheetHeader: Boolean = false,
     onBack: (() -> Unit)? = null,
     applyScrollableContainer: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    val configuration = LocalConfiguration.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val settingsManager = remember(context) { SettingsManager.getInstance(context) }
     val pronunciationBelow by settingsManager.lyricPronunciationBelow.collectAsState(initial = false)
-    val ultraWideLandscape = isUltraWideLandscapePlayerLayout(
-        screenWidthDp = configuration.screenWidthDp,
-        screenHeightDp = configuration.screenHeightDp
-    )
-    val fontScaleRange = layoutProfile.primaryScaleRangePercent(ultraWideLandscape)
-    val secondaryFontScaleRange = layoutProfile.secondaryScaleRangePercent(ultraWideLandscape)
-    val primaryTextSizeRange = layoutProfile.primaryTextSizeRangeSp()
-    val secondaryTextSizeRange = layoutProfile.secondaryTextSizeRangeSp()
-    val safeFontScale = fontScale.coerceIn(fontScaleRange.first / 100f, fontScaleRange.last / 100f)
-    val safeSecondaryFontScale = secondaryFontScale.coerceIn(
-        secondaryFontScaleRange.first / 100f,
-        secondaryFontScaleRange.last / 100f
-    )
-    val safePrimaryTextSize = primaryTextSizeSp.coerceIn(
-        primaryTextSizeRange.first.toFloat(),
-        primaryTextSizeRange.last.toFloat()
-    )
-    val safeSecondaryTextSize = secondaryTextSizeSp.coerceIn(
-        secondaryTextSizeRange.first.toFloat(),
-        secondaryTextSizeRange.last.toFloat()
-    )
     val containerModifier = if (applyScrollableContainer) {
         modifier
             .verticalScroll(rememberScrollState())
@@ -163,94 +142,12 @@ internal fun LyricActionMenu(
             text = stringResource(if (perspectiveEffect) R.string.player_disable_perspective_effect else R.string.player_enable_perspective_effect),
             onClick = onTogglePerspectiveEffect
         )
-        if (perspectiveEffect) {
-            Text(
-                text = stringResource(R.string.player_perspective_y_angle),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-            )
-            DottedValueSlider(
-                value = perspectiveYAngle.toFloat().coerceIn(0f, 45f),
-                valueRange = 0f..45f,
-                steps = 9,
-                label = "${perspectiveYAngle}°",
-                onValueChange = { onPerspectiveYAngle(it.toInt()) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(82.dp)
+        onStyleSettings?.let { openStyleSettings ->
+            PlayerActionMenuItem(
+                text = stringResource(R.string.player_lyric_style_settings),
+                onClick = openStyleSettings
             )
         }
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = stringResource(R.string.player_lyric_font_scale),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-        )
-        DottedValueSlider(
-            value = safeFontScale,
-            valueRange = fontScaleRange.first / 100f..fontScaleRange.last / 100f,
-            steps = (fontScaleRange.last - fontScaleRange.first) / 5,
-            label = "${(safeFontScale * 100f).roundToInt()}%",
-            onValueChange = onFontScale,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(82.dp)
-        )
-        Text(
-            text = stringResource(R.string.player_lyric_font_size),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-        )
-        DottedValueSlider(
-            value = safePrimaryTextSize,
-            valueRange = primaryTextSizeRange.first.toFloat()..primaryTextSizeRange.last.toFloat(),
-            steps = primaryTextSizeRange.last - primaryTextSizeRange.first,
-            label = "${safePrimaryTextSize.roundToInt()}sp",
-            onValueChange = onPrimaryTextSize,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(82.dp)
-        )
-        Text(
-            text = stringResource(R.string.player_lyric_secondary_font_scale),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-        )
-        DottedValueSlider(
-            value = safeSecondaryFontScale,
-            valueRange = secondaryFontScaleRange.first / 100f..secondaryFontScaleRange.last / 100f,
-            steps = (secondaryFontScaleRange.last - secondaryFontScaleRange.first) / 5,
-            label = "${(safeSecondaryFontScale * 100f).roundToInt()}%",
-            onValueChange = onSecondaryFontScale,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(82.dp)
-        )
-        Text(
-            text = stringResource(R.string.player_lyric_secondary_font_size),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-        )
-        DottedValueSlider(
-            value = safeSecondaryTextSize,
-            valueRange = secondaryTextSizeRange.first.toFloat()..secondaryTextSizeRange.last.toFloat(),
-            steps = secondaryTextSizeRange.last - secondaryTextSizeRange.first,
-            label = "${safeSecondaryTextSize.roundToInt()}sp",
-            onValueChange = onSecondaryTextSize,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(82.dp)
-        )
         Spacer(modifier = Modifier.height(8.dp))
         if (lyricFormatAvailability.hasBoth) {
             Text(
@@ -334,6 +231,145 @@ internal fun LyricActionMenu(
                 modifier = Modifier.weight(1f)
             )
         }
+    }
+}
+
+@Composable
+internal fun LyricStyleSettingsContent(
+    layoutProfile: PlayerLyricLayoutProfile,
+    fontScale: Float,
+    secondaryFontScale: Float,
+    primaryTextSizeSp: Float,
+    secondaryTextSizeSp: Float,
+    perspectiveEffect: Boolean,
+    perspectiveYAngle: Int,
+    onPerspectiveYAngle: (Int) -> Unit,
+    onFontScale: (Float) -> Unit,
+    onSecondaryFontScale: (Float) -> Unit,
+    onPrimaryTextSize: (Float) -> Unit,
+    onSecondaryTextSize: (Float) -> Unit,
+    onBack: () -> Unit,
+    showSheetHeader: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    val configuration = LocalConfiguration.current
+    val ultraWideLandscape = isUltraWideLandscapePlayerLayout(
+        screenWidthDp = configuration.screenWidthDp,
+        screenHeightDp = configuration.screenHeightDp
+    )
+    val fontScaleRange = layoutProfile.primaryScaleRangePercent(ultraWideLandscape)
+    val secondaryFontScaleRange = layoutProfile.secondaryScaleRangePercent(ultraWideLandscape)
+    val primaryTextSizeRange = layoutProfile.primaryTextSizeRangeSp()
+    val secondaryTextSizeRange = layoutProfile.secondaryTextSizeRangeSp()
+    val safeFontScale = fontScale.coerceIn(fontScaleRange.first / 100f, fontScaleRange.last / 100f)
+    val safeSecondaryFontScale = secondaryFontScale.coerceIn(
+        secondaryFontScaleRange.first / 100f,
+        secondaryFontScaleRange.last / 100f
+    )
+    val safePrimaryTextSize = primaryTextSizeSp.coerceIn(
+        primaryTextSizeRange.first.toFloat(),
+        primaryTextSizeRange.last.toFloat()
+    )
+    val safeSecondaryTextSize = secondaryTextSizeSp.coerceIn(
+        secondaryTextSizeRange.first.toFloat(),
+        secondaryTextSizeRange.last.toFloat()
+    )
+
+    Column(modifier = modifier) {
+        if (showSheetHeader) {
+            HalfSheetTitle(
+                title = stringResource(R.string.player_lyric_style_settings),
+                onBack = onBack
+            )
+            Spacer(modifier = Modifier.height(18.dp))
+        }
+        if (perspectiveEffect) {
+            Text(
+                text = stringResource(R.string.player_perspective_y_angle),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+            )
+            DottedValueSlider(
+                value = perspectiveYAngle.toFloat().coerceIn(0f, 45f),
+                valueRange = 0f..45f,
+                steps = 9,
+                label = "${perspectiveYAngle}°",
+                onValueChange = { onPerspectiveYAngle(it.toInt()) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(82.dp)
+            )
+        }
+        Text(
+            text = stringResource(R.string.player_lyric_font_scale),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+        )
+        DottedValueSlider(
+            value = safeFontScale,
+            valueRange = fontScaleRange.first / 100f..fontScaleRange.last / 100f,
+            steps = (fontScaleRange.last - fontScaleRange.first) / 5,
+            label = "${(safeFontScale * 100f).roundToInt()}%",
+            onValueChange = onFontScale,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(82.dp)
+        )
+        Text(
+            text = stringResource(R.string.player_lyric_font_size),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+        )
+        DottedValueSlider(
+            value = safePrimaryTextSize,
+            valueRange = primaryTextSizeRange.first.toFloat()..primaryTextSizeRange.last.toFloat(),
+            steps = primaryTextSizeRange.last - primaryTextSizeRange.first,
+            label = "${safePrimaryTextSize.roundToInt()}sp",
+            onValueChange = onPrimaryTextSize,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(82.dp)
+        )
+        Text(
+            text = stringResource(R.string.player_lyric_secondary_font_scale),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+        )
+        DottedValueSlider(
+            value = safeSecondaryFontScale,
+            valueRange = secondaryFontScaleRange.first / 100f..secondaryFontScaleRange.last / 100f,
+            steps = (secondaryFontScaleRange.last - secondaryFontScaleRange.first) / 5,
+            label = "${(safeSecondaryFontScale * 100f).roundToInt()}%",
+            onValueChange = onSecondaryFontScale,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(82.dp)
+        )
+        Text(
+            text = stringResource(R.string.player_lyric_secondary_font_size),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+        )
+        DottedValueSlider(
+            value = safeSecondaryTextSize,
+            valueRange = secondaryTextSizeRange.first.toFloat()..secondaryTextSizeRange.last.toFloat(),
+            steps = secondaryTextSizeRange.last - secondaryTextSizeRange.first,
+            label = "${safeSecondaryTextSize.roundToInt()}sp",
+            onValueChange = onSecondaryTextSize,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(82.dp)
+        )
     }
 }
 

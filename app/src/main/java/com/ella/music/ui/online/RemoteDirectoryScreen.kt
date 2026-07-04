@@ -4,6 +4,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -41,10 +42,10 @@ import com.ella.music.data.remote.RemoteOnlineSong
 import com.ella.music.ui.components.EllaMiuixAction
 import com.ella.music.ui.components.EllaMiuixActionRow
 import com.ella.music.ui.components.EllaMiuixBottomSheet
-import com.ella.music.ui.components.EllaMiuixTextField
 import com.ella.music.ui.components.EllaSmallTopAppBar
 import com.ella.music.ui.components.SongItem
 import com.ella.music.ui.components.ellaPageBackground
+import com.ella.music.ui.folder.WebDavTextField
 import com.ella.music.viewmodel.PlayerViewModel
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Icon
@@ -85,6 +86,8 @@ fun RemoteDirectoryScreen(
     var loading by remember(provider) { mutableStateOf(false) }
     var loadingMore by remember(provider) { mutableStateOf(false) }
     var reachedEnd by remember(provider) { mutableStateOf(false) }
+    var nextOffset by remember(provider) { mutableStateOf(0) }
+    var noProgressPages by remember(provider) { mutableStateOf(0) }
     var message by remember(provider) { mutableStateOf<String?>(null) }
     var showSettings by remember { mutableStateOf(false) }
 
@@ -102,6 +105,8 @@ fun RemoteDirectoryScreen(
             if (reset) {
                 items = emptyList()
                 reachedEnd = false
+                nextOffset = 0
+                noProgressPages = 0
             }
             message = context.getString(R.string.remote_source_configure_first)
             return
@@ -109,7 +114,7 @@ fun RemoteDirectoryScreen(
         if ((loading || loadingMore) || (!reset && reachedEnd)) return
         scope.launch {
             if (reset) loading = true else loadingMore = true
-            val offset = if (reset) 0 else items.size
+            val offset = if (reset) 0 else nextOffset
             runCatching {
                 when (provider) {
                     RemoteMusicProvider.Navidrome -> navidromeService.listSongsPage(config, offset, REMOTE_DIRECTORY_BATCH_SIZE)
@@ -117,6 +122,7 @@ fun RemoteDirectoryScreen(
                     RemoteMusicProvider.Lx -> emptyList()
                 }
             }.onSuccess { page ->
+                val previousCount = items.size
                 val merged = if (reset) {
                     page
                 } else {
@@ -124,7 +130,9 @@ fun RemoteDirectoryScreen(
                     items + page.filter { seen.add(it.remoteId) }
                 }
                 items = merged
-                reachedEnd = page.size < REMOTE_DIRECTORY_BATCH_SIZE
+                nextOffset = offset + REMOTE_DIRECTORY_BATCH_SIZE
+                noProgressPages = if (!reset && merged.size == previousCount && page.isNotEmpty()) noProgressPages + 1 else 0
+                reachedEnd = page.size < REMOTE_DIRECTORY_BATCH_SIZE || noProgressPages >= 2
                 message = if (merged.isEmpty()) context.getString(R.string.webdav_empty_directory)
                 else context.getString(R.string.lx_online_songs_found, merged.size)
             }.onFailure { error ->
@@ -138,6 +146,8 @@ fun RemoteDirectoryScreen(
 
     LaunchedEffect(provider, config) {
         reachedEnd = false
+        nextOffset = 0
+        noProgressPages = 0
         if (config.isConfigured) {
             load(reset = true)
         } else {
@@ -164,6 +174,8 @@ fun RemoteDirectoryScreen(
                 IconButton(onClick = {
                     reachedEnd = false
                     loadingMore = false
+                    nextOffset = 0
+                    noProgressPages = 0
                     load(reset = true)
                 }) {
                     Icon(MiuixIcons.Regular.Refresh, contentDescription = stringResource(R.string.library_refresh), modifier = Modifier.size(24.dp))
@@ -211,7 +223,7 @@ fun RemoteDirectoryScreen(
                 }
                 if (items.isNotEmpty() && !reachedEnd) {
                     item(key = "remote_loading_more") {
-                        LaunchedEffect(items.size, loading, loadingMore, reachedEnd, config) {
+                        LaunchedEffect(items.size, nextOffset, loading, loadingMore, reachedEnd, config) {
                             if (config.isConfigured && !loading && !loadingMore && !reachedEnd) {
                                 load(reset = false)
                             }
@@ -242,6 +254,8 @@ fun RemoteDirectoryScreen(
                 showSettings = false
                 reachedEnd = false
                 loadingMore = false
+                nextOffset = 0
+                noProgressPages = 0
                 load(reset = true)
             }
         )
@@ -270,15 +284,17 @@ private fun RemoteDirectorySettingsSheet(
         title = if (provider == RemoteMusicProvider.Navidrome) stringResource(R.string.remote_source_navidrome) else stringResource(R.string.remote_source_emby),
         onDismissRequest = onDismiss
     ) {
-        Column(modifier = Modifier.padding(bottom = 18.dp)) {
-            EllaMiuixTextField(url, { url = it }, label = stringResource(R.string.webdav_url), modifier = Modifier.fillMaxWidth())
-            EllaMiuixTextField(user, { user = it }, label = stringResource(R.string.webdav_username), modifier = Modifier.fillMaxWidth())
-            EllaMiuixTextField(
-                password,
-                { password = it },
+        Column(
+            modifier = Modifier.padding(bottom = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            WebDavTextField(stringResource(R.string.webdav_url), url, onValueChange = { url = it })
+            WebDavTextField(stringResource(R.string.webdav_username), user, onValueChange = { user = it })
+            WebDavTextField(
                 label = stringResource(R.string.webdav_password),
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth()
+                value = password,
+                onValueChange = { password = it },
+                visualTransformation = PasswordVisualTransformation()
             )
             status?.let {
                 Text(text = it, color = MiuixTheme.colorScheme.primary, modifier = Modifier.padding(vertical = 8.dp))

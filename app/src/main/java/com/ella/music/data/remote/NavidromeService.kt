@@ -41,32 +41,45 @@ class NavidromeService(private val context: Context) {
         val songs = mutableListOf<RemoteOnlineSong>()
         val seenSongIds = LinkedHashSet<String>()
         var songOffset = 0
+        var searchMayBeTruncated = false
 
         // Enumerate the whole library by paging songs directly via search3 with an empty query
-        // (Navidrome/Subsonic returns all songs, 500 per page). The previous approach walked
-        // getAlbumList2 and issued one getAlbum per album, which on libraries of mostly single-song
-        // albums meant one HTTP request per song (thousands of sequential calls) — so "load more"
-        // effectively stalled and the list was stuck at the first page.
+        // (Navidrome/Subsonic normally returns all songs, 500 per page).
         while (songs.size < targetCount) {
             val pageSize = if (targetCount == Int.MAX_VALUE) {
                 REMOTE_LIBRARY_PAGE_SIZE
             } else {
                 minOf(REMOTE_LIBRARY_PAGE_SIZE, targetCount - songs.size).coerceAtLeast(1)
             }
-            val page = fetchAllSongsPage(config, songOffset, pageSize)
-            if (page.isEmpty()) break
+            val page = fetchAllSongsPageResult(config, songOffset, pageSize)
+            if (page.rawCount == 0) {
+                searchMayBeTruncated = songOffset > 0 && songs.size >= REMOTE_LIBRARY_PAGE_SIZE
+                break
+            }
 
-            for (song in page) {
+            val beforeCount = songs.size
+            for (song in page.songs) {
                 if (song.remoteId.isBlank()) continue
                 if (!seenSongIds.add(song.remoteId)) continue
                 songs += song
                 if (songs.size >= targetCount) return@withContext songs
             }
 
-            if (page.size < pageSize) break
-            songOffset += page.size
+            if (page.rawCount < pageSize) break
+            songOffset += page.rawCount
+            if (songs.size == beforeCount) {
+                // Some Subsonic-compatible servers ignore songOffset for an empty search3 query.
+                searchMayBeTruncated = songs.size >= REMOTE_LIBRARY_PAGE_SIZE
+                break
+            }
         }
 
+        if (songs.size < targetCount && searchMayBeTruncated) {
+            fetchSongsByAlbums(config, targetCount, seenSongIds).forEach { song ->
+                songs += song
+                if (songs.size >= targetCount) return@withContext songs
+            }
+        }
         songs
     }
 
@@ -83,7 +96,13 @@ class NavidromeService(private val context: Context) {
         config: RemoteMusicSourceConfig,
         offset: Int,
         pageSize: Int
-    ): List<RemoteOnlineSong> {
+    ): List<RemoteOnlineSong> = fetchAllSongsPageResult(config, offset, pageSize).songs
+
+    private fun fetchAllSongsPageResult(
+        config: RemoteMusicSourceConfig,
+        offset: Int,
+        pageSize: Int
+    ): NavidromeSongPage {
         val root = request(
             config,
             "search3",
@@ -97,6 +116,69 @@ class NavidromeService(private val context: Context) {
         )
         val songs = root.optJSONObject("subsonic-response")
             ?.optJSONObject("searchResult3")
+            ?.optJSONArray("song")
+            ?: return NavidromeSongPage(emptyList(), rawCount = 0)
+        return NavidromeSongPage(
+            songs = List(songs.length()) { index -> songFromJson(songs.getJSONObject(index), config) }
+                .filter { it.remoteId.isNotBlank() },
+            rawCount = songs.length()
+        )
+    }
+
+    private fun fetchSongsByAlbums(
+        config: RemoteMusicSourceConfig,
+        targetCount: Int,
+        seenSongIds: MutableSet<String>
+    ): List<RemoteOnlineSong> {
+        val songs = mutableListOf<RemoteOnlineSong>()
+        var albumOffset = 0
+        while (seenSongIds.size < targetCount) {
+            val albumIds = fetchAlbumIdsPage(config, albumOffset, REMOTE_LIBRARY_PAGE_SIZE)
+            if (albumIds.isEmpty()) break
+            for (albumId in albumIds) {
+                val albumSongs = fetchAlbumSongs(config, albumId)
+                for (song in albumSongs) {
+                    if (song.remoteId.isBlank()) continue
+                    if (!seenSongIds.add(song.remoteId)) continue
+                    songs += song
+                    if (seenSongIds.size >= targetCount) return songs
+                }
+            }
+            if (albumIds.size < REMOTE_LIBRARY_PAGE_SIZE) break
+            albumOffset += albumIds.size
+        }
+        return songs
+    }
+
+    private fun fetchAlbumIdsPage(
+        config: RemoteMusicSourceConfig,
+        offset: Int,
+        pageSize: Int
+    ): List<String> {
+        val root = request(
+            config,
+            "getAlbumList2",
+            mapOf(
+                "type" to "alphabeticalByName",
+                "size" to pageSize.toString(),
+                "offset" to offset.toString()
+            )
+        )
+        val albums = root.optJSONObject("subsonic-response")
+            ?.optJSONObject("albumList2")
+            ?.optJSONArray("album")
+            ?: return emptyList()
+        return List(albums.length()) { index -> albums.getJSONObject(index).optString("id") }
+            .filter { it.isNotBlank() }
+    }
+
+    private fun fetchAlbumSongs(
+        config: RemoteMusicSourceConfig,
+        albumId: String
+    ): List<RemoteOnlineSong> {
+        val root = request(config, "getAlbum", mapOf("id" to albumId))
+        val songs = root.optJSONObject("subsonic-response")
+            ?.optJSONObject("album")
             ?.optJSONArray("song")
             ?: return emptyList()
         return List(songs.length()) { index -> songFromJson(songs.getJSONObject(index), config) }
@@ -201,3 +283,8 @@ class NavidromeService(private val context: Context) {
         const val USER_AGENT = "Halcyon/1.0 Navidrome"
     }
 }
+
+private data class NavidromeSongPage(
+    val songs: List<RemoteOnlineSong>,
+    val rawCount: Int
+)

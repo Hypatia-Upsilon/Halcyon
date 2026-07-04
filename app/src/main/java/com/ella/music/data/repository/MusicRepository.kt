@@ -143,6 +143,11 @@ class MusicRepository(private val context: Context) {
         scanProgressState.finish()
     }
 
+    fun clearInMemoryLibrary() {
+        _songs.value = emptyList()
+        _albums.value = emptyList()
+    }
+
     private val remoteAudioCacheDir = File(context.cacheDir, "webdav_audio")
     private val remoteMetadataHeaderCacheDir = File(context.cacheDir, "webdav_metadata_headers")
     private val lyricsManager = MusicLyricsManager(context, settingsManager, audioTagRepository, httpClient, remoteAudioCacheDir, remoteMetadataHeaderCacheDir)
@@ -491,7 +496,10 @@ class MusicRepository(private val context: Context) {
     }
 
     suspend fun loadCachedLibrary() = withContext(Dispatchers.IO) {
-        if (!libraryCacheFile.exists()) return@withContext
+        if (!libraryCacheFile.exists()) {
+            clearInMemoryLibrary()
+            return@withContext
+        }
 
         runCatching {
             val songs = readLibraryCacheSongs(libraryCacheFile)
@@ -536,7 +544,7 @@ class MusicRepository(private val context: Context) {
         }
         if (!config.isConfigured) {
             // Not configured yet — fall back to any cache, otherwise leave the library empty.
-            if (_songs.value.isEmpty()) applyCache()
+            if (!applyCache()) clearInMemoryLibrary()
             return@withContext MusicScanSummary(total = _songs.value.size)
         }
 
@@ -547,7 +555,7 @@ class MusicRepository(private val context: Context) {
             }.map { it.song }
         }.getOrElse { error ->
             Log.w("MusicRepo", "Failed to load remote library ($source)", error)
-            if (_songs.value.isEmpty()) applyCache()
+            if (!applyCache()) clearInMemoryLibrary()
             return@withContext MusicScanSummary(total = _songs.value.size)
         }
 

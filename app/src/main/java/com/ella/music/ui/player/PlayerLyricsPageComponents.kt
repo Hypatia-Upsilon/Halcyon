@@ -9,6 +9,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -105,40 +110,78 @@ internal fun LyricsPlayerMenuSheet(
     modifier: Modifier = Modifier
 ) {
     if (!show) return
+    var page by remember(show) { mutableStateOf(LyricsPlayerMenuPage.Main) }
+    LaunchedEffect(show) {
+        if (show) page = LyricsPlayerMenuPage.Main
+    }
     EllaMiuixBottomSheet(
         show = true,
         enableNestedScroll = false,
-        title = stringResource(R.string.player_lyrics_display),
+        title = stringResource(
+            if (page == LyricsPlayerMenuPage.Style) {
+                R.string.player_lyric_style_settings
+            } else {
+                R.string.player_lyrics_display
+            }
+        ),
         onDismissRequest = onDismiss
     ) {
-        LyricActionMenu(
-            showPronunciation = showPronunciation,
-            showTranslation = showTranslation,
-            keepScreenOn = keepScreenOn,
-            lyricFormatAvailability = lyricFormatAvailability,
-            preferTtmlLyrics = preferTtmlLyrics,
-            lyricSourceMode = lyricSourceMode,
-            lyricParserEngine = lyricParserEngine,
-            layoutProfile = layoutProfile,
-            fontScale = fontScale,
-            secondaryFontScale = secondaryFontScale,
-            primaryTextSizeSp = primaryTextSizeSp,
-            secondaryTextSizeSp = secondaryTextSizeSp,
-            perspectiveEffect = perspectiveEffect,
-            perspectiveYAngle = perspectiveYAngle,
-            onTogglePronunciation = onTogglePronunciation,
-            onToggleTranslation = onToggleTranslation,
-            onToggleKeepScreenOn = onToggleKeepScreenOn,
-            onTogglePerspectiveEffect = onTogglePerspectiveEffect,
-            onPerspectiveYAngle = onPerspectiveYAngle,
-            onLyricSourceMode = onLyricSourceMode,
-            onLyricFormatPreference = onLyricFormatPreference,
-            onLyricParserEngine = onLyricParserEngine,
-            onFontScale = onFontScale,
-            onSecondaryFontScale = onSecondaryFontScale,
-            onPrimaryTextSize = onPrimaryTextSize,
-            onSecondaryTextSize = onSecondaryTextSize,
-            modifier = modifier
-        )
+        when (page) {
+            LyricsPlayerMenuPage.Main -> {
+                LyricActionMenu(
+                    showPronunciation = showPronunciation,
+                    showTranslation = showTranslation,
+                    keepScreenOn = keepScreenOn,
+                    lyricFormatAvailability = lyricFormatAvailability,
+                    preferTtmlLyrics = preferTtmlLyrics,
+                    lyricSourceMode = lyricSourceMode,
+                    lyricParserEngine = lyricParserEngine,
+                    layoutProfile = layoutProfile,
+                    fontScale = fontScale,
+                    secondaryFontScale = secondaryFontScale,
+                    primaryTextSizeSp = primaryTextSizeSp,
+                    secondaryTextSizeSp = secondaryTextSizeSp,
+                    perspectiveEffect = perspectiveEffect,
+                    perspectiveYAngle = perspectiveYAngle,
+                    onTogglePronunciation = onTogglePronunciation,
+                    onToggleTranslation = onToggleTranslation,
+                    onToggleKeepScreenOn = onToggleKeepScreenOn,
+                    onTogglePerspectiveEffect = onTogglePerspectiveEffect,
+                    onPerspectiveYAngle = onPerspectiveYAngle,
+                    onLyricSourceMode = onLyricSourceMode,
+                    onLyricFormatPreference = onLyricFormatPreference,
+                    onLyricParserEngine = onLyricParserEngine,
+                    onFontScale = onFontScale,
+                    onSecondaryFontScale = onSecondaryFontScale,
+                    onPrimaryTextSize = onPrimaryTextSize,
+                    onSecondaryTextSize = onSecondaryTextSize,
+                    onStyleSettings = { page = LyricsPlayerMenuPage.Style },
+                    modifier = modifier
+                )
+            }
+            LyricsPlayerMenuPage.Style -> {
+                LyricStyleSettingsContent(
+                    layoutProfile = layoutProfile,
+                    fontScale = fontScale,
+                    secondaryFontScale = secondaryFontScale,
+                    primaryTextSizeSp = primaryTextSizeSp,
+                    secondaryTextSizeSp = secondaryTextSizeSp,
+                    perspectiveEffect = perspectiveEffect,
+                    perspectiveYAngle = perspectiveYAngle,
+                    onPerspectiveYAngle = onPerspectiveYAngle,
+                    onFontScale = onFontScale,
+                    onSecondaryFontScale = onSecondaryFontScale,
+                    onPrimaryTextSize = onPrimaryTextSize,
+                    onSecondaryTextSize = onSecondaryTextSize,
+                    onBack = { page = LyricsPlayerMenuPage.Main },
+                    modifier = modifier
+                )
+            }
+        }
     }
+}
+
+private enum class LyricsPlayerMenuPage {
+    Main,
+    Style
 }
