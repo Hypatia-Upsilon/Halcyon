@@ -12,21 +12,29 @@ class ArtistCoverRepository private constructor(
     @Volatile
     private var cachedFolderLocation: String? = null
     @Volatile
-    private var cachedIndex: Map<String, String> = emptyMap()
+    private var cachedIndex: Map<String, ArtistCoverAsset> = emptyMap()
     private val indexLock = Any()
 
     fun getArtistCoverUri(
         artistName: String,
         folderLocation: String
     ): Uri? {
+        return getArtistCoverAsset(artistName, folderLocation)
+            ?.takeIf { it.kind == ArtistCoverKind.Image }
+            ?.uri
+    }
+
+    fun getArtistCoverAsset(
+        artistName: String,
+        folderLocation: String
+    ): ArtistCoverAsset? {
         val artistKey = normalizeArtistCoverKey(artistName)
         val safeFolderLocation = folderLocation.trim()
         if (artistKey.isBlank() || safeFolderLocation.isBlank()) return null
-        val uriString = ensureIndex(safeFolderLocation)[artistKey] ?: return null
-        return Uri.parse(uriString)
+        return ensureIndex(safeFolderLocation)[artistKey]
     }
 
-    private fun ensureIndex(folderLocation: String): Map<String, String> {
+    private fun ensureIndex(folderLocation: String): Map<String, ArtistCoverAsset> {
         cachedFolderLocation
             ?.takeIf { it == folderLocation }
             ?.let { return cachedIndex }
@@ -43,7 +51,7 @@ class ArtistCoverRepository private constructor(
         }
     }
 
-    private fun buildIndex(folderLocation: String): Map<String, String> {
+    private fun buildIndex(folderLocation: String): Map<String, ArtistCoverAsset> {
         return when {
             folderLocation.startsWith("content://", ignoreCase = true) -> {
                 val root = DocumentFile.fromTreeUri(context, Uri.parse(folderLocation)) ?: return emptyMap()
@@ -54,8 +62,8 @@ class ArtistCoverRepository private constructor(
         }
     }
 
-    private fun buildTreeIndex(root: DocumentFile): Map<String, String> {
-        val index = linkedMapOf<String, String>()
+    private fun buildTreeIndex(root: DocumentFile): Map<String, ArtistCoverAsset> {
+        val index = linkedMapOf<String, ArtistCoverAsset>()
 
         fun visit(node: DocumentFile) {
             val children = runCatching { node.listFiles() }.getOrElse { emptyArray() }
@@ -63,8 +71,8 @@ class ArtistCoverRepository private constructor(
                 when {
                     child.isDirectory -> visit(child)
                     child.isFile -> {
-                        val key = artistCoverMatchKey(child.name.orEmpty(), child.type) ?: return@forEach
-                        index.putIfAbsent(key, child.uri.toString())
+                        val match = artistCoverMatch(child.name.orEmpty(), child.type) ?: return@forEach
+                        index.putPreferredArtistCover(match.key, ArtistCoverAsset(child.uri, match.kind))
                     }
                 }
             }
@@ -74,14 +82,14 @@ class ArtistCoverRepository private constructor(
         return index
     }
 
-    private fun buildLocalFolderIndex(root: File): Map<String, String> {
+    private fun buildLocalFolderIndex(root: File): Map<String, ArtistCoverAsset> {
         if (!root.exists() || !root.isDirectory) return emptyMap()
-        val index = linkedMapOf<String, String>()
+        val index = linkedMapOf<String, ArtistCoverAsset>()
         runCatching {
             root.walkTopDown().forEach { file ->
                 if (!file.isFile) return@forEach
-                val key = artistCoverMatchKey(file.name) ?: return@forEach
-                index.putIfAbsent(key, Uri.fromFile(file).toString())
+                val match = artistCoverMatch(file.name) ?: return@forEach
+                index.putPreferredArtistCover(match.key, ArtistCoverAsset(Uri.fromFile(file), match.kind))
             }
         }
         return index
@@ -99,6 +107,21 @@ class ArtistCoverRepository private constructor(
     }
 }
 
+data class ArtistCoverAsset(
+    val uri: Uri,
+    val kind: ArtistCoverKind
+)
+
+enum class ArtistCoverKind {
+    Image,
+    Video
+}
+
+internal data class ArtistCoverMatch(
+    val key: String,
+    val kind: ArtistCoverKind
+)
+
 private val supportedArtistCoverExtensions = setOf(
     "jpg",
     "jpeg",
@@ -111,18 +134,48 @@ private val supportedArtistCoverExtensions = setOf(
     "heif"
 )
 
+private val supportedArtistCoverVideoExtensions = setOf(
+    "mp4",
+    "m4v",
+    "mov",
+    "webm",
+    "mkv"
+)
+
+private fun MutableMap<String, ArtistCoverAsset>.putPreferredArtistCover(
+    key: String,
+    candidate: ArtistCoverAsset
+) {
+    val existing = this[key]
+    if (existing == null || (existing.kind == ArtistCoverKind.Image && candidate.kind == ArtistCoverKind.Video)) {
+        this[key] = candidate
+    }
+}
+
 internal fun artistCoverMatchKey(
     fileName: String,
     mimeType: String? = null
 ): String? {
+    return artistCoverMatch(fileName, mimeType)?.key
+}
+
+internal fun artistCoverMatch(
+    fileName: String,
+    mimeType: String? = null
+): ArtistCoverMatch? {
     val trimmedName = fileName.trim()
     if (trimmedName.isBlank()) return null
     val extension = trimmedName.substringAfterLast('.', "").lowercase(Locale.ROOT)
-    val isSupportedImage = mimeType?.startsWith("image/", ignoreCase = true) == true ||
-        extension in supportedArtistCoverExtensions
-    if (!isSupportedImage) return null
+    val kind = when {
+        mimeType?.startsWith("video/", ignoreCase = true) == true ||
+            extension in supportedArtistCoverVideoExtensions -> ArtistCoverKind.Video
+        mimeType?.startsWith("image/", ignoreCase = true) == true ||
+            extension in supportedArtistCoverExtensions -> ArtistCoverKind.Image
+        else -> return null
+    }
     val baseName = trimmedName.substringBeforeLast('.', trimmedName)
-    return normalizeArtistCoverKey(baseName).takeIf { it.isNotBlank() }
+    val key = normalizeArtistCoverKey(baseName).takeIf { it.isNotBlank() } ?: return null
+    return ArtistCoverMatch(key = key, kind = kind)
 }
 
 internal fun normalizeArtistCoverKey(value: String): String {

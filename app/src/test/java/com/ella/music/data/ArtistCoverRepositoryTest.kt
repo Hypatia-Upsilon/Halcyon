@@ -24,6 +24,25 @@ class ArtistCoverRepositoryTest {
     }
 
     @Test
+    fun videoExtensionsAlsoMatchArtistNames() {
+        assertEquals(
+            "fleetwood mac",
+            artistCoverMatchKey("Fleetwood Mac.mp4")
+        )
+        assertEquals(
+            ArtistCoverKind.Video,
+            artistCoverMatch("Taylor Swift.webm")?.kind
+        )
+    }
+
+    @Test
+    fun supportedVideoMimeTypesAreRecognized() {
+        val match = artistCoverMatch("Aimer.cover", "video/mp4")
+        assertEquals("aimer", match?.key)
+        assertEquals(ArtistCoverKind.Video, match?.kind)
+    }
+
+    @Test
     fun normalizeArtistCoverKeyCleansWhitespace() {
         assertEquals(
             "lana del rey",

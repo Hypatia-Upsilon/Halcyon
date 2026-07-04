@@ -149,6 +149,7 @@ fun ArtistScreen(
     val showPlayNextInLists by mainViewModel.settingsManager.showPlayNextInLists.collectAsState(initial = false)
     val showAlbumArtists by mainViewModel.settingsManager.showAlbumArtists.collectAsState(initial = true)
     val artistCoverFolderUri by mainViewModel.settingsManager.artistCoverFolderUri.collectAsState(initial = "")
+    val dynamicCoverEnabled by mainViewModel.settingsManager.dynamicCoverEnabled.collectAsState(initial = false)
     var sortExpanded by remember { mutableStateOf(false) }
     var searchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -304,7 +305,7 @@ fun ArtistScreen(
         usage = ArtworkUsage.ArtistImage,
         showDefaultWhenMissing = false
     )
-    val customArtistCoverUri = rememberArtistCoverUri(
+    val customArtistCoverAsset = rememberArtistCoverAsset(
         artistName = artistName,
         folderLocation = artistCoverFolderUri,
         mainViewModel = mainViewModel
@@ -455,7 +456,9 @@ fun ArtistScreen(
             item {
                 ArtistHeader(
                     artistName = artistName,
-                    coverModel = customArtistCoverUri ?: artistCoverState.model,
+                    coverModel = customArtistCoverAsset?.takeIf { it.kind == com.ella.music.data.ArtistCoverKind.Image }?.uri ?: artistCoverState.model,
+                    customCoverAsset = customArtistCoverAsset,
+                    dynamicCoverEnabled = dynamicCoverEnabled,
                     songCount = sortedArtistSongs.size,
                     albumCount = (participatedAlbums + releaseAlbums).distinctBy { it.id }.size,
                     onPlayAll = {

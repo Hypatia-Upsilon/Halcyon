@@ -43,7 +43,8 @@ internal fun DynamicCoverVideo(
     isPlaying: Boolean,
     onPlaybackError: () -> Unit,
     modifier: Modifier = Modifier,
-    cornerRadiusDp: Float = 14f
+    cornerRadiusDp: Float = 14f,
+    resizeMode: Int = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
 ) {
     if (source.kind == DynamicCoverKind.AnimatedImage) {
         SafeCoverImage(
@@ -95,7 +96,7 @@ internal fun DynamicCoverVideo(
                 useController = false
                 controllerAutoShow = false
                 controllerHideOnTouch = false
-                resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                this.resizeMode = resizeMode
                 setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
                 findViewById<View>(androidx.media3.ui.R.id.exo_controller)?.visibility = View.GONE
                 player = exoPlayer
@@ -115,7 +116,7 @@ internal fun DynamicCoverVideo(
             view.controllerHideOnTouch = false
             view.findViewById<View>(androidx.media3.ui.R.id.exo_controller)?.visibility = View.GONE
             view.player = exoPlayer
-            view.resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+            view.resizeMode = resizeMode
             view.clipToOutline = true
             view.hideController()
             exoPlayer.playWhenReady = isPlaying

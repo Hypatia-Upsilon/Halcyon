@@ -15,8 +15,9 @@ import com.ella.music.data.SettingsManager
 import com.ella.music.data.PlaybackHistoryEntry
 import com.ella.music.data.PlaybackStatsStore
 import com.ella.music.data.SongPlaybackStats
-import com.ella.music.data.matchesArtistName
 import com.ella.music.data.ArtistCoverRepository
+import com.ella.music.data.ArtistCoverAsset
+import com.ella.music.data.matchesArtistName
 import com.ella.music.data.model.Album
 import com.ella.music.data.model.Artist
 import com.ella.music.data.model.AudioInfo
@@ -312,8 +313,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    fun getSongsForArtist(artistName: String): List<Song> {
-        return songs.value.filter { it.artist.matchesArtistName(artistName) }
+    fun getSongsForArtist(artistName: String, includeAlbumArtist: Boolean = false): List<Song> {
+        return filterSongsForArtist(
+            songs = songs.value,
+            artistName = artistName,
+            includeAlbumArtist = includeAlbumArtist
+        )
     }
 
     fun getAlbumsForArtist(artistName: String): List<Album> {
@@ -390,6 +395,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun getArtistCoverUri(artistName: String, folderLocation: String): Uri? {
         return artistCoverRepository.getArtistCoverUri(artistName, folderLocation)
+    }
+
+    fun getArtistCoverAsset(artistName: String, folderLocation: String): ArtistCoverAsset? {
+        return artistCoverRepository.getArtistCoverAsset(artistName, folderLocation)
     }
 
     suspend fun getFiveStarSongs(): List<Song> = withContext(Dispatchers.IO) {

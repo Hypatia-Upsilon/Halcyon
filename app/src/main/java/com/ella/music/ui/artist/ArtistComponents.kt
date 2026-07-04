@@ -19,6 +19,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +36,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ella.music.R
+import com.ella.music.data.ArtistCoverAsset
+import com.ella.music.data.ArtistCoverKind
 import com.ella.music.data.model.Album
 import com.ella.music.data.model.Song
 import com.ella.music.data.model.formatPlaybackDuration
@@ -41,6 +47,8 @@ import com.ella.music.ui.components.DefaultAlbumCover
 import com.ella.music.ui.components.SafeCoverImage
 import com.ella.music.ui.components.ellaPageBackground
 import com.ella.music.ui.components.rememberSongArtworkState
+import com.ella.music.ui.player.DynamicCoverSource
+import com.ella.music.ui.player.DynamicCoverVideo
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -136,6 +144,8 @@ internal fun ArtistTabRow(
 internal fun ArtistHeader(
     artistName: String,
     coverModel: Any?,
+    customCoverAsset: ArtistCoverAsset?,
+    dynamicCoverEnabled: Boolean,
     songCount: Int,
     albumCount: Int,
     onPlayAll: () -> Unit
@@ -143,12 +153,36 @@ internal fun ArtistHeader(
     val headerTextColor = Color.White
     val headerSubTextColor = Color.White.copy(alpha = 0.78f)
     val pageBackground = ellaPageBackground()
+    val dynamicCoverSource = remember(customCoverAsset, dynamicCoverEnabled) {
+        if (!dynamicCoverEnabled) {
+            null
+        } else {
+            customCoverAsset
+                ?.takeIf { it.kind == ArtistCoverKind.Video }
+                ?.let { asset ->
+                    DynamicCoverSource(
+                        uri = asset.uri,
+                        failureKey = "artist-video:${asset.uri}"
+                    )
+                }
+        }
+    }
+    var videoFailed by remember(dynamicCoverSource?.failureKey) { mutableStateOf(false) }
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(468.dp)
     ) {
-        if (coverModel != null) {
+        if (dynamicCoverSource != null && !videoFailed) {
+            DynamicCoverVideo(
+                source = dynamicCoverSource,
+                isPlaying = true,
+                onPlaybackError = { videoFailed = true },
+                modifier = Modifier.fillMaxSize(),
+                cornerRadiusDp = 0f,
+                resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            )
+        } else if (coverModel != null) {
             SafeCoverImage(
                 model = coverModel,
                 contentDescription = null,
