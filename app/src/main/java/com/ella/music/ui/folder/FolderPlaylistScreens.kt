@@ -120,6 +120,8 @@ fun FolderPlaylistsScreen(
     var searchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var moreMenuTarget by remember { mutableStateOf<FolderPlaylist?>(null) }
+    var selectionMode by remember { mutableStateOf(false) }
+    var selectedPlaylistIds by remember { mutableStateOf<Set<String>>(emptySet()) }
 
     val songCountMap = remember(playlists, songs) {
         playlists.associateWith { playlist -> songs.songsForFolderPlaylist(playlist.folders).size }
@@ -155,11 +157,19 @@ fun FolderPlaylistsScreen(
         }
     }
 
-    BackHandler(enabled = searchExpanded || moreMenuTarget != null || pendingDelete != null || showEditor) {
+    val editorCoverModel = remember(editorDraftFolders, songs) {
+        songs.songsForFolderPlaylist(editorDraftFolders.toList()).firstOrNull().folderPlaylistCoverModel()
+    }
+
+    BackHandler(enabled = selectionMode || searchExpanded || moreMenuTarget != null || pendingDelete != null || showEditor) {
         when {
             showEditor -> showEditor = false
             pendingDelete != null -> pendingDelete = null
             moreMenuTarget != null -> moreMenuTarget = null
+            selectionMode -> {
+                selectionMode = false
+                selectedPlaylistIds = emptySet()
+            }
             searchExpanded -> {
                 searchExpanded = false
                 searchQuery = ""
@@ -189,6 +199,17 @@ fun FolderPlaylistsScreen(
                 }
             },
             actions = {
+                IconButton(onClick = {
+                    selectionMode = !selectionMode
+                    selectedPlaylistIds = emptySet()
+                }) {
+                    Icon(
+                        imageVector = MiuixIcons.Regular.SelectAll,
+                        contentDescription = stringResource(R.string.common_multi_select),
+                        tint = MiuixTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
                 ScanRefreshIconButton(
                     enabled = true,
                     onScan = { scope.launch { mainViewModel.scanMusic() } },
@@ -256,7 +277,11 @@ fun FolderPlaylistsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "${filteredPlaylists.size} ${stringResource(R.string.folder_playlist_title)} · ${stringResource(sortMode.labelRes)}",
+                    text = if (selectionMode) {
+                        stringResource(R.string.folder_playlist_selected_playlists, selectedPlaylistIds.size)
+                    } else {
+                        stringResource(R.string.folder_playlist_list_summary_sorted, filteredPlaylists.size, stringResource(sortMode.labelRes))
+                    },
                     fontSize = 13.sp,
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                     modifier = Modifier.weight(1f)
@@ -286,7 +311,19 @@ fun FolderPlaylistsScreen(
                         duration = duration,
                         coverModel = coverModelMap[playlist],
                         isPinned = playlist.id in pinnedPlaylistIds,
-                        onClick = { onOpenPlaylist(playlist.id) },
+                        selectionMode = selectionMode,
+                        selected = playlist.id in selectedPlaylistIds,
+                        onClick = {
+                            if (selectionMode) {
+                                selectedPlaylistIds = if (playlist.id in selectedPlaylistIds) {
+                                    selectedPlaylistIds - playlist.id
+                                } else {
+                                    selectedPlaylistIds + playlist.id
+                                }
+                            } else {
+                                onOpenPlaylist(playlist.id)
+                            }
+                        },
                         onSync = {
                             scope.launch {
                                 mainViewModel.refreshFolderPlaylistFolders(playlist.folders)
@@ -301,6 +338,7 @@ fun FolderPlaylistsScreen(
     }
 
     moreMenuTarget?.let { playlist ->
+        val isPinned = playlist.id in pinnedPlaylistIds
         EllaMiuixBottomSheet(
             show = true,
             enableNestedScroll = false,
@@ -309,13 +347,13 @@ fun FolderPlaylistsScreen(
         ) {
             Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)) {
                 EllaMiuixMenuItem(
-                    text = stringResource(R.string.folder_playlist_more_pin),
+                    text = stringResource(if (isPinned) R.string.common_unpin else R.string.common_pin_to_top),
                     onClick = {
                         scope.launch {
                             mainViewModel.settingsManager.setPinned(
                                 "folder_playlist",
                                 playlist.id,
-                                playlist.id !in pinnedPlaylistIds
+                                !isPinned
                             )
                         }
                         moreMenuTarget = null
@@ -358,6 +396,7 @@ fun FolderPlaylistsScreen(
         show = showEditor,
         target = editorTarget,
         availableFolders = availableFolders,
+        coverModel = editorCoverModel,
         draftName = editorDraftName,
         onDraftNameChange = { editorDraftName = it },
         selectedFolders = editorDraftFolders,
@@ -871,6 +910,8 @@ private fun FolderPlaylistCard(
     duration: Long,
     coverModel: Any?,
     isPinned: Boolean,
+    selectionMode: Boolean = false,
+    selected: Boolean = false,
     onClick: () -> Unit,
     onSync: () -> Unit,
     onMore: () -> Unit
@@ -881,9 +922,21 @@ private fun FolderPlaylistCard(
         onClick = onClick
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            modifier = Modifier
+                .background(
+                    if (selected) MiuixTheme.colorScheme.primary.copy(alpha = 0.10f)
+                    else androidx.compose.ui.graphics.Color.Transparent
+                )
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (selectionMode) {
+                com.ella.music.ui.components.SelectionCheck(
+                    selected = selected,
+                    checkColor = androidx.compose.ui.graphics.Color.White
+                )
+                Spacer(modifier = Modifier.size(12.dp))
+            }
             Box(
                 modifier = Modifier
                     .size(52.dp)
@@ -926,21 +979,23 @@ private fun FolderPlaylistCard(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            IconButton(onClick = onSync) {
-                Icon(
-                    imageVector = MiuixIcons.Regular.Refresh,
-                    contentDescription = stringResource(R.string.folder_playlist_more_refresh),
-                    tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            IconButton(onClick = onMore) {
-                Icon(
-                    imageVector = MiuixIcons.Regular.More,
-                    contentDescription = stringResource(R.string.player_more_actions),
-                    tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    modifier = Modifier.size(22.dp)
-                )
+            if (!selectionMode) {
+                IconButton(onClick = onSync) {
+                    Icon(
+                        imageVector = MiuixIcons.Regular.Refresh,
+                        contentDescription = stringResource(R.string.folder_playlist_more_refresh),
+                        tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                IconButton(onClick = onMore) {
+                    Icon(
+                        imageVector = MiuixIcons.Regular.More,
+                        contentDescription = stringResource(R.string.player_more_actions),
+                        tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
         }
     }
@@ -951,6 +1006,7 @@ private fun FolderPlaylistEditorSheet(
     show: Boolean,
     target: FolderPlaylist?,
     availableFolders: List<String>,
+    coverModel: Any?,
     draftName: String,
     onDraftNameChange: (String) -> Unit,
     selectedFolders: Set<String>,
@@ -1002,6 +1058,31 @@ private fun FolderPlaylistEditorSheet(
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 10.dp)
         ) {
+            Box(
+                modifier = Modifier
+                    .size(86.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MiuixTheme.colorScheme.surfaceContainer)
+                    .align(Alignment.CenterHorizontally),
+                contentAlignment = Alignment.Center
+            ) {
+                if (coverModel != null) {
+                    SafeCoverImage(
+                        model = coverModel,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        sizePx = 384
+                    )
+                } else {
+                    FolderOutlineIcon(
+                        tint = MiuixTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(18.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(14.dp))
             EllaMiuixTextField(
                 value = draftName,
                 onValueChange = onDraftNameChange,
