@@ -142,6 +142,14 @@ class SettingsManager(private val context: Context) {
         val KEY_VIRTUALIZER_ENABLED = booleanPreferencesKey("audio_virtualizer_enabled")
         val KEY_VIRTUALIZER_STRENGTH = intPreferencesKey("audio_virtualizer_strength")
         val KEY_REVERB_PRESET = intPreferencesKey("audio_reverb_preset")
+        val KEY_EQ_Q = intPreferencesKey("audio_eq_q")
+        val KEY_TONE_BASS_DB = intPreferencesKey("audio_tone_bass_db")
+        val KEY_TONE_TREBLE_DB = intPreferencesKey("audio_tone_treble_db")
+        val KEY_COMP_ENABLED = booleanPreferencesKey("audio_comp_enabled")
+        val KEY_COMP_THRESHOLD_DB = intPreferencesKey("audio_comp_threshold_db")
+        val KEY_COMP_RATIO = intPreferencesKey("audio_comp_ratio")
+        val KEY_COMP_MAKEUP_DB = intPreferencesKey("audio_comp_makeup_db")
+        val KEY_STEREO_WIDTH = intPreferencesKey("audio_stereo_width")
         val KEY_USB_DAC_MODE = booleanPreferencesKey("usb_dac_mode")
         val KEY_DYNAMIC_COVER_ENABLED = booleanPreferencesKey("dynamic_cover_enabled")
         val KEY_DYNAMIC_COVER_CUSTOM_FOLDERS = stringPreferencesKey("dynamic_cover_custom_folders")
@@ -677,6 +685,50 @@ class SettingsManager(private val context: Context) {
         context.dataStore.data.map { it[KEY_VIRTUALIZER_STRENGTH] ?: 0 }
     val reverbPreset: Flow<Int> =
         context.dataStore.data.map { normalizeReverbPreset(it[KEY_REVERB_PRESET] ?: AudioEffectSettings.REVERB_PRESET_OFF) }
+    val eqQ: Flow<Int> =
+        context.dataStore.data.map { (it[KEY_EQ_Q] ?: AudioEffectSettings.EQ_Q_DEFAULT).coerceIn(AudioEffectSettings.EQ_Q_MIN, AudioEffectSettings.EQ_Q_MAX) }
+    val toneBassDb: Flow<Int> =
+        context.dataStore.data.map { (it[KEY_TONE_BASS_DB] ?: 0).coerceIn(AudioEffectSettings.TONE_GAIN_MIN_DB, AudioEffectSettings.TONE_GAIN_MAX_DB) }
+    val toneTrebleDb: Flow<Int> =
+        context.dataStore.data.map { (it[KEY_TONE_TREBLE_DB] ?: 0).coerceIn(AudioEffectSettings.TONE_GAIN_MIN_DB, AudioEffectSettings.TONE_GAIN_MAX_DB) }
+    val compressorEnabled: Flow<Boolean> =
+        context.dataStore.data.map { it[KEY_COMP_ENABLED] ?: false }
+    val compressorThresholdDb: Flow<Int> =
+        context.dataStore.data.map { (it[KEY_COMP_THRESHOLD_DB] ?: -18).coerceIn(AudioEffectSettings.COMP_THRESHOLD_MIN_DB, AudioEffectSettings.COMP_THRESHOLD_MAX_DB) }
+    val compressorRatio: Flow<Int> =
+        context.dataStore.data.map { (it[KEY_COMP_RATIO] ?: 2).coerceIn(AudioEffectSettings.COMP_RATIO_MIN, AudioEffectSettings.COMP_RATIO_MAX) }
+    val compressorMakeupDb: Flow<Int> =
+        context.dataStore.data.map { (it[KEY_COMP_MAKEUP_DB] ?: 0).coerceIn(AudioEffectSettings.COMP_MAKEUP_MIN_DB, AudioEffectSettings.COMP_MAKEUP_MAX_DB) }
+    val stereoWidth: Flow<Int> =
+        context.dataStore.data.map { (it[KEY_STEREO_WIDTH] ?: 100).coerceIn(AudioEffectSettings.STEREO_WIDTH_MIN, AudioEffectSettings.STEREO_WIDTH_MAX) }
+    private data class CustomDspSettings(
+        val eqQ: Int,
+        val bassDb: Int,
+        val trebleDb: Int,
+        val compEnabled: Boolean,
+        val compThresholdDb: Int,
+        val compRatio: Int,
+        val compMakeupDb: Int,
+        val stereoWidth: Int
+    )
+    private val toneAndDynamics: Flow<CustomDspSettings> = combine(
+        combine(eqQ, toneBassDb, toneTrebleDb) { q, bass, treble -> Triple(q, bass, treble) },
+        combine(compressorEnabled, compressorThresholdDb, compressorRatio, compressorMakeupDb) { en, th, ra, mk ->
+            listOf(if (en) 1 else 0, th, ra, mk)
+        },
+        stereoWidth
+    ) { tone, comp, width ->
+        CustomDspSettings(
+            eqQ = tone.first,
+            bassDb = tone.second,
+            trebleDb = tone.third,
+            compEnabled = comp[0] == 1,
+            compThresholdDb = comp[1],
+            compRatio = comp[2],
+            compMakeupDb = comp[3],
+            stereoWidth = width
+        )
+    }
     val usbDacMode: Flow<Boolean> =
         context.dataStore.data.map { it[KEY_USB_DAC_MODE] ?: false }
 
@@ -687,12 +739,21 @@ class SettingsManager(private val context: Context) {
         },
         combine(bassBoostEnabled, bassBoostStrength) { enabled, strength -> enabled to strength },
         combine(virtualizerEnabled, virtualizerStrength) { enabled, strength -> enabled to strength },
-        reverbPreset
-    ) { eq, bass, virt, reverb ->
+        reverbPreset,
+        toneAndDynamics
+    ) { eq, bass, virt, reverb, dsp ->
         AudioEffectSettings(
             eqEnabled = eq.first,
             eqPreset = eq.second,
             eqBandLevelsMb = eq.third,
+            eqQ = dsp.eqQ,
+            bassGainDb = dsp.bassDb,
+            trebleGainDb = dsp.trebleDb,
+            compressorEnabled = dsp.compEnabled,
+            compressorThresholdDb = dsp.compThresholdDb,
+            compressorRatio = dsp.compRatio,
+            compressorMakeupDb = dsp.compMakeupDb,
+            stereoWidth = dsp.stereoWidth,
             bassBoostEnabled = bass.first,
             bassBoostStrength = bass.second,
             virtualizerEnabled = virt.first,
@@ -1266,6 +1327,38 @@ class SettingsManager(private val context: Context) {
 
     suspend fun setReverbPreset(preset: Int) {
         context.dataStore.edit { it[KEY_REVERB_PRESET] = normalizeReverbPreset(preset) }
+    }
+
+    suspend fun setEqQ(q: Int) {
+        context.dataStore.edit { it[KEY_EQ_Q] = q.coerceIn(AudioEffectSettings.EQ_Q_MIN, AudioEffectSettings.EQ_Q_MAX) }
+    }
+
+    suspend fun setToneBassDb(db: Int) {
+        context.dataStore.edit { it[KEY_TONE_BASS_DB] = db.coerceIn(AudioEffectSettings.TONE_GAIN_MIN_DB, AudioEffectSettings.TONE_GAIN_MAX_DB) }
+    }
+
+    suspend fun setToneTrebleDb(db: Int) {
+        context.dataStore.edit { it[KEY_TONE_TREBLE_DB] = db.coerceIn(AudioEffectSettings.TONE_GAIN_MIN_DB, AudioEffectSettings.TONE_GAIN_MAX_DB) }
+    }
+
+    suspend fun setCompressorEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_COMP_ENABLED] = enabled }
+    }
+
+    suspend fun setCompressorThresholdDb(db: Int) {
+        context.dataStore.edit { it[KEY_COMP_THRESHOLD_DB] = db.coerceIn(AudioEffectSettings.COMP_THRESHOLD_MIN_DB, AudioEffectSettings.COMP_THRESHOLD_MAX_DB) }
+    }
+
+    suspend fun setCompressorRatio(ratio: Int) {
+        context.dataStore.edit { it[KEY_COMP_RATIO] = ratio.coerceIn(AudioEffectSettings.COMP_RATIO_MIN, AudioEffectSettings.COMP_RATIO_MAX) }
+    }
+
+    suspend fun setCompressorMakeupDb(db: Int) {
+        context.dataStore.edit { it[KEY_COMP_MAKEUP_DB] = db.coerceIn(AudioEffectSettings.COMP_MAKEUP_MIN_DB, AudioEffectSettings.COMP_MAKEUP_MAX_DB) }
+    }
+
+    suspend fun setStereoWidth(width: Int) {
+        context.dataStore.edit { it[KEY_STEREO_WIDTH] = width.coerceIn(AudioEffectSettings.STEREO_WIDTH_MIN, AudioEffectSettings.STEREO_WIDTH_MAX) }
     }
 
     suspend fun setUsbDacMode(enabled: Boolean) {

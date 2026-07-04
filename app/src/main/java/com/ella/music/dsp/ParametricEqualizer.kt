@@ -1,3 +1,8 @@
+/*
+ * Ported from RawS-Music (https://github.com/QFDY-GZC/RawS-Music), licensed under Apache-2.0.
+ * A Kotlin reimplementation of its BiQuad / parametric-EQ DSP core for Halcyon's Media3 pipeline.
+ * See THIRD_PARTY_LICENSES.md.
+ */
 package com.ella.music.dsp
 
 import java.util.concurrent.atomic.AtomicBoolean
@@ -58,10 +63,25 @@ class ParametricEqualizer(
         if (bandIndex !in bandGainsDb.indices) return
         bandGainsDb[bandIndex] = gainDb
         val band = bandSpecs[bandIndex]
-        filters[bandIndex].setPeakEQ(sampleRateFloat, band.frequency, band.q, gainDb)
+        filters[bandIndex].setPeakEQ(sampleRateFloat, band.frequency, currentQ, gainDb)
     }
 
     fun getBandGain(bandIndex: Int): Float = bandGainsDb.getOrNull(bandIndex) ?: 0f
+
+    private var currentQ = EqBand.DEFAULT_Q
+
+    /**
+     * Set a shared Q (bandwidth) for every band, reconfiguring the peaking filters while keeping
+     * each band's frequency and gain. Lower Q = wider/gentler bands, higher Q = narrower/sharper.
+     */
+    fun setGlobalQ(q: Float) {
+        val safeQ = q.coerceIn(0.3f, 10f)
+        if (safeQ == currentQ) return
+        currentQ = safeQ
+        filters.indices.forEach { i ->
+            filters[i].setPeakEQ(sampleRateFloat, bandSpecs[i].frequency, safeQ, bandGainsDb[i])
+        }
+    }
 
     /**
      * Reset all filter states. Called on seeks or format changes to avoid
@@ -114,6 +134,10 @@ class TenBandEqualizer(sampleRate: Int, channels: Int) {
 
     fun setBandGain(bandIndex: Int, gainDb: Float) {
         equalizer.setBandGain(bandIndex, gainDb)
+    }
+
+    fun setGlobalQ(q: Float) {
+        equalizer.setGlobalQ(q)
     }
 
     fun getBandGain(bandIndex: Int): Float = equalizer.getBandGain(bandIndex)

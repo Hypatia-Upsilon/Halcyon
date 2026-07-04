@@ -39,6 +39,7 @@ import com.ella.music.ui.components.EllaSmallTopAppBar
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Slider
 import top.yukonga.miuix.kmp.basic.VerticalSlider
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
@@ -65,6 +66,14 @@ fun EqualizerScreen(
     val eqEnabled by settingsManager.eqEnabled.collectAsState(initial = false)
     val eqPreset by settingsManager.eqPreset.collectAsState(initial = AudioEffectSettings.PRESET_CUSTOM)
     val bandLevels by settingsManager.eqBandLevelsMb.collectAsState(initial = emptyList())
+    val eqQ by settingsManager.eqQ.collectAsState(initial = AudioEffectSettings.EQ_Q_DEFAULT)
+    val toneBassDb by settingsManager.toneBassDb.collectAsState(initial = 0)
+    val toneTrebleDb by settingsManager.toneTrebleDb.collectAsState(initial = 0)
+    val compressorEnabled by settingsManager.compressorEnabled.collectAsState(initial = false)
+    val compressorThresholdDb by settingsManager.compressorThresholdDb.collectAsState(initial = -18)
+    val compressorRatio by settingsManager.compressorRatio.collectAsState(initial = 2)
+    val compressorMakeupDb by settingsManager.compressorMakeupDb.collectAsState(initial = 0)
+    val stereoWidth by settingsManager.stereoWidth.collectAsState(initial = 100)
 
     val accent = MiuixTheme.colorScheme.primary
 
@@ -198,6 +207,82 @@ fun EqualizerScreen(
                             }
                         }
                 )
+
+                SmallTitle(text = stringResource(R.string.equalizer_section_parametric))
+                SettingsCardGroup {
+                    EqControlSlider(
+                        title = stringResource(R.string.equalizer_eq_q),
+                        valueText = String.format("%.1f", eqQ / 100f),
+                        value = eqQ,
+                        range = AudioEffectSettings.EQ_Q_MIN..AudioEffectSettings.EQ_Q_MAX,
+                        onChange = { scope.launch { settingsManager.setEqQ(it) } }
+                    )
+                }
+
+                SmallTitle(text = stringResource(R.string.equalizer_section_tone))
+                SettingsCardGroup {
+                    Column {
+                        EqControlSlider(
+                            title = stringResource(R.string.equalizer_tone_bass),
+                            valueText = formatGainDbInt(toneBassDb),
+                            value = toneBassDb,
+                            range = AudioEffectSettings.TONE_GAIN_MIN_DB..AudioEffectSettings.TONE_GAIN_MAX_DB,
+                            onChange = { scope.launch { settingsManager.setToneBassDb(it) } }
+                        )
+                        EqControlSlider(
+                            title = stringResource(R.string.equalizer_tone_treble),
+                            valueText = formatGainDbInt(toneTrebleDb),
+                            value = toneTrebleDb,
+                            range = AudioEffectSettings.TONE_GAIN_MIN_DB..AudioEffectSettings.TONE_GAIN_MAX_DB,
+                            onChange = { scope.launch { settingsManager.setToneTrebleDb(it) } }
+                        )
+                    }
+                }
+
+                SmallTitle(text = stringResource(R.string.equalizer_section_compressor))
+                SettingsCardGroup {
+                    Column {
+                        SwitchPreference(
+                            title = stringResource(R.string.equalizer_compressor_enable),
+                            checked = compressorEnabled,
+                            onCheckedChange = { scope.launch { settingsManager.setCompressorEnabled(it) } }
+                        )
+                        if (compressorEnabled) {
+                            EqControlSlider(
+                                title = stringResource(R.string.equalizer_compressor_threshold),
+                                valueText = "$compressorThresholdDb dB",
+                                value = compressorThresholdDb,
+                                range = AudioEffectSettings.COMP_THRESHOLD_MIN_DB..AudioEffectSettings.COMP_THRESHOLD_MAX_DB,
+                                onChange = { scope.launch { settingsManager.setCompressorThresholdDb(it) } }
+                            )
+                            EqControlSlider(
+                                title = stringResource(R.string.equalizer_compressor_ratio),
+                                valueText = "$compressorRatio:1",
+                                value = compressorRatio,
+                                range = AudioEffectSettings.COMP_RATIO_MIN..AudioEffectSettings.COMP_RATIO_MAX,
+                                onChange = { scope.launch { settingsManager.setCompressorRatio(it) } }
+                            )
+                            EqControlSlider(
+                                title = stringResource(R.string.equalizer_compressor_makeup),
+                                valueText = "+$compressorMakeupDb dB",
+                                value = compressorMakeupDb,
+                                range = AudioEffectSettings.COMP_MAKEUP_MIN_DB..AudioEffectSettings.COMP_MAKEUP_MAX_DB,
+                                onChange = { scope.launch { settingsManager.setCompressorMakeupDb(it) } }
+                            )
+                        }
+                    }
+                }
+
+                SmallTitle(text = stringResource(R.string.equalizer_section_stereo))
+                SettingsCardGroup {
+                    EqControlSlider(
+                        title = stringResource(R.string.equalizer_stereo_width),
+                        valueText = "$stereoWidth%",
+                        value = stereoWidth,
+                        range = AudioEffectSettings.STEREO_WIDTH_MIN..AudioEffectSettings.STEREO_WIDTH_MAX,
+                        onChange = { scope.launch { settingsManager.setStereoWidth(it) } }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(160.dp))
@@ -242,6 +327,37 @@ private fun EqBandColumn(
         )
     }
 }
+
+@Composable
+private fun EqControlSlider(
+    title: String,
+    valueText: String,
+    value: Int,
+    range: IntRange,
+    onChange: (Int) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(text = title, fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurface)
+            Text(text = valueText, fontSize = 13.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Slider(
+            value = value.toFloat().coerceIn(range.first.toFloat(), range.last.toFloat()),
+            onValueChange = { onChange(it.roundToInt()) },
+            valueRange = range.first.toFloat()..range.last.toFloat()
+        )
+    }
+}
+
+private fun formatGainDbInt(db: Int): String = if (db > 0) "+$db dB" else "$db dB"
 
 private fun List<Int>.toDisplayBandLevels(caps: com.ella.music.player.EqualizerCapabilities): List<Int> {
     if (size == caps.displayBandCount) return this

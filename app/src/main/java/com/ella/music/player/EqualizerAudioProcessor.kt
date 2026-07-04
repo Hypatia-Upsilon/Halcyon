@@ -3,6 +3,9 @@ package com.ella.music.player
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
+import com.ella.music.dsp.Compressor
+import com.ella.music.dsp.ShelfEqualizer
+import com.ella.music.dsp.StereoWidener
 import com.ella.music.dsp.TenBandEqualizer
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -16,18 +19,47 @@ import java.util.concurrent.atomic.AtomicReference
  */
 data class EqualizerSettings(
     val enabled: Boolean = false,
-    val bandGainsDb: FloatArray = FloatArray(TenBandEqualizer.BAND_COUNT) { 0f }
+    val bandGainsDb: FloatArray = FloatArray(TenBandEqualizer.BAND_COUNT) { 0f },
+    val eqQ: Float = EQ_DEFAULT_Q,
+    val bassGainDb: Float = 0f,
+    val trebleGainDb: Float = 0f,
+    val compressorEnabled: Boolean = false,
+    val compressorThresholdDb: Float = -18f,
+    val compressorRatio: Float = 2f,
+    val compressorMakeupDb: Float = 0f,
+    val stereoWidth: Float = 1f
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is EqualizerSettings) return false
-        return enabled == other.enabled && bandGainsDb.contentEquals(other.bandGainsDb)
+        return enabled == other.enabled &&
+            bandGainsDb.contentEquals(other.bandGainsDb) &&
+            eqQ == other.eqQ &&
+            bassGainDb == other.bassGainDb &&
+            trebleGainDb == other.trebleGainDb &&
+            compressorEnabled == other.compressorEnabled &&
+            compressorThresholdDb == other.compressorThresholdDb &&
+            compressorRatio == other.compressorRatio &&
+            compressorMakeupDb == other.compressorMakeupDb &&
+            stereoWidth == other.stereoWidth
     }
 
     override fun hashCode(): Int {
         var result = enabled.hashCode()
         result = 31 * result + bandGainsDb.contentHashCode()
+        result = 31 * result + eqQ.hashCode()
+        result = 31 * result + bassGainDb.hashCode()
+        result = 31 * result + trebleGainDb.hashCode()
+        result = 31 * result + compressorEnabled.hashCode()
+        result = 31 * result + compressorThresholdDb.hashCode()
+        result = 31 * result + compressorRatio.hashCode()
+        result = 31 * result + compressorMakeupDb.hashCode()
+        result = 31 * result + stereoWidth.hashCode()
         return result
+    }
+
+    companion object {
+        const val EQ_DEFAULT_Q = 1.414f
     }
 }
 
@@ -45,6 +77,9 @@ class EqualizerAudioProcessor : AudioProcessor {
 
     private val settingsRef = AtomicReference(EqualizerSettings())
     private var equalizer: TenBandEqualizer? = null
+    private var shelf: ShelfEqualizer? = null
+    private var compressor: Compressor? = null
+    private val stereoWidener = StereoWidener()
 
     private var outputBuffer: ByteBuffer = EMPTY_BUFFER
     private var inputEnded = false
@@ -74,7 +109,9 @@ class EqualizerAudioProcessor : AudioProcessor {
             inputAudioFormat.sampleRate,
             inputAudioFormat.channelCount
         )
-        applySettings()
+        shelf = ShelfEqualizer(inputAudioFormat.sampleRate, inputAudioFormat.channelCount)
+        compressor = Compressor(inputAudioFormat.sampleRate, inputAudioFormat.channelCount)
+        applySettings(force = true)
         return outputAudioFormat
     }
 
@@ -109,6 +146,9 @@ class EqualizerAudioProcessor : AudioProcessor {
         }
 
         eq.process(tempFloatBuffer, frames)
+        shelf?.process(tempFloatBuffer, frames)
+        compressor?.process(tempFloatBuffer, frames)
+        stereoWidener.process(tempFloatBuffer, frames, channels)
 
         // float -> 16-bit PCM, matching RawS-Music's conversion sign handling.
         outputBuffer = replaceOutputBuffer(remaining)
@@ -145,6 +185,8 @@ class EqualizerAudioProcessor : AudioProcessor {
         outputBuffer = EMPTY_BUFFER
         inputEnded = false
         equalizer?.reset()
+        shelf?.reset()
+        compressor?.reset()
         applySettings(force = true)
     }
 
@@ -153,6 +195,8 @@ class EqualizerAudioProcessor : AudioProcessor {
         inputAudioFormat = AudioProcessor.AudioFormat.NOT_SET
         outputAudioFormat = AudioProcessor.AudioFormat.NOT_SET
         equalizer = null
+        shelf = null
+        compressor = null
         reusableOutputBuffer = null
     }
 
@@ -162,9 +206,20 @@ class EqualizerAudioProcessor : AudioProcessor {
         if (!force && settings == lastAppliedSettings) return
 
         eq.setEnabled(settings.enabled)
+        eq.setGlobalQ(settings.eqQ)
         settings.bandGainsDb.forEachIndexed { index, gainDb ->
             eq.setBandGain(index, gainDb)
         }
+        // Tone / dynamics / width run regardless of the graphic-EQ enable flag; each bypasses itself
+        // when it has no effect (0 dB shelves, disabled compressor, width == 1.0).
+        shelf?.setGains(settings.bassGainDb, settings.trebleGainDb)
+        compressor?.setParams(
+            settings.compressorEnabled,
+            settings.compressorThresholdDb,
+            settings.compressorRatio,
+            settings.compressorMakeupDb
+        )
+        stereoWidener.setWidth(settings.stereoWidth)
         lastAppliedSettings = settings
     }
 

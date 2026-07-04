@@ -288,7 +288,15 @@ class PlaybackService : MediaLibraryService() {
                         enabled = settings.eqEnabled,
                         bandGainsDb = FloatArray(TenBandEqualizer.BAND_COUNT) { index ->
                             settings.eqBandLevelsMb.getOrElse(index) { 0 } / 100f
-                        }
+                        },
+                        eqQ = settings.eqQ / 100f,
+                        bassGainDb = settings.bassGainDb.toFloat(),
+                        trebleGainDb = settings.trebleGainDb.toFloat(),
+                        compressorEnabled = settings.compressorEnabled,
+                        compressorThresholdDb = settings.compressorThresholdDb.toFloat(),
+                        compressorRatio = settings.compressorRatio.toFloat(),
+                        compressorMakeupDb = settings.compressorMakeupDb.toFloat(),
+                        stereoWidth = settings.stereoWidth / 100f
                     )
                 )
             }

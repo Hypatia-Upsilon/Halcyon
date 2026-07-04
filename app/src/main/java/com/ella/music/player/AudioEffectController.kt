@@ -18,6 +18,14 @@ data class AudioEffectSettings(
     val eqEnabled: Boolean = false,
     val eqPreset: Int = PRESET_CUSTOM,
     val eqBandLevelsMb: List<Int> = emptyList(),
+    val eqQ: Int = EQ_Q_DEFAULT,
+    val bassGainDb: Int = 0,
+    val trebleGainDb: Int = 0,
+    val compressorEnabled: Boolean = false,
+    val compressorThresholdDb: Int = -18,
+    val compressorRatio: Int = 2,
+    val compressorMakeupDb: Int = 0,
+    val stereoWidth: Int = 100,
     val bassBoostEnabled: Boolean = false,
     val bassBoostStrength: Int = 0,
     val virtualizerEnabled: Boolean = false,
@@ -27,6 +35,20 @@ data class AudioEffectSettings(
     companion object {
         const val PRESET_CUSTOM = -1
         const val STRENGTH_MAX = 1000
+        // Custom software DSP ranges (stored as scaled ints for DataStore / sliders).
+        const val EQ_Q_DEFAULT = 141   // Q * 100 (1.41)
+        const val EQ_Q_MIN = 30        // 0.3
+        const val EQ_Q_MAX = 1000      // 10.0
+        const val TONE_GAIN_MIN_DB = -12
+        const val TONE_GAIN_MAX_DB = 12
+        const val COMP_THRESHOLD_MIN_DB = -60
+        const val COMP_THRESHOLD_MAX_DB = 0
+        const val COMP_RATIO_MIN = 1
+        const val COMP_RATIO_MAX = 20
+        const val COMP_MAKEUP_MIN_DB = 0
+        const val COMP_MAKEUP_MAX_DB = 24
+        const val STEREO_WIDTH_MIN = 0
+        const val STEREO_WIDTH_MAX = 200
         const val REVERB_PRESET_OFF = 0
         const val REVERB_PRESET_STUDIO = 10
         const val REVERB_PRESET_SMALL_ROOM = 1
