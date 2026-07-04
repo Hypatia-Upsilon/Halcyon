@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.verticalScroll
@@ -59,11 +60,15 @@ import com.ella.music.ui.components.FolderOutlineIcon
 import com.ella.music.ui.components.SafeCoverImage
 import com.ella.music.ui.components.ScanRefreshIconButton
 import com.ella.music.ui.components.SongItem
+import com.ella.music.ui.components.SongMoreActionHost
 import com.ella.music.ui.components.SortDropdownItem
 import com.ella.music.ui.components.SortDropdownMenu
 import com.ella.music.ui.components.ellaPageBackground
 import com.ella.music.viewmodel.MainViewModel
 import com.ella.music.viewmodel.PlayerViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
@@ -76,6 +81,7 @@ import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.More
 import top.yukonga.miuix.kmp.icon.extended.Play
 import top.yukonga.miuix.kmp.icon.extended.Refresh
+import top.yukonga.miuix.kmp.icon.extended.SelectAll
 import top.yukonga.miuix.kmp.icon.basic.Search
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -403,6 +409,7 @@ fun FolderPlaylistDetailScreen(
     onNavigateToPlayer: () -> Unit,
     onNavigateToFolder: (String) -> Unit = {}
 ) {
+    val context = LocalContext.current
     val songs by mainViewModel.songs.collectAsState()
     val playlists by mainViewModel.settingsManager.folderPlaylists.collectAsState(initial = emptyList())
     val openPlayerOnPlay by mainViewModel.settingsManager.openPlayerOnPlay.collectAsState(initial = false)
@@ -416,6 +423,79 @@ fun FolderPlaylistDetailScreen(
         playlist?.let { songs.songsForFolderPlaylist(it.folders) }.orEmpty()
     }
     var selectedTab by rememberSaveable(playlistId) { mutableStateOf(FolderPlaylistTab.Songs) }
+    var searchExpanded by rememberSaveable(playlistId) { mutableStateOf(false) }
+    var searchQuery by rememberSaveable(playlistId) { mutableStateOf("") }
+    var selectionMode by rememberSaveable(playlistId) { mutableStateOf(false) }
+    var selectedSongKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var selectedFolderPaths by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var actionSong by remember { mutableStateOf<Song?>(null) }
+    var songSortMode by rememberSaveable(playlistId) { mutableStateOf(FolderPlaylistSongSortMode.Custom) }
+    var folderSortMode by rememberSaveable(playlistId) { mutableStateOf(FolderPlaylistFolderSortMode.Custom) }
+    val detailQuery = searchQuery.trim()
+    val folderEntries = remember(playlist, songs) {
+        playlist?.folders.orEmpty().mapNotNull { folderPath ->
+            val normalized = folderPath.normalizeFolderPath()
+            val folderSongs = songs.filter { it.folderPath().normalizeFolderPath().startsWith(normalized) }
+            if (folderSongs.isEmpty()) return@mapNotNull null
+            FolderPlaylistFolderEntry(
+                path = folderPath,
+                displayName = folderPath.folderDisplayName(""),
+                songCount = folderSongs.size,
+                albumCount = folderSongs.map { it.album }.distinct().size,
+                duration = folderSongs.sumOf { it.duration },
+                dateModified = folderSongs.maxOfOrNull { it.dateModified } ?: 0L,
+                coverModel = folderSongs.firstOrNull().folderPlaylistCoverModel()
+            )
+        }
+    }
+    val sortedPlaylistSongs = remember(playlistSongs, songSortMode) {
+        playlistSongs.sortedForFolderPlaylistDetail(songSortMode)
+    }
+    val sortedFolderEntries = remember(folderEntries, folderSortMode) {
+        folderEntries.sortedForFolderPlaylistDetail(folderSortMode)
+    }
+    val displayedSongs = remember(sortedPlaylistSongs, detailQuery) {
+        if (detailQuery.isBlank()) {
+            sortedPlaylistSongs
+        } else {
+            sortedPlaylistSongs.filter { song ->
+                song.title.contains(detailQuery, ignoreCase = true) ||
+                    song.artist.contains(detailQuery, ignoreCase = true) ||
+                    song.album.contains(detailQuery, ignoreCase = true) ||
+                    song.fileName.contains(detailQuery, ignoreCase = true)
+            }
+        }
+    }
+    val displayedFolderEntries = remember(sortedFolderEntries, detailQuery) {
+        if (detailQuery.isBlank()) {
+            sortedFolderEntries
+        } else {
+            sortedFolderEntries.filter { entry ->
+                entry.displayName.contains(detailQuery, ignoreCase = true) ||
+                    entry.path.contains(detailQuery, ignoreCase = true)
+            }
+        }
+    }
+    val currentSortLabel = stringResource(
+        when (selectedTab) {
+            FolderPlaylistTab.Songs -> songSortMode.labelRes
+            FolderPlaylistTab.Folders -> folderSortMode.labelRes
+        }
+    )
+
+    BackHandler(enabled = selectionMode || searchExpanded) {
+        when {
+            selectionMode -> {
+                selectionMode = false
+                selectedSongKeys = emptySet()
+                selectedFolderPaths = emptySet()
+            }
+            searchExpanded -> {
+                searchExpanded = false
+                searchQuery = ""
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -437,21 +517,47 @@ fun FolderPlaylistDetailScreen(
                 }
             },
             actions = {
-                IconButton(
-                    onClick = {
-                        if (playlistSongs.isNotEmpty()) {
-                            playerViewModel.setPlaylist(playlistSongs, 0)
-                            if (openPlayerOnPlay) onNavigateToPlayer()
-                        }
-                    }
-                ) {
+                IconButton(onClick = {
+                    selectionMode = !selectionMode
+                    selectedSongKeys = emptySet()
+                    selectedFolderPaths = emptySet()
+                }) {
                     Icon(
-                        imageVector = MiuixIcons.Regular.Play,
-                        contentDescription = stringResource(R.string.playlist_play_all),
+                        imageVector = MiuixIcons.Regular.SelectAll,
+                        contentDescription = stringResource(R.string.common_multi_select),
                         tint = MiuixTheme.colorScheme.onSurface,
                         modifier = Modifier.size(24.dp)
                     )
                 }
+                IconButton(onClick = {
+                    searchExpanded = !searchExpanded
+                    if (!searchExpanded) searchQuery = ""
+                }) {
+                    Icon(
+                        imageVector = MiuixIcons.Basic.Search,
+                        contentDescription = stringResource(R.string.common_search),
+                        tint = MiuixTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                SortDropdownMenu(
+                    items = when (selectedTab) {
+                        FolderPlaylistTab.Songs -> FolderPlaylistSongSortMode.entries.map { mode ->
+                            SortDropdownItem(
+                                text = stringResource(mode.labelRes),
+                                selected = songSortMode == mode,
+                                onClick = { songSortMode = mode }
+                            )
+                        }
+                        FolderPlaylistTab.Folders -> FolderPlaylistFolderSortMode.entries.map { mode ->
+                            SortDropdownItem(
+                                text = stringResource(mode.labelRes),
+                                selected = folderSortMode == mode,
+                                onClick = { folderSortMode = mode }
+                            )
+                        }
+                    }
+                )
             }
         )
 
@@ -463,6 +569,21 @@ fun FolderPlaylistDetailScreen(
                 )
             }
             return@Column
+        }
+
+        if (searchExpanded) {
+            EllaSearchBar(
+                query = searchQuery,
+                onQueryChange = { searchQuery = it },
+                onSearch = { searchExpanded = false },
+                placeholder = when (selectedTab) {
+                    FolderPlaylistTab.Songs -> stringResource(R.string.folder_detail_search_placeholder)
+                    FolderPlaylistTab.Folders -> stringResource(R.string.folder_search_placeholder)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
         }
 
         Row(
@@ -498,7 +619,7 @@ fun FolderPlaylistDetailScreen(
                 ) {
                     item {
                         Text(
-                            text = stringResource(R.string.folder_playlist_detail_summary, playlist.folders.size, playlistSongs.size),
+                            text = stringResource(R.string.folder_playlist_detail_summary_sorted, displayedSongs.size, playlist.folders.size, currentSortLabel),
                             fontSize = 13.sp,
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                             modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
@@ -513,8 +634,8 @@ fun FolderPlaylistDetailScreen(
                             )
                         }
                     }
-                    items(playlistSongs, key = { it.playlistIdentityKey() }) { song ->
-                        val index = playlistSongs.indexOf(song)
+                    itemsIndexed(displayedSongs, key = { _, song -> song.playlistIdentityKey() }) { index, song ->
+                        val songKey = song.playlistIdentityKey()
                         val albumArtUri = remember(song.albumId) {
                             song.albumId.takeIf { it > 0L }?.let(mainViewModel::getAlbumArtUri)
                         }
@@ -524,64 +645,91 @@ fun FolderPlaylistDetailScreen(
                             albumArtUri = albumArtUri,
                             loadCoverArt = mainViewModel::getCoverArtBitmap,
                             loadAudioInfo = mainViewModel::getAudioInfo,
+                            selectionMode = selectionMode,
+                            selected = songKey in selectedSongKeys,
                             showPlayNextInLists = showPlayNextInLists,
                             isFavorite = song.playlistIdentityKey() in favoriteSongKeys,
                             loadSongRating = mainViewModel::getSongRating,
                             onClick = {
-                                playerViewModel.setPlaylist(playlistSongs, index)
-                                if (openPlayerOnPlay) onNavigateToPlayer()
+                                if (selectionMode) {
+                                    selectedSongKeys = if (songKey in selectedSongKeys) {
+                                        selectedSongKeys - songKey
+                                    } else {
+                                        selectedSongKeys + songKey
+                                    }
+                                } else {
+                                    playerViewModel.setPlaylist(displayedSongs, index)
+                                    if (openPlayerOnPlay) onNavigateToPlayer()
+                                }
                             },
-                            onPlayNext = { playerViewModel.playNext(song) }
+                            onLongClick = {
+                                selectionMode = true
+                                selectedSongKeys = selectedSongKeys + songKey
+                            },
+                            onPlayNext = { playerViewModel.playNext(song) },
+                            onMore = { actionSong = song }
                         )
                     }
                 }
             }
             FolderPlaylistTab.Folders -> {
-                val folderEntries = remember(playlist, songs) {
-                    playlist.folders.mapNotNull { folderPath ->
-                        val normalized = folderPath.normalizeFolderPath()
-                        val folderSongs = songs.filter { it.folderPath().normalizeFolderPath().startsWith(normalized) }
-                        if (folderSongs.isEmpty()) return@mapNotNull null
-                        val songCount = folderSongs.size
-                        val albumCount = folderSongs.map { it.album }.distinct().size
-                        val duration = folderSongs.sumOf { it.duration }
-                        FolderPlaylistFolderEntry(
-                            path = folderPath,
-                            displayName = folderPath.substringAfterLast('/').ifBlank { folderPath },
-                            songCount = songCount,
-                            albumCount = albumCount,
-                            duration = duration
-                        )
-                    }
-                }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 130.dp)
                 ) {
                     item {
                         Text(
-                            text = stringResource(R.string.folder_playlist_detail_summary, playlist.folders.size, playlistSongs.size),
+                            text = stringResource(R.string.folder_playlist_detail_summary_sorted, displayedFolderEntries.sumOf { it.songCount }, playlist.folders.size, currentSortLabel),
                             fontSize = 13.sp,
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                             modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
                         )
                     }
-                    items(folderEntries, key = { it.path }) { entry ->
+                    items(displayedFolderEntries, key = { it.path }) { entry ->
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp),
                             cornerRadius = 12.dp,
-                            onClick = { onNavigateToFolder(entry.path) }
+                            onClick = {
+                                if (selectionMode) {
+                                    selectedFolderPaths = if (entry.path in selectedFolderPaths) {
+                                        selectedFolderPaths - entry.path
+                                    } else {
+                                        selectedFolderPaths + entry.path
+                                    }
+                                } else {
+                                    onNavigateToFolder(entry.path)
+                                }
+                            }
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                FolderOutlineIcon(
-                                    tint = MiuixTheme.colorScheme.primary,
-                                    modifier = Modifier.size(28.dp)
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(MiuixTheme.colorScheme.surfaceContainer),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (entry.coverModel != null) {
+                                        SafeCoverImage(
+                                            model = entry.coverModel,
+                                            contentDescription = entry.displayName,
+                                            modifier = Modifier.fillMaxSize(),
+                                            sizePx = 256
+                                        )
+                                    } else {
+                                        FolderOutlineIcon(
+                                            tint = MiuixTheme.colorScheme.primary,
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(9.dp)
+                                        )
+                                    }
+                                }
                                 Column(modifier = Modifier.padding(start = 14.dp)) {
                                     Text(
                                         text = entry.displayName,
@@ -592,7 +740,7 @@ fun FolderPlaylistDetailScreen(
                                         overflow = TextOverflow.Ellipsis
                                     )
                                     Text(
-                                        text = "${entry.songCount} songs · ${entry.albumCount} albums · ${entry.duration.formatPlaybackDuration()}",
+                                        text = "${entry.summaryForSort(folderSortMode, context)} · ${entry.path}",
                                         fontSize = 12.sp,
                                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                                         maxLines = 1,
@@ -606,6 +754,14 @@ fun FolderPlaylistDetailScreen(
             }
         }
     }
+
+    SongMoreActionHost(
+        actionSong = actionSong,
+        mainViewModel = mainViewModel,
+        playerViewModel = playerViewModel,
+        onDismissAction = { actionSong = null },
+        showDelete = false
+    )
 }
 
 private enum class FolderPlaylistTab(@param:StringRes val labelRes: Int) {
@@ -613,12 +769,39 @@ private enum class FolderPlaylistTab(@param:StringRes val labelRes: Int) {
     Folders(R.string.folder_playlist_tab_folders)
 }
 
+private enum class FolderPlaylistSongSortMode(@param:StringRes val labelRes: Int) {
+    Custom(R.string.playlist_sort_custom),
+    CustomDesc(R.string.playlist_sort_custom_desc),
+    Title(R.string.playlist_sort_name),
+    FileName(R.string.playlist_song_sort_file_name),
+    Duration(R.string.playlist_song_sort_duration),
+    YearAsc(R.string.playlist_song_sort_year_asc),
+    YearDesc(R.string.playlist_song_sort_year_desc),
+    DateAdded(R.string.playlist_song_sort_date_added),
+    DateAddedAsc(R.string.playlist_song_sort_date_added_asc),
+    DateModified(R.string.playlist_song_sort_date_modified),
+    DateModifiedAsc(R.string.playlist_song_sort_date_modified_asc)
+}
+
+private enum class FolderPlaylistFolderSortMode(@param:StringRes val labelRes: Int) {
+    Custom(R.string.playlist_sort_custom),
+    CustomDesc(R.string.playlist_sort_custom_desc),
+    Name(R.string.playlist_sort_name),
+    SongCount(R.string.playlist_sort_song_count),
+    AlbumCount(R.string.folder_sort_album_count),
+    Duration(R.string.playlist_sort_duration),
+    DateModified(R.string.playlist_song_sort_date_modified),
+    DateModifiedAsc(R.string.playlist_song_sort_date_modified_asc)
+}
+
 private data class FolderPlaylistFolderEntry(
     val path: String,
     val displayName: String,
     val songCount: Int,
     val albumCount: Int,
-    val duration: Long
+    val duration: Long,
+    val dateModified: Long,
+    val coverModel: Any?
 )
 
 @Composable
@@ -896,6 +1079,58 @@ private enum class EditorFolderSort(val labelRes: Int) {
     ModifiedTime(R.string.playlist_song_sort_date_modified),
     Name(R.string.playlist_sort_name),
     SongCount(R.string.playlist_sort_song_count)
+}
+
+private fun List<Song>.sortedForFolderPlaylistDetail(mode: FolderPlaylistSongSortMode): List<Song> =
+    when (mode) {
+        FolderPlaylistSongSortMode.Custom -> sortedWith(compareByDescending<Song> { it.dateModified }.thenBy { it.title.musicSortKey() })
+        FolderPlaylistSongSortMode.CustomDesc -> sortedWith(compareBy<Song> { it.dateModified }.thenBy { it.title.musicSortKey() })
+        FolderPlaylistSongSortMode.Title -> sortedBy { it.title.musicSortKey() }
+        FolderPlaylistSongSortMode.FileName -> sortedBy { it.fileName.musicSortKey() }
+        FolderPlaylistSongSortMode.Duration -> sortedByDescending { it.duration }
+        FolderPlaylistSongSortMode.YearAsc -> sortedWith(compareBy<Song> { it.year.toIntOrNull() ?: Int.MAX_VALUE }.thenBy { it.title.musicSortKey() })
+        FolderPlaylistSongSortMode.YearDesc -> sortedWith(compareByDescending<Song> { it.year.toIntOrNull() ?: Int.MIN_VALUE }.thenBy { it.title.musicSortKey() })
+        FolderPlaylistSongSortMode.DateAdded -> sortedByDescending { it.dateAdded }
+        FolderPlaylistSongSortMode.DateAddedAsc -> sortedBy { it.dateAdded }
+        FolderPlaylistSongSortMode.DateModified -> sortedByDescending { it.dateModified }
+        FolderPlaylistSongSortMode.DateModifiedAsc -> sortedBy { it.dateModified }
+    }
+
+private fun List<FolderPlaylistFolderEntry>.sortedForFolderPlaylistDetail(mode: FolderPlaylistFolderSortMode): List<FolderPlaylistFolderEntry> =
+    when (mode) {
+        FolderPlaylistFolderSortMode.Custom,
+        FolderPlaylistFolderSortMode.Name -> sortedBy { it.displayName.musicSortKey() }
+        FolderPlaylistFolderSortMode.CustomDesc -> sortedByDescending { it.displayName.musicSortKey() }
+        FolderPlaylistFolderSortMode.SongCount -> sortedWith(compareByDescending<FolderPlaylistFolderEntry> { it.songCount }.thenBy { it.displayName.musicSortKey() })
+        FolderPlaylistFolderSortMode.AlbumCount -> sortedWith(compareByDescending<FolderPlaylistFolderEntry> { it.albumCount }.thenBy { it.displayName.musicSortKey() })
+        FolderPlaylistFolderSortMode.Duration -> sortedWith(compareByDescending<FolderPlaylistFolderEntry> { it.duration }.thenBy { it.displayName.musicSortKey() })
+        FolderPlaylistFolderSortMode.DateModified -> sortedWith(compareByDescending<FolderPlaylistFolderEntry> { it.dateModified }.thenBy { it.displayName.musicSortKey() })
+        FolderPlaylistFolderSortMode.DateModifiedAsc -> sortedWith(compareBy<FolderPlaylistFolderEntry> { it.dateModified }.thenBy { it.displayName.musicSortKey() })
+    }
+
+private fun FolderPlaylistFolderEntry.summaryForSort(
+    mode: FolderPlaylistFolderSortMode,
+    context: android.content.Context
+): String =
+    when (mode) {
+        FolderPlaylistFolderSortMode.SongCount -> context.getString(R.string.song_count, songCount)
+        FolderPlaylistFolderSortMode.AlbumCount -> context.getString(R.string.album_count, albumCount)
+        FolderPlaylistFolderSortMode.Duration -> duration.formatPlaybackDuration()
+        FolderPlaylistFolderSortMode.DateModified,
+        FolderPlaylistFolderSortMode.DateModifiedAsc -> dateModified.formatFolderPlaylistDateTime(context)
+        FolderPlaylistFolderSortMode.Custom,
+        FolderPlaylistFolderSortMode.CustomDesc,
+        FolderPlaylistFolderSortMode.Name -> listOf(
+            context.getString(R.string.song_count, songCount),
+            context.getString(R.string.album_count, albumCount),
+            duration.formatPlaybackDuration()
+        ).joinToString(" · ")
+    }
+
+private fun Long.formatFolderPlaylistDateTime(context: android.content.Context): String {
+    if (this <= 0L) return context.getString(R.string.folder_unknown_modified_time)
+    val millis = if (this < 10_000_000_000L) this * 1000L else this
+    return SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(millis))
 }
 
 private fun List<Song>.availableFolderPlaylistFolders(): List<String> =

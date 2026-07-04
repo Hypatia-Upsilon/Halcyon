@@ -466,6 +466,7 @@
     <string name="folder_playlist_empty">No folder playlists yet</string>
     <string name="folder_playlist_card_summary">%1$d folders · %2$d songs</string>
     <string name="folder_playlist_detail_summary">%1$d linked folders · %2$d songs</string>
+    <string name="folder_playlist_detail_summary_sorted">%1$d songs · %2$d linked folders · %3$s</string>
     <string name="folder_playlist_selected_count">%1$d folders selected</string>
     <string name="folder_playlist_empty_songs">No songs in these folders yet</string>
     <string name="folder_playlist_save_failed">Enter a name and select at least one folder</string>
