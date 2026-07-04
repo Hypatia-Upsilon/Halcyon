@@ -658,7 +658,8 @@ fun AppNavigation(
                 onNavigateToLyricFont = { navController.navigate(Screen.LyricFont.route) },
                 mode = SettingsDetailMode.LibraryScanning,
                 highlightKey = backStackEntry.arguments?.getString("highlight").orEmpty(),
-                onNavigateToScanFolders = { navController.navigate(Screen.ScanSettings.createRoute()) }
+                onNavigateToScanFolders = { navController.navigate(Screen.ScanSettings.createRoute()) },
+                mainViewModel = mainViewModel
             )
         }
 

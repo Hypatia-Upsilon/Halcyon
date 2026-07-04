@@ -55,7 +55,8 @@ fun SettingsDetailScreen(
     initialHomeDisplay: Boolean = false,
     highlightKey: String? = null,
     onNavigateToScanFolders: (() -> Unit)? = null,
-    onNavigateToLyricPluginSources: () -> Unit = {}
+    onNavigateToLyricPluginSources: () -> Unit = {},
+    mainViewModel: com.ella.music.viewmodel.MainViewModel? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -219,7 +220,8 @@ fun SettingsDetailScreen(
                 SettingsDetailMode.LibraryScanning -> {
                     SettingsLibrarySourceSection(
                         highlightKey = highlightKey,
-                        onOpenScanFolders = onNavigateToScanFolders
+                        onOpenScanFolders = onNavigateToScanFolders,
+                        mainViewModel = mainViewModel
                     )
                     SettingsScanSection(highlightKey = highlightKey)
                     SettingsTagScrapingSection(highlightKey = highlightKey)

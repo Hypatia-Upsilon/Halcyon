@@ -65,12 +65,37 @@ internal fun SettingsHomeCustomizeSection(
 @Composable
 internal fun SettingsLibrarySourceSection(
     highlightKey: String? = null,
-    onOpenScanFolders: (() -> Unit)?
+    onOpenScanFolders: (() -> Unit)?,
+    mainViewModel: com.ella.music.viewmodel.MainViewModel? = null
 ) {
+    val context = LocalContext.current
+    val settingsManager = remember { SettingsManager.getInstance(context) }
+    val librarySource by settingsManager.librarySource.collectAsState(initial = SettingsManager.LIBRARY_SOURCE_LOCAL)
+    val librarySourceOptions = listOf(
+        SettingsManager.LIBRARY_SOURCE_LOCAL to stringResource(R.string.settings_library_source_local),
+        SettingsManager.LIBRARY_SOURCE_NAVIDROME to stringResource(R.string.remote_source_navidrome),
+        SettingsManager.LIBRARY_SOURCE_EMBY to stringResource(R.string.remote_source_emby)
+    )
+    val librarySourceEntries = librarySourceOptions.map { DropdownItem(title = it.second) }
+    val selectedLibrarySourceIndex = librarySourceOptions
+        .indexOfFirst { it.first == librarySource }
+        .takeIf { it >= 0 } ?: 0
+
     SmallTitle(text = stringResource(R.string.settings_library_source))
 
     SettingsCardGroup(highlight = highlightKey == "library_source") {
         Column {
+            WindowSpinnerPreference(
+                title = stringResource(R.string.settings_library_source),
+                summary = stringResource(R.string.settings_library_source_summary),
+                items = librarySourceEntries,
+                selectedIndex = selectedLibrarySourceIndex,
+                onSelectedIndexChange = { index ->
+                    librarySourceOptions.getOrNull(index)?.first?.let { source ->
+                        mainViewModel?.setLibrarySource(source)
+                    }
+                }
+            )
             ArrowPreference(
                 title = stringResource(R.string.settings_scan_folders),
                 summary = stringResource(R.string.settings_scan_folders_summary),
