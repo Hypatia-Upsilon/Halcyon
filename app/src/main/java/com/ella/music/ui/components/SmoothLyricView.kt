@@ -75,7 +75,11 @@ fun SmoothLyricView(
     // Global preference: show romaji/phonetic guides below the main line (main → romaji → translation).
     val pronunciationBelow by remember(context) { SettingsManager.getInstance(context).lyricPronunciationBelow }
         .collectAsState(initial = false)
-    val lyriconSong = remember(songId, songTitle, songArtist, lyrics) {
+    // Key only on songId + lyric content, NOT songTitle/songArtist: media-notification lyrics patch
+    // the media title with the current line, and if that briefly leaks into the song title it must
+    // not rebuild the LyricView (which resets scroll → flicker). title/artist only feed the empty
+    // placeholder, so capturing them at first composition is fine.
+    val lyriconSong = remember(songId, lyrics) {
         lyrics.toLyriconSong(songId, songTitle, songArtist)
     }
     val pronunciationWordsByBegin = remember(lyrics) {

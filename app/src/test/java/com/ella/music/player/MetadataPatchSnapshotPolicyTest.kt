@@ -1,7 +1,5 @@
 package com.ella.music.player
 
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import com.ella.music.data.model.Song
 import org.junit.Assert.assertFalse
@@ -34,6 +32,17 @@ class MetadataPatchSnapshotPolicyTest {
     }
 
     @Test
+    fun metadataPatchWithoutDecodableSongIsDisplayOnlyWhenCurrentSongExists() {
+        assertTrue(
+            isDisplayOnlyMetadataPatchSnapshot(
+                isMetadataOnlyPatch = true,
+                snapshotSong = null,
+                currentSong = song(id = 1L, path = "/music/current.flac")
+            )
+        )
+    }
+
+    @Test
     fun unmarkedSnapshotStillUsesNormalSongRefreshPath() {
         val song = song(id = 1L, path = "/music/current.flac")
 
@@ -49,12 +58,12 @@ class MetadataPatchSnapshotPolicyTest {
     @Test
     fun sourceUpdateForMetadataPatchIsIgnored() {
         val song = song(id = 1L, path = "/music/current.flac")
-        val item = mediaItem(song, markAsPatch = true)
 
         assertTrue(
             shouldIgnoreDisplayOnlyTimelineUpdate(
                 reason = Player.TIMELINE_CHANGE_REASON_SOURCE_UPDATE,
-                currentItem = item,
+                isMetadataOnlyPatch = true,
+                itemSong = song,
                 currentSong = song
             )
         )
@@ -63,12 +72,12 @@ class MetadataPatchSnapshotPolicyTest {
     @Test
     fun sourceUpdateForSameSongWithoutPatchMarkerIsStillIgnored() {
         val song = song(id = 1L, path = "/music/current.flac")
-        val item = mediaItem(song, markAsPatch = false)
 
         assertTrue(
             shouldIgnoreDisplayOnlyTimelineUpdate(
                 reason = Player.TIMELINE_CHANGE_REASON_SOURCE_UPDATE,
-                currentItem = item,
+                isMetadataOnlyPatch = false,
+                itemSong = song,
                 currentSong = song
             )
         )
@@ -78,39 +87,39 @@ class MetadataPatchSnapshotPolicyTest {
     fun playlistChangeForDifferentSongStillRefreshesNormally() {
         val currentSong = song(id = 1L, path = "/music/current.flac")
         val nextSong = song(id = 2L, path = "/music/next.flac")
-        val item = mediaItem(nextSong, markAsPatch = false)
 
         assertFalse(
             shouldIgnoreDisplayOnlyTimelineUpdate(
                 reason = Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED,
-                currentItem = item,
+                isMetadataOnlyPatch = false,
+                itemSong = nextSong,
                 currentSong = currentSong
             )
         )
         assertFalse(
             shouldIgnoreDisplayOnlyTimelineUpdate(
                 reason = Player.TIMELINE_CHANGE_REASON_SOURCE_UPDATE,
-                currentItem = item,
+                isMetadataOnlyPatch = false,
+                itemSong = nextSong,
                 currentSong = currentSong
             )
         )
     }
 
-    private fun mediaItem(song: Song, markAsPatch: Boolean): MediaItem {
-        val extras = song.toMediaItemExtras()
-        if (markAsPatch) {
-            extras.markMetadataOnlyPatch(PATCH_REASON_BLUETOOTH_LYRIC)
-        }
-        return MediaItem.Builder()
-            .setMediaId(song.id.toString())
-            .setMediaMetadata(
-                MediaMetadata.Builder()
-                    .setTitle(song.title)
-                    .setArtist(song.artist)
-                    .setExtras(extras)
-                    .build()
+    @Test
+    fun playlistChangedMetadataPatchIsIgnored() {
+        // #251: notification-lyric patches replace the current item and surface as PLAYLIST_CHANGED
+        // on some Media3 versions; a metadata-only patch must still be treated as display-only.
+        val currentSong = song(id = 1L, path = "/music/current.flac")
+
+        assertTrue(
+            shouldIgnoreDisplayOnlyTimelineUpdate(
+                reason = Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED,
+                isMetadataOnlyPatch = true,
+                itemSong = currentSong,
+                currentSong = currentSong
             )
-            .build()
+        )
     }
 
     private fun song(id: Long, path: String): Song = Song(

@@ -10,8 +10,8 @@ internal fun isDisplayOnlyMetadataPatchSnapshot(
     currentSong: Song?
 ): Boolean {
     return isMetadataOnlyPatch &&
-        snapshotSong != null &&
-        snapshotSong.isSamePlaybackIdentity(currentSong)
+        currentSong != null &&
+        (snapshotSong == null || snapshotSong.isSamePlaybackIdentity(currentSong))
 }
 
 internal fun shouldIgnoreDisplayOnlyTimelineUpdate(
@@ -19,8 +19,33 @@ internal fun shouldIgnoreDisplayOnlyTimelineUpdate(
     currentItem: MediaItem?,
     currentSong: Song?
 ): Boolean {
+    return shouldIgnoreDisplayOnlyTimelineUpdate(
+        reason = reason,
+        isMetadataOnlyPatch = currentItem?.isMetadataOnlyPatch() == true,
+        itemSong = currentItem?.toSongFromMediaItemExtras(),
+        currentSong = currentSong
+    )
+}
+
+internal fun shouldIgnoreDisplayOnlyTimelineUpdate(
+    reason: Int,
+    isMetadataOnlyPatch: Boolean,
+    itemSong: Song?,
+    currentSong: Song?
+): Boolean {
+    // A metadata-only patch (bluetooth / notification lyric, notification artwork, base session
+    // metadata) swaps the current item's MediaMetadata via replaceMediaItem without changing the
+    // real playback queue. Depending on the Media3 version this surfaces as onTimelineChanged with
+    // either SOURCE_UPDATE or PLAYLIST_CHANGED — the earlier guard only handled SOURCE_UPDATE, so
+    // notification-lyric patches (which arrive as PLAYLIST_CHANGED) still triggered a full
+    // refreshStateFromController on every line change, flickering the lyric page. Ignore the patch
+    // regardless of which reason it arrives as.
+    if (isMetadataOnlyPatch &&
+        (reason == Player.TIMELINE_CHANGE_REASON_SOURCE_UPDATE ||
+            reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED)
+    ) {
+        return true
+    }
     if (reason != Player.TIMELINE_CHANGE_REASON_SOURCE_UPDATE) return false
-    if (currentItem?.isMetadataOnlyPatch() == true) return true
-    val itemSong = currentItem?.toSongFromMediaItemExtras() ?: return false
-    return itemSong.isSamePlaybackIdentity(currentSong)
+    return itemSong?.isSamePlaybackIdentity(currentSong) == true
 }

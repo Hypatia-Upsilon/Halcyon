@@ -1180,6 +1180,22 @@ class ExoPlayerManager(private val context: Context) {
             return
         }
 
+        // Notification lyric metadata patches can arrive as external playback snapshots with a
+        // fresh position/timeline. Treat them as display-only before writing position; otherwise
+        // the lyric page sees an artificial timeline jump and rebuilds when the current line changes.
+        if (isDisplayOnlyMetadataPatchSnapshot(
+                isMetadataOnlyPatch = snapshot.mediaItem?.isMetadataOnlyPatch() == true,
+                snapshotSong = snapshotSong,
+                currentSong = _currentSong.value
+            )
+        ) {
+            externalSnapshotGuard = null
+            _duration.value = snapshot.durationMs.takeIf { it > 0L }
+                ?: snapshotSong?.duration?.coerceAtLeast(0L)
+                ?: _duration.value
+            return
+        }
+
         _isPlaying.value = snapshot.isPlaying
         _playbackState.value = snapshot.playbackState
         _repeatMode.value = snapshot.repeatMode
@@ -1196,18 +1212,6 @@ class ExoPlayerManager(private val context: Context) {
                 return
             }
             refreshStateFromController()
-            return
-        }
-
-        if (isDisplayOnlyMetadataPatchSnapshot(
-                isMetadataOnlyPatch = snapshot.mediaItem?.isMetadataOnlyPatch() == true,
-                snapshotSong = snapshotSong,
-                currentSong = _currentSong.value
-            )
-        ) {
-            externalSnapshotGuard = null
-            _duration.value = snapshot.durationMs.takeIf { it > 0L }
-                ?: snapshotSong.duration.coerceAtLeast(0L)
             return
         }
 
