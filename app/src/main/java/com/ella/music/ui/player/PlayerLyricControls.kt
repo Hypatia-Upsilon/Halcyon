@@ -17,11 +17,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -90,6 +96,10 @@ internal fun LyricActionMenu(
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val settingsManager = remember(context) { SettingsManager.getInstance(context) }
+    val pronunciationBelow by settingsManager.lyricPronunciationBelow.collectAsState(initial = false)
     val ultraWideLandscape = isUltraWideLandscapePlayerLayout(
         screenWidthDp = configuration.screenWidthDp,
         screenHeightDp = configuration.screenHeightDp
@@ -133,6 +143,14 @@ internal fun LyricActionMenu(
             text = stringResource(if (showPronunciation) R.string.player_hide_pronunciation else R.string.player_show_pronunciation),
             onClick = onTogglePronunciation
         )
+        if (showPronunciation) {
+            PlayerActionMenuItem(
+                text = stringResource(
+                    if (pronunciationBelow) R.string.player_pronunciation_above else R.string.player_pronunciation_below
+                ),
+                onClick = { scope.launch { settingsManager.setLyricPronunciationBelow(!pronunciationBelow) } }
+            )
+        }
         PlayerActionMenuItem(
             text = stringResource(if (showTranslation) R.string.player_hide_translation else R.string.player_show_translation),
             onClick = onToggleTranslation

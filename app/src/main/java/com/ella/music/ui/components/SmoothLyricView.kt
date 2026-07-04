@@ -2,12 +2,15 @@ package com.ella.music.ui.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -68,6 +71,10 @@ fun SmoothLyricView(
 
     val density = LocalDensity.current
     val surfaceActive = LocalPlayerSurfaceActive.current
+    val context = LocalContext.current
+    // Global preference: show romaji/phonetic guides below the main line (main → romaji → translation).
+    val pronunciationBelow by remember(context) { SettingsManager.getInstance(context).lyricPronunciationBelow }
+        .collectAsState(initial = false)
     val lyriconSong = remember(songId, songTitle, songArtist, lyrics) {
         lyrics.toLyriconSong(songId, songTitle, songArtist)
     }
@@ -159,7 +166,7 @@ fun SmoothLyricView(
             // Treat a hidden-but-resident player surface as not playing so the Choreographer frame
             // loop (karaoke word sweep) stops instead of animating full-speed behind another screen.
             view.setPlaybackActive(isPlaying && surfaceActive)
-            view.setPronunciationAboveMainEnabled(true)
+            view.setPronunciationAboveMainEnabled(!pronunciationBelow)
             view.setAutoScrollResumeEnabled(autoScrollResumeEnabled)
             view.setUserScrollEnabled(userScrollEnabled)
             view.setLineGapDp(lineGapDp ?: -1f)

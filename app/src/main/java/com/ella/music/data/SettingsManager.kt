@@ -112,6 +112,7 @@ class SettingsManager(private val context: Context) {
         val KEY_LYRIC_LINE_BLACKLIST = stringPreferencesKey("lyric_line_blacklist")
         val KEY_LYRIC_OFFSET_OVERRIDES = stringPreferencesKey("lyric_offset_overrides")
         val KEY_PLAYER_LYRIC_TEXT_ALIGN = intPreferencesKey("player_lyric_text_align")
+        val KEY_LYRIC_PRONUNCIATION_BELOW = booleanPreferencesKey("lyric_pronunciation_below")
         val KEY_LYRIC_PAGE_TRANSLATION = booleanPreferencesKey("lyric_page_translation")
         val KEY_LYRIC_PAGE_KEEP_SCREEN_ON = booleanPreferencesKey("lyric_page_keep_screen_on")
         val KEY_MINI_PLAYER_LYRIC_TRANSLATION = booleanPreferencesKey("mini_player_lyric_translation")
@@ -603,6 +604,10 @@ class SettingsManager(private val context: Context) {
         context.dataStore.data.map { parseLyricOffsetOverrides(it[KEY_LYRIC_OFFSET_OVERRIDES]) }
     val playerLyricTextAlign: Flow<Int> =
         context.dataStore.data.map { (it[KEY_PLAYER_LYRIC_TEXT_ALIGN] ?: PLAYER_LYRIC_ALIGN_LEFT).coerceIn(0, 2) }
+    // Whether romaji / phonetic guides render BELOW the main lyric line (main → romaji → translation)
+    // instead of above it. Default false = above.
+    val lyricPronunciationBelow: Flow<Boolean> =
+        context.dataStore.data.map { it[KEY_LYRIC_PRONUNCIATION_BELOW] ?: false }
     val lyricPageTranslation: Flow<Boolean> = context.dataStore.data.map { it[KEY_LYRIC_PAGE_TRANSLATION] ?: true }
     val lyricPageKeepScreenOn: Flow<Boolean> =
         context.dataStore.data.map { it[KEY_LYRIC_PAGE_KEEP_SCREEN_ON] ?: false }
@@ -1030,6 +1035,10 @@ class SettingsManager(private val context: Context) {
 
     suspend fun setPlayerLyricTextAlign(align: Int) {
         context.dataStore.edit { it[KEY_PLAYER_LYRIC_TEXT_ALIGN] = align.coerceIn(0, 2) }
+    }
+
+    suspend fun setLyricPronunciationBelow(below: Boolean) {
+        context.dataStore.edit { it[KEY_LYRIC_PRONUNCIATION_BELOW] = below }
     }
 
     suspend fun setLyricLineBlacklist(lines: List<String>) {

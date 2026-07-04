@@ -213,6 +213,7 @@ class LyricView @JvmOverloads constructor(
         val secondaryH: Float,
         val secondaryTranslationH: Float,
         val transH: Float,
+        val romaH: Float,
         val totalH: Float,
         val preText: String?,
         val mainText: String?,
@@ -680,16 +681,21 @@ class LyricView @JvmOverloads constructor(
                 0f
             }
             var transH = 0f
+            var romaH = 0f
             var transText: String? = null
             var romaText: String? = null
+            // When pronunciation is shown BELOW the main line, romaji sits between the main line and
+            // the translation (main → romaji → translation), so measure it independently instead of
+            // sharing one exclusive "below" slot with the translation.
+            if (displayRoma && !pronunciationAboveMainEnabled && !line.roma.isNullOrBlank()) {
+                romaText = line.roma!!
+                romaH = measureTransHeight(romaText) + transGapPx
+            }
             if (displayTranslation && !line.translation.isNullOrBlank()) {
                 transText = line.translation!!
                 transH = measureTransHeight(transText) + transGapPx
-            } else if (displayRoma && !pronunciationAboveMainEnabled && !line.roma.isNullOrBlank()) {
-                romaText = line.roma!!
-                transH = measureTransHeight(romaText) + transGapPx
             }
-            val totalH = linePadTopPx + preH + mainH + secondaryH + secondaryTranslationH + transH + linePadBottomPx + lineGapPx
+            val totalH = linePadTopPx + preH + mainH + secondaryH + secondaryTranslationH + romaH + transH + linePadBottomPx + lineGapPx
             result.add(
                 LineEntry(
                     yTop = y,
@@ -698,6 +704,7 @@ class LyricView @JvmOverloads constructor(
                     secondaryH = secondaryH,
                     secondaryTranslationH = secondaryTranslationH,
                     transH = transH,
+                    romaH = romaH,
                     totalH = totalH,
                     preText = preText,
                     mainText = mainText,
@@ -1200,15 +1207,17 @@ class LyricView @JvmOverloads constructor(
             drawTextAligned(canvas, entry.mainText ?: "", paint, textStartX, mainBaseline, entry.alignedRight, entry.centered, farBlur, forMain = true)
         }
         var secondaryBaseY = mainBottomY
+        // Below-the-main pronunciation renders first (main → romaji → translation).
+        if (entry.romaText != null) {
+            val romaBaseline = secondaryBaseY + transGapPx + (-transPaint.fontMetrics.ascent)
+            val tPaint = if (isHighlighted) hlTransPaint else dimTransPaint
+            drawTextAligned(canvas, entry.romaText, tPaint, textStartX, romaBaseline, entry.alignedRight, entry.centered, farBlur)
+            secondaryBaseY += entry.romaH
+        }
         if (entry.transText != null) {
             val transBaseline = secondaryBaseY + transGapPx + (-transPaint.fontMetrics.ascent)
             val tPaint = if (isHighlighted) hlTransPaint else dimTransPaint
             drawTextAligned(canvas, entry.transText, tPaint, textStartX, transBaseline, entry.alignedRight, entry.centered, farBlur)
-            secondaryBaseY += entry.transH
-        } else if (entry.romaText != null) {
-            val romaBaseline = secondaryBaseY + transGapPx + (-transPaint.fontMetrics.ascent)
-            val tPaint = if (isHighlighted) hlTransPaint else dimTransPaint
-            drawTextAligned(canvas, entry.romaText, tPaint, textStartX, romaBaseline, entry.alignedRight, entry.centered, farBlur)
             secondaryBaseY += entry.transH
         }
         val shouldDrawSecondary = entry.secondaryText != null && (isHighlighted || entry.isSecondaryVisible(currentPosMs))

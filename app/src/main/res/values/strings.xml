@@ -1166,6 +1166,8 @@
     <string name="player_queue_title">当前播放列表</string>
     <string name="player_hide_pronunciation">隐藏注音</string>
     <string name="player_show_pronunciation">显示注音</string>
+    <string name="player_pronunciation_below">注音显示在下方</string>
+    <string name="player_pronunciation_above">注音显示在上方</string>
     <string name="player_hide_translation">隐藏翻译</string>
     <string name="player_show_translation">显示翻译</string>
     <string name="player_disable_keep_screen_on">关闭歌词页常亮</string>
