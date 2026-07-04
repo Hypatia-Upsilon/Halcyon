@@ -106,6 +106,7 @@ fun LibrarySearchScreen(
     val lyricSourceMode by settingsManager.lyricSourceMode.collectAsState(initial = SettingsManager.LYRIC_SOURCE_AUTO)
     val showPlayNextInLists by settingsManager.showPlayNextInLists.collectAsState(initial = false)
     val showAlbumArtists by settingsManager.showAlbumArtists.collectAsState(initial = true)
+    val fullTagSearchEnabled by settingsManager.fullTagSearchEnabled.collectAsState(initial = true)
     val scanExcludeFolders by settingsManager.scanExcludeFolders.collectAsState(initial = "")
     val blockedFolders = remember(scanExcludeFolders) { scanExcludeFolders.toFolderSettingList() }
     var query by rememberSaveable(initialQuery) { mutableStateOf(initialQuery.orEmpty()) }
@@ -150,8 +151,12 @@ fun LibrarySearchScreen(
                 .toList()
         }
     }
-    val cachedSongResults = remember(context, songs, trimmedQuery, filter, duplicatesOnlyActive) {
-        if (duplicatesOnlyActive) emptyList() else loadCachedSongSearchResults(context, songs, trimmedQuery, filter)
+    val cachedSongResults = remember(context, songs, trimmedQuery, filter, duplicatesOnlyActive, fullTagSearchEnabled) {
+        if (duplicatesOnlyActive || !fullTagSearchEnabled) {
+            emptyList()
+        } else {
+            loadCachedSongSearchResults(context, songs, trimmedQuery, filter)
+        }
     }
     val songResults by produceState(
         initialValue = cachedSongResults.ifEmpty { immediateSongResults },
@@ -161,11 +166,15 @@ fun LibrarySearchScreen(
         duplicateSongs,
         duplicatesOnlyActive,
         cachedSongResults,
-        lyricSourceMode
+        lyricSourceMode,
+        fullTagSearchEnabled
     ) {
         val initialResults = cachedSongResults.ifEmpty { immediateSongResults }
         value = initialResults
         if (!filter.acceptsSongResults || trimmedQuery.isBlank()) {
+            return@produceState
+        }
+        if (!fullTagSearchEnabled && filter == SearchFilter.Lyrics) {
             return@produceState
         }
         if (filter == SearchFilter.Lyrics) {
@@ -185,8 +194,14 @@ fun LibrarySearchScreen(
         }
         val current = initialResults.map { result ->
             if (result.lyricSnippet == null && result.matches.isEmpty()) {
-                val tagInfo = mainViewModel.getSongTagInfo(result.song)
-                result.copy(matches = result.song.directSearchMatches(trimmedQuery, tagInfo = tagInfo, includeSnapshotTag = true))
+                val tagInfo = if (fullTagSearchEnabled) mainViewModel.getSongTagInfo(result.song) else null
+                result.copy(
+                    matches = result.song.directSearchMatches(
+                        trimmedQuery,
+                        tagInfo = tagInfo,
+                        includeSnapshotTag = fullTagSearchEnabled
+                    )
+                )
             } else {
                 result
             }
@@ -200,14 +215,21 @@ fun LibrarySearchScreen(
             .filter { it.searchIdentityKey() !in seenKeys }
             .toList()
         snapshotMatches.forEach { song ->
-            val tagInfo = mainViewModel.getSongTagInfo(song)
+            val tagInfo = if (fullTagSearchEnabled) mainViewModel.getSongTagInfo(song) else null
             current += SongSearchResult(
                 song = song,
-                matches = song.directSearchMatches(trimmedQuery, tagInfo = tagInfo, includeSnapshotTag = true)
+                matches = song.directSearchMatches(
+                    trimmedQuery,
+                    tagInfo = tagInfo,
+                    includeSnapshotTag = fullTagSearchEnabled
+                )
             )
             seenKeys += song.searchIdentityKey()
         }
         if (snapshotMatches.isNotEmpty()) value = current.toList()
+        if (!fullTagSearchEnabled) {
+            return@produceState
+        }
         for (song in remainingSongs) {
             if (song.searchIdentityKey() in seenKeys) continue
             val snippet = mainViewModel.repository

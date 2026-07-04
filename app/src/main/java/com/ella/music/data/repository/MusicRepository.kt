@@ -168,25 +168,27 @@ class MusicRepository(private val context: Context) {
         includeFolders: List<String> = emptyList(),
         excludeFolders: List<String> = emptyList(),
         fullRescan: Boolean = false,
-        deepRescan: Boolean = fullRescan
+        deepRescan: Boolean = fullRescan,
+        deepMetadataEnabled: Boolean = true
     ): MusicScanSummary {
         val mode = if (includeFolders.isEmpty()) "media_library" else "custom_folders"
         val previousSongs = _songs.value.takeIf { it.isNotEmpty() } ?: readCachedSongs()
         AppLogStore.info(
             context,
             "MusicScanner",
-            "Start scan mode=$mode minDuration=${minDurationMs}ms include=${includeFolders.size} exclude=${excludeFolders.size} fullRescan=$fullRescan deepRescan=$deepRescan",
+            "Start scan mode=$mode minDuration=${minDurationMs}ms include=${includeFolders.size} exclude=${excludeFolders.size} fullRescan=$fullRescan deepRescan=$deepRescan deepMetadataEnabled=$deepMetadataEnabled",
             AppLogType.LIBRARY
         )
-        if (fullRescan || deepRescan) {
+        val effectiveDeepRescan = deepRescan && deepMetadataEnabled
+        if (effectiveDeepRescan) {
             clearScanMetadataCaches()
         }
-        val scanResult = if (fullRescan || deepRescan) {
+        val scanResult = if (fullRescan || effectiveDeepRescan) {
             val scannedSongs = scanner.scanAllSongs(
                 minDurationMs = minDurationMs,
                 includeFolders = includeFolders,
                 excludeFolders = excludeFolders,
-                deepMetadata = true
+                deepMetadata = effectiveDeepRescan
             ) { count -> scanProgressState.update(count) }
             LibraryScanResult(
                 songs = scannedSongs,
@@ -196,7 +198,8 @@ class MusicRepository(private val context: Context) {
             synchronizeLibrary(
                 minDurationMs = minDurationMs,
                 includeFolders = includeFolders,
-                excludeFolders = excludeFolders
+                excludeFolders = excludeFolders,
+                deepMetadataEnabled = deepMetadataEnabled
             )
         }
         val scannedSongs = scanResult.songs
@@ -326,7 +329,8 @@ class MusicRepository(private val context: Context) {
     private suspend fun synchronizeLibrary(
         minDurationMs: Long,
         includeFolders: List<String>,
-        excludeFolders: List<String>
+        excludeFolders: List<String>,
+        deepMetadataEnabled: Boolean = true
     ): LibraryScanResult = withContext(Dispatchers.IO) {
         val cachedSongs = _songs.value.takeIf { it.isNotEmpty() } ?: readCachedSongs()
         val cachedBySyncKey = cachedSongs.associateBy { it.librarySyncKey() }
@@ -358,13 +362,14 @@ class MusicRepository(private val context: Context) {
                 cachedInfo.path != currentInfo.path ||
                 cachedInfo.fileSize != currentInfo.fileSize ||
                 cachedInfo.dateModified != currentInfo.dateModified ||
-                cached.needsMetadataPlaceholderRefresh()
+                (deepMetadataEnabled && cached.needsMetadataPlaceholderRefresh())
 
             if (needsUpdate) {
                 val scanned = runCatching {
                     buildIncrementalLibrarySong(
                         item = item,
-                        minDurationMs = minDurationMs
+                        minDurationMs = minDurationMs,
+                        deepMetadataEnabled = deepMetadataEnabled
                     )
                 }.onFailure { error ->
                     failedCount++
@@ -459,16 +464,19 @@ class MusicRepository(private val context: Context) {
 
     private suspend fun buildIncrementalLibrarySong(
         item: MediaStoreAudioItem,
-        minDurationMs: Long
+        minDurationMs: Long,
+        deepMetadataEnabled: Boolean = true
     ): Song? {
         item.toShallowSong(minDurationMs)?.let { shallow ->
-            return shallow.withRepositoryTags()
+            return if (deepMetadataEnabled) shallow.withRepositoryTags() else shallow.withFinalLibraryFallbacks()
         }
         return scanner.scanAudioItem(
             item = item,
             minDurationMs = minDurationMs,
             deepMetadata = false
-        )?.withRepositoryTags()
+        )?.let { scanned ->
+            if (deepMetadataEnabled) scanned.withRepositoryTags() else scanned.withFinalLibraryFallbacks()
+        }
     }
 
     suspend fun refreshSongAfterExternalEdit(song: Song): Song? = withContext(Dispatchers.IO) {
@@ -710,11 +718,28 @@ class MusicRepository(private val context: Context) {
                 0
             }
 
-    suspend fun songMatchesSearchSnapshot(song: Song, query: String): Boolean =
-        snapshotManager.songMatchesSearchSnapshot(song, query)
+    suspend fun songMatchesSearchSnapshot(
+        song: Song,
+        query: String,
+        includeFullTags: Boolean = true
+    ): Boolean =
+        if (includeFullTags) {
+            snapshotManager.songMatchesSearchSnapshot(song, query)
+        } else {
+            buildSongSearchSnapshotText(song, includeCachedTagInfo = false).contains(query, ignoreCase = true)
+        }
 
-    suspend fun filterSongsBySearchSnapshot(songs: List<Song>, query: String): List<Song> =
-        snapshotManager.filterSongsBySearchSnapshot(songs, query)
+    suspend fun filterSongsBySearchSnapshot(
+        songs: List<Song>,
+        query: String,
+        includeFullTags: Boolean = true
+    ): List<Song> =
+        if (includeFullTags) {
+            snapshotManager.filterSongsBySearchSnapshot(songs, query)
+        } else {
+            val target = query.trim()
+            if (target.isBlank()) songs else songs.filter { songMatchesSearchSnapshot(it, target, includeFullTags = false) }
+        }
 
     suspend fun getSongSearchText(song: Song): String =
         snapshotManager.getSongSearchText(song)

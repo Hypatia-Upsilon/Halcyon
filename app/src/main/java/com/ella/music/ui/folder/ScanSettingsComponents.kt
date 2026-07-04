@@ -81,10 +81,13 @@ internal fun ScanStatusCard(scanProgress: Int) {
 @Composable
 internal fun MediaSourceModeCard(
     useAndroidMediaLibrary: Boolean,
+    fullTagSearchEnabled: Boolean,
     customFolderCount: Int,
     highlight: Boolean = false,
-    onUseAndroidMediaLibraryChange: (Boolean) -> Unit
+    onUseAndroidMediaLibraryChange: (Boolean) -> Unit,
+    onFullTagSearchEnabledChange: (Boolean) -> Unit
 ) {
+    val effectiveUseAndroidMediaLibrary = useAndroidMediaLibrary || !fullTagSearchEnabled
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -95,13 +98,23 @@ internal fun MediaSourceModeCard(
         Column(modifier = Modifier.padding(vertical = 4.dp)) {
             SwitchPreference(
                 title = stringResource(R.string.folder_use_android_media_library),
-                summary = if (useAndroidMediaLibrary) {
+                summary = if (effectiveUseAndroidMediaLibrary) {
                     stringResource(R.string.folder_scan_android_media_summary)
                 } else {
                     stringResource(R.string.folder_scan_custom_folders_summary, customFolderCount)
                 },
-                checked = useAndroidMediaLibrary,
+                checked = effectiveUseAndroidMediaLibrary,
                 onCheckedChange = onUseAndroidMediaLibraryChange
+            )
+            SwitchPreference(
+                title = stringResource(R.string.settings_full_tag_search),
+                summary = if (fullTagSearchEnabled) {
+                    stringResource(R.string.settings_full_tag_search_summary_on)
+                } else {
+                    stringResource(R.string.settings_full_tag_search_summary_off)
+                },
+                checked = fullTagSearchEnabled,
+                onCheckedChange = onFullTagSearchEnabledChange
             )
         }
     }

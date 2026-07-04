@@ -446,6 +446,9 @@
     <string name="folder_use_android_media_library">Use Android media library</string>
     <string name="folder_scan_android_media_summary">Scan all music in the system media library</string>
     <string name="folder_scan_custom_folders_summary">Only scan %1$d added custom folders</string>
+    <string name="settings_full_tag_search">Full tag search</string>
+    <string name="settings_full_tag_search_summary_on">Read full audio tags while scanning; search includes composers, lyricists, comments, aliases, and custom tags</string>
+    <string name="settings_full_tag_search_summary_off">When off, scan directly from the Android media library and search only basic metadata</string>
     <string name="folder_sort_album_count">Album count</string>
     <string name="folder_unknown_modified_time">Unknown modified time</string>
     <string name="folder_library_analysis_summary">Overview, audio format, and quality stats</string>

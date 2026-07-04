@@ -238,6 +238,7 @@ class SettingsManager(private val context: Context) {
         val KEY_SCAN_EXCLUDE_FOLDERS = stringPreferencesKey("scan_exclude_folders")
         val KEY_USB_FOLDER_URIS = stringPreferencesKey("usb_folder_uris")
         val KEY_USE_ANDROID_MEDIA_LIBRARY = booleanPreferencesKey("use_android_media_library")
+        val KEY_FULL_TAG_SEARCH_ENABLED = booleanPreferencesKey("full_tag_search_enabled")
         val KEY_INITIAL_SCAN_PROMPT_HANDLED = booleanPreferencesKey("initial_scan_prompt_handled")
         val KEY_LOCAL_PLAYLIST_SCAN_PROMPT_HANDLED = booleanPreferencesKey("local_playlist_scan_prompt_handled")
         val KEY_ARTIST_SEPARATORS = stringPreferencesKey("artist_separators")
@@ -934,6 +935,8 @@ class SettingsManager(private val context: Context) {
     val usbFolderUris: Flow<String> = context.dataStore.data.map { it[KEY_USB_FOLDER_URIS] ?: "" }
     val useAndroidMediaLibrary: Flow<Boolean> =
         context.dataStore.data.map { it[KEY_USE_ANDROID_MEDIA_LIBRARY] ?: true }
+    val fullTagSearchEnabled: Flow<Boolean> =
+        context.dataStore.data.map { it[KEY_FULL_TAG_SEARCH_ENABLED] ?: true }
     val initialScanPromptHandled: Flow<Boolean> =
         context.dataStore.data.map { it[KEY_INITIAL_SCAN_PROMPT_HANDLED] ?: false }
     val localPlaylistScanPromptHandled: Flow<Boolean> =
@@ -2089,6 +2092,10 @@ class SettingsManager(private val context: Context) {
 
     suspend fun setUseAndroidMediaLibrary(enabled: Boolean) {
         context.dataStore.edit { it[KEY_USE_ANDROID_MEDIA_LIBRARY] = enabled }
+    }
+
+    suspend fun setFullTagSearchEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_FULL_TAG_SEARCH_ENABLED] = enabled }
     }
 
     suspend fun setInitialScanPromptHandled(handled: Boolean) {

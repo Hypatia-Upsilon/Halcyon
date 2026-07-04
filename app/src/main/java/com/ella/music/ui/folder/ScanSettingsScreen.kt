@@ -55,6 +55,7 @@ fun ScanSettingsScreen(
     val scanIncludeFolders by mainViewModel.settingsManager.scanIncludeFolders.collectAsState(initial = "")
     val scanExcludeFolders by mainViewModel.settingsManager.scanExcludeFolders.collectAsState(initial = "")
     val useAndroidMediaLibrary by mainViewModel.settingsManager.useAndroidMediaLibrary.collectAsState(initial = true)
+    val fullTagSearchEnabled by mainViewModel.settingsManager.fullTagSearchEnabled.collectAsState(initial = true)
     val savedFolders = remember(scanIncludeFolders) { scanIncludeFolders.toFolderSettingList() }
     val blockedFolders = remember(scanExcludeFolders) { scanExcludeFolders.toFolderSettingList() }
     val blockedFolderKeys = remember(blockedFolders) {
@@ -155,11 +156,22 @@ fun ScanSettingsScreen(
             item {
                 MediaSourceModeCard(
                     useAndroidMediaLibrary = useAndroidMediaLibrary,
+                    fullTagSearchEnabled = fullTagSearchEnabled,
                     customFolderCount = savedFolders.size,
                     highlight = highlightKey == "scan_media_source",
                     onUseAndroidMediaLibraryChange = { enabled ->
                         scope.launch {
                             mainViewModel.settingsManager.setUseAndroidMediaLibrary(enabled)
+                            mainViewModel.scanMusic()
+                        }
+                    },
+                    onFullTagSearchEnabledChange = { enabled ->
+                        scope.launch {
+                            mainViewModel.settingsManager.setFullTagSearchEnabled(enabled)
+                            if (!enabled) {
+                                mainViewModel.settingsManager.setUseAndroidMediaLibrary(true)
+                                mainViewModel.clearLibrarySnapshotCache()
+                            }
                             mainViewModel.scanMusic()
                         }
                     }

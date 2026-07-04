@@ -298,7 +298,7 @@ class MusicScanner(private val context: Context) {
         )
         fallbackItems.forEach { item ->
             runCatching {
-                scanAudioItem(item, minDurationMs = minDurationMs, deepMetadata = true)
+                scanAudioItem(item, minDurationMs = minDurationMs, deepMetadata = deepMetadata)
             }.onFailure { error ->
                 Log.w(TAG, "scanAllSongs fallback item failed for ${item.path}", error)
             }.getOrNull()?.let { song ->

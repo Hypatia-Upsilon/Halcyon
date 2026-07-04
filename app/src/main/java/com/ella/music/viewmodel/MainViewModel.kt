@@ -227,26 +227,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val minDuration = settingsManager.minDurationSec.first() * 1000L
             val excludeFolders = settingsManager.scanExcludeFolders.first().toFolderFilterList()
             val useAndroidMediaLibrary = settingsManager.useAndroidMediaLibrary.first()
+            val fullTagSearchEnabled = settingsManager.fullTagSearchEnabled.first()
+            val effectiveUseAndroidMediaLibrary = useAndroidMediaLibrary || !fullTagSearchEnabled
+            val effectiveDeepRescan = deepRescan && fullTagSearchEnabled
             var summary = repository.scanMusic(
                 minDuration,
                 if (preferExplicitFolders) {
                     includeFolders
-                } else if (useAndroidMediaLibrary) {
+                } else if (effectiveUseAndroidMediaLibrary) {
                     emptyList()
                 } else {
                     includeFolders.ifEmpty { listOf("__ella_no_custom_folder__") }
                 },
                 excludeFolders,
                 fullRescan = fullRescan,
-                deepRescan = deepRescan
+                deepRescan = effectiveDeepRescan,
+                deepMetadataEnabled = fullTagSearchEnabled
             )
-            if (!preferExplicitFolders && summary.total == 0 && useAndroidMediaLibrary && includeFolders.isNotEmpty()) {
+            if (!preferExplicitFolders && summary.total == 0 && useAndroidMediaLibrary && fullTagSearchEnabled && includeFolders.isNotEmpty()) {
                 summary = repository.scanMusic(
                     minDuration,
                     includeFolders,
                     excludeFolders,
                     fullRescan = fullRescan,
-                    deepRescan = deepRescan
+                    deepRescan = effectiveDeepRescan,
+                    deepMetadataEnabled = true
                 )
             }
             val usbFolderUris = settingsManager.usbFolderUris.first()
@@ -258,7 +263,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 repository.scanUsbFolders(
                     usbUris = uris,
                     minDurationMs = minDuration,
-                    deepMetadata = deepRescan
+                    deepMetadata = effectiveDeepRescan
                 )
             }
             summary
@@ -297,8 +302,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             repository.preloadLibrarySearchSnapshot(currentSongs)
             delay(1200)
             repository.preloadSongRatings(currentSongs)
-            repository.preloadSongTagInfos(currentSongs)
-            repository.preloadLibrarySearchSnapshot(currentSongs, refreshExisting = true)
+            if (settingsManager.fullTagSearchEnabled.first()) {
+                repository.preloadSongTagInfos(currentSongs)
+                repository.preloadLibrarySearchSnapshot(currentSongs, refreshExisting = true)
+            }
         }
     }
 
@@ -470,10 +477,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         repository.resolveSongForPlayback(song)
 
     suspend fun songMatchesSearchSnapshot(song: Song, query: String): Boolean =
-        repository.songMatchesSearchSnapshot(song, query)
+        repository.songMatchesSearchSnapshot(song, query, includeFullTags = settingsManager.fullTagSearchEnabled.first())
 
     suspend fun filterSongsBySearchSnapshot(songs: List<Song>, query: String): List<Song> =
-        repository.filterSongsBySearchSnapshot(songs, query)
+        repository.filterSongsBySearchSnapshot(songs, query, includeFullTags = settingsManager.fullTagSearchEnabled.first())
 
     fun clearLibrarySnapshotCache() {
         viewModelScope.launch {

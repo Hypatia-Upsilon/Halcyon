@@ -62,6 +62,7 @@ private fun String.isLibraryAndScanSettingKey(): Boolean =
         this == "scan_exclude_folders" ||
         this == "usb_folder_uris" ||
         this == "use_android_media_library" ||
+        this == "full_tag_search_enabled" ||
         this == "initial_scan_prompt_handled" ||
         this == "local_playlist_scan_prompt_handled" ||
         this == "artist_separators" ||

@@ -462,6 +462,9 @@
     <string name="folder_use_android_media_library">使用 Android 媒体库</string>
     <string name="folder_scan_android_media_summary">扫描系统媒体库中的所有音乐</string>
     <string name="folder_scan_custom_folders_summary">仅扫描已添加的 %1$d 个自定义文件夹</string>
+    <string name="settings_full_tag_search">全标签搜索</string>
+    <string name="settings_full_tag_search_summary_on">扫描时读取完整音频标签，搜索支持作曲、作词、注释、别名和自定义标签</string>
+    <string name="settings_full_tag_search_summary_off">关闭后直接使用 Android 媒体库扫描，搜索仅匹配基础元数据</string>
     <string name="folder_sort_album_count">专辑数</string>
     <string name="folder_unknown_modified_time">未知修改时间</string>
     <string name="folder_library_analysis_summary">总览、音频格式和音质统计</string>
