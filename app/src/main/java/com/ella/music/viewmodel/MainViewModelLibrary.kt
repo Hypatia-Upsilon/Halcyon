@@ -3,6 +3,7 @@ package com.ella.music.viewmodel
 import com.ella.music.data.NameSplitConfigStore
 import com.ella.music.data.PlaybackHistoryEntry
 import com.ella.music.data.SongPlaybackStats
+import com.ella.music.data.matchesArtistName
 import com.ella.music.data.model.Album
 import com.ella.music.data.model.Artist
 import com.ella.music.data.model.Song
@@ -161,6 +162,17 @@ internal fun filterSongsForMetadataCategory(
                 .thenBy { if (it.trackNumber > 0) it.trackNumber else Int.MAX_VALUE }
                 .thenBy(String.CASE_INSENSITIVE_ORDER) { song -> song.title }
         )
+}
+
+internal fun filterSongsForArtist(
+    songs: List<Song>,
+    artistName: String,
+    includeAlbumArtist: Boolean
+): List<Song> {
+    return songs.filter { song ->
+        song.artist.matchesArtistName(artistName) ||
+            (includeAlbumArtist && song.albumArtist.matchesArtistName(artistName))
+    }
 }
 
 internal fun containsMetadataCategory(

@@ -230,7 +230,7 @@ fun LibrarySearchScreen(
         } else {
             songs.asSequence()
                 .flatMap { song ->
-                    // When "show album artists" is on, also surface each song's album artist(s) in the
+                    // When "show album artists" is on, merge each song's album artist(s) into the
                     // artist tab (deduped per song so a track whose artist == album artist isn't
                     // double-counted). Mirrors ArtistListScreen so search matches the library view.
                     val names = if (showAlbumArtists) {
@@ -240,16 +240,22 @@ fun LibrarySearchScreen(
                     } else {
                         com.ella.music.data.splitArtistNames(song.artist)
                     }
-                    names.asSequence().map { it to song }
+                    names.asSequence()
+                        .filter { it.isNotBlank() && it.contains(trimmedQuery, ignoreCase = true) }
+                        .map { it to song }
                 }
-                .filter { (artist, _) -> artist.isNotBlank() && artist.contains(trimmedQuery, ignoreCase = true) }
-                .groupBy({ it.first }, { it.second })
-                .entries
-                .sortedBy { it.key.lowercase() }
-                .map { (artist, artistSongs) ->
+                // Group by identity key, not the raw string, so the same person written slightly
+                // differently as a track artist vs an album artist (spacing / full-width / case)
+                // collapses into ONE artist entry — the same de-dup the "show album artists" merge
+                // uses on the artist list — instead of showing them as two separate results.
+                .groupBy { it.first.tagIdentityKey() }
+                .values
+                .map { pairs ->
+                    val name = pairs.first().first
+                    val artistSongs = pairs.map { it.second }.distinctBy { it.id }
                     ArtistSearchResult(
                         artist = Artist(
-                            name = artist,
+                            name = name,
                             songCount = artistSongs.size,
                             albumCount = artistSongs.map { it.album }.distinct().size
                         ),
@@ -257,6 +263,7 @@ fun LibrarySearchScreen(
                         participatedAlbumCount = artistSongs.map { it.albumIdentityId() }.distinct().size
                     )
                 }
+                .sortedBy { it.artist.name.lowercase() }
         }
     }
     val playlistResults = remember(playlists, trimmedQuery, duplicatesOnlyActive) {
@@ -418,7 +425,10 @@ fun LibrarySearchScreen(
 
     fun songsForActionTarget(target: SearchActionTarget): List<Song> = when (target) {
         is SearchActionTarget.AlbumTarget -> mainViewModel.getSongsForAlbum(target.album.id)
-        is SearchActionTarget.ArtistTarget -> mainViewModel.getSongsForArtist(target.artist.name)
+        is SearchActionTarget.ArtistTarget -> mainViewModel.getSongsForArtist(
+            artistName = target.artist.name,
+            includeAlbumArtist = showAlbumArtists
+        )
         is SearchActionTarget.PlaylistTarget -> mainViewModel.playlistSongs(target.playlist)
         is SearchActionTarget.CategoryTarget -> mainViewModel.getSongsForMetadataCategory(target.type, target.item.name)
     }
