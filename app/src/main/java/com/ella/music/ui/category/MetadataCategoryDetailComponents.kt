@@ -187,6 +187,7 @@ internal fun MetadataAlbumRow(
     album: Album,
     duration: Long,
     albumArtUri: Uri?,
+    contextPersonName: String? = null,
     selectionMode: Boolean = false,
     selected: Boolean = false,
     onClick: () -> Unit,
@@ -197,6 +198,7 @@ internal fun MetadataAlbumRow(
         add(context.getString(R.string.analytics_song_count_value, album.songCount))
         add(duration.formatDuration())
         if (album.year.isNotBlank()) add(album.year)
+        album.contextualAlbumArtist(contextPersonName)?.let(::add)
     }.joinToString(" · ")
 
     Row(
@@ -251,5 +253,13 @@ internal fun MetadataAlbumRow(
                 overflow = TextOverflow.Ellipsis
             )
         }
+    }
+}
+
+private fun Album.contextualAlbumArtist(contextPersonName: String?): String? {
+    val currentName = contextPersonName?.trim().orEmpty()
+    val albumArtist = albumArtist.trim()
+    return albumArtist.takeIf {
+        it.isNotBlank() && (currentName.isBlank() || !it.equals(currentName, ignoreCase = true))
     }
 }

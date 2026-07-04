@@ -268,6 +268,7 @@ internal fun ArtistAlbumRow(
     albumArtUri: Uri?,
     representativeSong: Song?,
     loadCoverArt: ((Song) -> Bitmap?)?,
+    contextArtistName: String? = null,
     selectionMode: Boolean = false,
     selected: Boolean = false,
     onClick: () -> Unit,
@@ -286,6 +287,7 @@ internal fun ArtistAlbumRow(
         add(context.getString(R.string.artist_album_song_summary_detail, album.songCount))
         add(duration.formatArtistDetailDuration())
         if (album.year.isNotBlank()) add(album.year)
+        album.contextualAlbumArtist(contextArtistName)?.let(::add)
     }.joinToString(" · ")
 
     Row(
@@ -353,4 +355,12 @@ internal fun ArtistAlbumRow(
 
 private fun Long.formatArtistDetailDuration(): String {
     return formatPlaybackDuration()
+}
+
+private fun Album.contextualAlbumArtist(contextArtistName: String?): String? {
+    val currentName = contextArtistName?.trim().orEmpty()
+    val albumArtist = albumArtist.trim()
+    return albumArtist.takeIf {
+        it.isNotBlank() && (currentName.isBlank() || !it.equals(currentName, ignoreCase = true))
+    }
 }

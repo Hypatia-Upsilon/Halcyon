@@ -563,6 +563,7 @@ fun ArtistScreen(
                             albumArtUri = albumArtUri,
                             representativeSong = representativeSongsByAlbumId[album.id],
                             loadCoverArt = mainViewModel::getLargeCoverArtBitmap,
+                            contextArtistName = artistName,
                             selectionMode = selectionMode,
                             selected = album.id in selectedIds,
                             onClick = {
@@ -605,6 +606,7 @@ fun ArtistScreen(
                             albumArtUri = albumArtUri,
                             representativeSong = representativeSongsByAlbumId[album.id],
                             loadCoverArt = mainViewModel::getLargeCoverArtBitmap,
+                            contextArtistName = artistName,
                             selectionMode = selectionMode,
                             selected = album.id in selectedIds,
                             onClick = {

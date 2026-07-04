@@ -255,6 +255,9 @@ fun MetadataCategoryDetailScreen(
             emptyList()
         }
     }
+    val albumArtistContextName = remember(type, name) {
+        name.takeIf { type == "composer" || type == "lyricist" }
+    }
     val hasSameNameArtist = remember(type, name, librarySongs) {
         (type == "composer" || type == "lyricist") && mainViewModel.getSongsForArtist(name).isNotEmpty()
     }
@@ -713,6 +716,7 @@ fun MetadataCategoryDetailScreen(
                             album = album,
                             duration = albumDurations[album.id] ?: 0L,
                             albumArtUri = albumArtUri,
+                            contextPersonName = albumArtistContextName,
                             selectionMode = selectionMode,
                             selected = album.id in selectedIds,
                             onClick = {
