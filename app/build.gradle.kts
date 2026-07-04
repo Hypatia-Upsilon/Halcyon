@@ -42,6 +42,9 @@ abstract class CopyRenamedApksTask : DefaultTask() {
     @get:Input
     abstract val channelMarker: Property<String>
 
+    @get:Input
+    abstract val gitHash: Property<String>
+
     @TaskAction
     fun copyApks() {
         val sourceDir = apkDir.get().asFile
@@ -52,6 +55,7 @@ abstract class CopyRenamedApksTask : DefaultTask() {
         val marker = channelMarker.get()
         val variant = variantName.get()
         val version = versionName.get()
+        val git = gitHash.get()
         sourceDir.walkTopDown()
             .filter { it.isFile && it.extension.equals("apk", ignoreCase = true) }
             .forEach { apk ->
@@ -59,8 +63,10 @@ abstract class CopyRenamedApksTask : DefaultTask() {
                 val abi = knownAbis.firstOrNull { lowerName.contains(it.lowercase(Locale.US)) }
                     ?: "universal"
                 val hash = apk.shortContentHash()
+                // Embed the git short SHA (g<sha>) so every packaged APK self-identifies the exact
+                // commit it was built from.
                 val target = targetDir.resolve(
-                    "Halcyon-$version-$marker-$hash-$abi-$variant.APK"
+                    "Halcyon-$version-$marker-g$git-$hash-$abi-$variant.APK"
                 )
                 val oldNamePrefix = "Halcyon-$version-"
                 val oldNameSuffix = "-$abi-$variant.APK"
@@ -194,6 +200,14 @@ androidComponents {
             versionName.set(appVersionName)
             this.variantName.set(variantName)
             channelMarker.set(variantChannelMarker(variantName))
+            // Query git via providers.exec (deferred to execution time) so it stays compatible with
+            // Gradle's configuration cache — running an external process at configuration time is not.
+            gitHash.set(
+                providers.exec {
+                    commandLine("git", "rev-parse", "--short", "HEAD")
+                    isIgnoreExitValue = true
+                }.standardOutput.asText.map { it.trim().ifBlank { "nogit" } }.orElse("nogit")
+            )
         }
 
         tasks.matching { it.name == "assemble$variantNameCapitalized" }
