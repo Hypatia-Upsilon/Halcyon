@@ -986,6 +986,8 @@
     <string name="player_queue_title">현재 재생 대기열 재생 중</string>
     <string name="player_hide_pronunciation">발음 숨기기</string>
     <string name="player_show_pronunciation">발음 표시</string>
+    <string name="player_pronunciation_below">발음을 아래에 표시</string>
+    <string name="player_pronunciation_above">발음을 위에 표시</string>
     <string name="player_hide_translation">번역 숨기기</string>
     <string name="player_show_translation">번역 표시</string>
     <string name="player_disable_keep_screen_on">가사 화면 항상 켜짐 비활성화</string>
@@ -1369,6 +1371,18 @@
     <string name="equalizer_preset">프리셋</string>
     <string name="equalizer_preset_custom">사용자 지정</string>
     <string name="equalizer_reset">초기화</string>
+    <string name="equalizer_section_parametric">파라메트릭 EQ</string>
+    <string name="equalizer_eq_q">밴드 Q(대역폭)</string>
+    <string name="equalizer_section_tone">음색</string>
+    <string name="equalizer_tone_bass">저음</string>
+    <string name="equalizer_tone_treble">고음</string>
+    <string name="equalizer_section_compressor">컴프레서</string>
+    <string name="equalizer_compressor_enable">컴프레서 사용</string>
+    <string name="equalizer_compressor_threshold">임계값</string>
+    <string name="equalizer_compressor_ratio">압축비</string>
+    <string name="equalizer_compressor_makeup">메이크업 게인</string>
+    <string name="equalizer_section_stereo">스테레오 폭</string>
+    <string name="equalizer_stereo_width">폭</string>
     <string name="equalizer_screen_title">이퀄라이저</string>
     <string name="equalizer_section_effects">음향 효과</string>
     <string name="equalizer_section_eq">이퀄라이저</string>

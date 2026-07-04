@@ -986,6 +986,8 @@
     <string name="player_queue_title">Aktuelle Warteschlange</string>
     <string name="player_hide_pronunciation">Aussprache ausblenden</string>
     <string name="player_show_pronunciation">Aussprache anzeigen</string>
+    <string name="player_pronunciation_below">Aussprache unten anzeigen</string>
+    <string name="player_pronunciation_above">Aussprache oben anzeigen</string>
     <string name="player_hide_translation">Übersetzung ausblenden</string>
     <string name="player_show_translation">Übersetzung anzeigen</string>
     <string name="player_disable_keep_screen_on">Dauerhaft aktiven Liedtextbildschirm deaktivieren</string>
@@ -1369,6 +1371,18 @@
     <string name="equalizer_preset">Voreinstellung</string>
     <string name="equalizer_preset_custom">Benutzerdefiniert</string>
     <string name="equalizer_reset">Zurücksetzen</string>
+    <string name="equalizer_section_parametric">Parametrischer EQ</string>
+    <string name="equalizer_eq_q">Band-Q (Bandbreite)</string>
+    <string name="equalizer_section_tone">Klang</string>
+    <string name="equalizer_tone_bass">Bass</string>
+    <string name="equalizer_tone_treble">Höhen</string>
+    <string name="equalizer_section_compressor">Kompressor</string>
+    <string name="equalizer_compressor_enable">Kompressor aktivieren</string>
+    <string name="equalizer_compressor_threshold">Schwellenwert</string>
+    <string name="equalizer_compressor_ratio">Verhältnis</string>
+    <string name="equalizer_compressor_makeup">Makeup-Gain</string>
+    <string name="equalizer_section_stereo">Stereobreite</string>
+    <string name="equalizer_stereo_width">Breite</string>
     <string name="equalizer_screen_title">Equalizer</string>
     <string name="equalizer_section_effects">Effekte</string>
     <string name="equalizer_section_eq">Equalizer</string>

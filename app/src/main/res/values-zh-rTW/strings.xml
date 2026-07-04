@@ -986,6 +986,8 @@
     <string name="player_queue_title">目前播放佇列</string>
     <string name="player_hide_pronunciation">隱藏發音</string>
     <string name="player_show_pronunciation">顯示發音</string>
+    <string name="player_pronunciation_below">發音顯示在下方</string>
+    <string name="player_pronunciation_above">發音顯示在上方</string>
     <string name="player_hide_translation">隱藏翻譯</string>
     <string name="player_show_translation">顯示翻譯</string>
     <string name="player_disable_keep_screen_on">關閉歌詞頁永不休眠</string>
@@ -1369,6 +1371,18 @@
     <string name="equalizer_preset">預設</string>
     <string name="equalizer_preset_custom">自訂</string>
     <string name="equalizer_reset">重設</string>
+    <string name="equalizer_section_parametric">參數等化</string>
+    <string name="equalizer_eq_q">頻帶 Q（頻寬）</string>
+    <string name="equalizer_section_tone">音色</string>
+    <string name="equalizer_tone_bass">低音</string>
+    <string name="equalizer_tone_treble">高音</string>
+    <string name="equalizer_section_compressor">壓縮器</string>
+    <string name="equalizer_compressor_enable">啟用壓縮器</string>
+    <string name="equalizer_compressor_threshold">閾值</string>
+    <string name="equalizer_compressor_ratio">壓縮比</string>
+    <string name="equalizer_compressor_makeup">增益補償</string>
+    <string name="equalizer_section_stereo">立體聲寬度</string>
+    <string name="equalizer_stereo_width">寬度</string>
     <string name="equalizer_screen_title">等化器</string>
     <string name="equalizer_section_effects">音效</string>
     <string name="equalizer_section_eq">等化器</string>

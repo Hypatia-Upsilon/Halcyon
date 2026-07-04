@@ -1074,6 +1074,8 @@
     <string name="player_queue_title">Now playing queue</string>
     <string name="player_hide_pronunciation">Hide pronunciation</string>
     <string name="player_show_pronunciation">Show pronunciation</string>
+    <string name="player_pronunciation_below">Pronunciation shown below</string>
+    <string name="player_pronunciation_above">Pronunciation shown above</string>
     <string name="player_hide_translation">Hide translation</string>
     <string name="player_show_translation">Show translation</string>
     <string name="player_disable_keep_screen_on">Disable lyrics screen always-on</string>
@@ -1467,6 +1469,18 @@
     <string name="equalizer_preset">Preset</string>
     <string name="equalizer_preset_custom">Custom</string>
     <string name="equalizer_reset">Reset</string>
+    <string name="equalizer_section_parametric">Parametric EQ</string>
+    <string name="equalizer_eq_q">Band Q (bandwidth)</string>
+    <string name="equalizer_section_tone">Tone</string>
+    <string name="equalizer_tone_bass">Bass</string>
+    <string name="equalizer_tone_treble">Treble</string>
+    <string name="equalizer_section_compressor">Compressor</string>
+    <string name="equalizer_compressor_enable">Enable compressor</string>
+    <string name="equalizer_compressor_threshold">Threshold</string>
+    <string name="equalizer_compressor_ratio">Ratio</string>
+    <string name="equalizer_compressor_makeup">Makeup gain</string>
+    <string name="equalizer_section_stereo">Stereo width</string>
+    <string name="equalizer_stereo_width">Width</string>
     <string name="equalizer_reverb">Reverb</string>
     <string name="equalizer_reverb_off">Off</string>
     <string name="equalizer_reverb_studio">Studio</string>

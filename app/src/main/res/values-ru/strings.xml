@@ -984,6 +984,8 @@
     <string name="player_queue_title">Сейчас играю в очереди</string>
     <string name="player_hide_pronunciation">Скрыть произношение</string>
     <string name="player_show_pronunciation">Показать произношение</string>
+    <string name="player_pronunciation_below">Произношение снизу</string>
+    <string name="player_pronunciation_above">Произношение сверху</string>
     <string name="player_hide_translation">Скрыть перевод</string>
     <string name="player_show_translation">Показать перевод</string>
     <string name="player_disable_keep_screen_on">Отключить экран текстов песен всегда включенным</string>
@@ -1356,6 +1358,18 @@
     <string name="equalizer_preset">Пресет</string>
     <string name="equalizer_preset_custom">Свой</string>
     <string name="equalizer_reset">Сбросить</string>
+    <string name="equalizer_section_parametric">Параметрический эквалайзер</string>
+    <string name="equalizer_eq_q">Добротность полосы (Q)</string>
+    <string name="equalizer_section_tone">Тембр</string>
+    <string name="equalizer_tone_bass">Бас</string>
+    <string name="equalizer_tone_treble">Высокие частоты</string>
+    <string name="equalizer_section_compressor">Компрессор</string>
+    <string name="equalizer_compressor_enable">Включить компрессор</string>
+    <string name="equalizer_compressor_threshold">Порог</string>
+    <string name="equalizer_compressor_ratio">Коэффициент сжатия</string>
+    <string name="equalizer_compressor_makeup">Компенсация усиления</string>
+    <string name="equalizer_section_stereo">Ширина стерео</string>
+    <string name="equalizer_stereo_width">Ширина</string>
     <string name="equalizer_screen_title">Эквалайзер</string>
     <string name="equalizer_section_effects">Эффекты</string>
     <string name="equalizer_section_eq">Эквалайзер</string>

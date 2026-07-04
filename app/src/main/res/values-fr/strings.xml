@@ -986,6 +986,8 @@
     <string name="player_queue_title">File de lecture en cours</string>
     <string name="player_hide_pronunciation">Masquer la prononciation</string>
     <string name="player_show_pronunciation">Afficher la prononciation</string>
+    <string name="player_pronunciation_below">Prononciation affichée en dessous</string>
+    <string name="player_pronunciation_above">Prononciation affichée au-dessus</string>
     <string name="player_hide_translation">Masquer la traduction</string>
     <string name="player_show_translation">Afficher la traduction</string>
     <string name="player_disable_keep_screen_on">Désactiver l’écran toujours allumé pour les paroles</string>
@@ -1369,6 +1371,18 @@
     <string name="equalizer_preset">Préréglage</string>
     <string name="equalizer_preset_custom">Personnalisé</string>
     <string name="equalizer_reset">Réinitialiser</string>
+    <string name="equalizer_section_parametric">Égaliseur paramétrique</string>
+    <string name="equalizer_eq_q">Q de bande (largeur de bande)</string>
+    <string name="equalizer_section_tone">Tonalité</string>
+    <string name="equalizer_tone_bass">Graves</string>
+    <string name="equalizer_tone_treble">Aigus</string>
+    <string name="equalizer_section_compressor">Compresseur</string>
+    <string name="equalizer_compressor_enable">Activer le compresseur</string>
+    <string name="equalizer_compressor_threshold">Seuil</string>
+    <string name="equalizer_compressor_ratio">Ratio</string>
+    <string name="equalizer_compressor_makeup">Gain de compensation</string>
+    <string name="equalizer_section_stereo">Largeur stéréo</string>
+    <string name="equalizer_stereo_width">Largeur</string>
     <string name="equalizer_screen_title">Égaliseur</string>
     <string name="equalizer_section_effects">Effets</string>
     <string name="equalizer_section_eq">Égaliseur</string>

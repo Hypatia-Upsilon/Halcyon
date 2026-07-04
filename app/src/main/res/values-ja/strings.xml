@@ -986,6 +986,8 @@
     <string name="player_queue_title">現在の再生キュー</string>
     <string name="player_hide_pronunciation">読み仮名を非表示</string>
     <string name="player_show_pronunciation">読み仮名を表示</string>
+    <string name="player_pronunciation_below">読み仮名を下に表示</string>
+    <string name="player_pronunciation_above">読み仮名を上に表示</string>
     <string name="player_hide_translation">翻訳を非表示</string>
     <string name="player_show_translation">翻訳を表示</string>
     <string name="player_disable_keep_screen_on">歌詞ページの画面常時オンを解除</string>
@@ -1369,6 +1371,18 @@
     <string name="equalizer_preset">プリセット</string>
     <string name="equalizer_preset_custom">カスタム</string>
     <string name="equalizer_reset">リセット</string>
+    <string name="equalizer_section_parametric">パラメトリックEQ</string>
+    <string name="equalizer_eq_q">バンド Q（帯域幅）</string>
+    <string name="equalizer_section_tone">音色</string>
+    <string name="equalizer_tone_bass">低音</string>
+    <string name="equalizer_tone_treble">高音</string>
+    <string name="equalizer_section_compressor">コンプレッサー</string>
+    <string name="equalizer_compressor_enable">コンプレッサーを有効化</string>
+    <string name="equalizer_compressor_threshold">スレッショルド</string>
+    <string name="equalizer_compressor_ratio">レシオ</string>
+    <string name="equalizer_compressor_makeup">メイクアップゲイン</string>
+    <string name="equalizer_section_stereo">ステレオ幅</string>
+    <string name="equalizer_stereo_width">幅</string>
     <string name="equalizer_screen_title">イコライザー</string>
     <string name="equalizer_section_effects">音響効果</string>
     <string name="equalizer_section_eq">イコライザー</string>
