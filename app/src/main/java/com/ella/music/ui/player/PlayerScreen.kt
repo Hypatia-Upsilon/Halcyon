@@ -704,6 +704,7 @@ fun PlayerScreen(
                         modifier = pageModifier
                     )
                 },
+                playerVisible = playerVisible,
                 modifier = Modifier.fillMaxSize()
             )
 

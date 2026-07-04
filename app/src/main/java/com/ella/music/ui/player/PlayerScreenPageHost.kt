@@ -52,6 +52,7 @@ internal fun PlayerScreenPageHost(
     coverPage: @Composable (onShowLyrics: () -> Unit, Modifier) -> Unit,
     lyricsPage: @Composable (onDismissLyrics: () -> Unit, enableSwipeDismiss: Boolean, backEnabled: Boolean, Modifier) -> Unit,
     detailPage: @Composable (Modifier) -> Unit,
+    playerVisible: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     if (immersiveAlbumCover) {
@@ -69,7 +70,12 @@ internal fun PlayerScreenPageHost(
             )
         }
     } else {
-        BackHandler(enabled = pagerState.currentPage != PLAYER_PAGE_COVER) {
+        // Only intercept back to return the pager to the cover page while the player surface is
+        // actually visible. The player stays resident (composed, slid off-screen) after it's closed;
+        // if this handler stayed enabled while the pager was parked on a side page (e.g. after
+        // tapping an artist/album on the info page navigated away), it would swallow the first back
+        // press on the destination screen, requiring a second press to actually go back.
+        BackHandler(enabled = playerVisible && pagerState.currentPage != PLAYER_PAGE_COVER) {
             onDismissPagedLyrics()
         }
         HorizontalPager(
