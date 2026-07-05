@@ -296,7 +296,8 @@ class PlaybackService : MediaLibraryService() {
                         compressorThresholdDb = settings.compressorThresholdDb.toFloat(),
                         compressorRatio = settings.compressorRatio.toFloat(),
                         compressorMakeupDb = settings.compressorMakeupDb.toFloat(),
-                        stereoWidth = settings.stereoWidth / 100f
+                        stereoWidth = settings.stereoWidth / 100f,
+                        reverbPreset = settings.reverbPreset
                     )
                 )
             }

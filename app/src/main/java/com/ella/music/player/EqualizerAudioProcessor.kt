@@ -4,6 +4,7 @@ import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
 import com.ella.music.dsp.Compressor
+import com.ella.music.dsp.Reverb
 import com.ella.music.dsp.ShelfEqualizer
 import com.ella.music.dsp.StereoWidener
 import com.ella.music.dsp.TenBandEqualizer
@@ -27,7 +28,8 @@ data class EqualizerSettings(
     val compressorThresholdDb: Float = -18f,
     val compressorRatio: Float = 2f,
     val compressorMakeupDb: Float = 0f,
-    val stereoWidth: Float = 1f
+    val stereoWidth: Float = 1f,
+    val reverbPreset: Int = 0
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -41,7 +43,8 @@ data class EqualizerSettings(
             compressorThresholdDb == other.compressorThresholdDb &&
             compressorRatio == other.compressorRatio &&
             compressorMakeupDb == other.compressorMakeupDb &&
-            stereoWidth == other.stereoWidth
+            stereoWidth == other.stereoWidth &&
+            reverbPreset == other.reverbPreset
     }
 
     override fun hashCode(): Int {
@@ -55,6 +58,7 @@ data class EqualizerSettings(
         result = 31 * result + compressorRatio.hashCode()
         result = 31 * result + compressorMakeupDb.hashCode()
         result = 31 * result + stereoWidth.hashCode()
+        result = 31 * result + reverbPreset
         return result
     }
 
@@ -80,6 +84,7 @@ class EqualizerAudioProcessor : AudioProcessor {
     private var shelf: ShelfEqualizer? = null
     private var compressor: Compressor? = null
     private val stereoWidener = StereoWidener()
+    private var reverb: Reverb? = null
 
     private var outputBuffer: ByteBuffer = EMPTY_BUFFER
     private var inputEnded = false
@@ -111,6 +116,7 @@ class EqualizerAudioProcessor : AudioProcessor {
         )
         shelf = ShelfEqualizer(inputAudioFormat.sampleRate, inputAudioFormat.channelCount)
         compressor = Compressor(inputAudioFormat.sampleRate, inputAudioFormat.channelCount)
+        reverb = Reverb(inputAudioFormat.sampleRate, inputAudioFormat.channelCount)
         applySettings(force = true)
         return outputAudioFormat
     }
@@ -149,6 +155,7 @@ class EqualizerAudioProcessor : AudioProcessor {
         shelf?.process(tempFloatBuffer, frames)
         compressor?.process(tempFloatBuffer, frames)
         stereoWidener.process(tempFloatBuffer, frames, channels)
+        reverb?.process(tempFloatBuffer, frames)
 
         // float -> 16-bit PCM, matching RawS-Music's conversion sign handling.
         outputBuffer = replaceOutputBuffer(remaining)
@@ -187,6 +194,7 @@ class EqualizerAudioProcessor : AudioProcessor {
         equalizer?.reset()
         shelf?.reset()
         compressor?.reset()
+        reverb?.reset()
         applySettings(force = true)
     }
 
@@ -197,6 +205,7 @@ class EqualizerAudioProcessor : AudioProcessor {
         equalizer = null
         shelf = null
         compressor = null
+        reverb = null
         reusableOutputBuffer = null
     }
 
@@ -220,6 +229,7 @@ class EqualizerAudioProcessor : AudioProcessor {
             settings.compressorMakeupDb
         )
         stereoWidener.setWidth(settings.stereoWidth)
+        reverb?.setPreset(settings.reverbPreset)
         lastAppliedSettings = settings
     }
 

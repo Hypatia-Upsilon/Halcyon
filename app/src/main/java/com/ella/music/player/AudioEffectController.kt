@@ -93,10 +93,10 @@ data class EqualizerCapabilities(
             minLevelMb = -1500,
             maxLevelMb = 1500,
             presetNames = emptyList(),
-            presetBandLevelsMb = emptyList(),
+            presetBandLevelsMb = FIXED_EQ_PRESET_BAND_LEVELS_MB,
             bassBoostSupported = false,
             virtualizerSupported = false,
-            reverbSupported = false,
+            reverbSupported = true,
             bassBoostStrengthAdjustable = false,
             virtualizerStrengthAdjustable = false
         )
@@ -132,6 +132,29 @@ object AudioEffectState {
 
 const val FIXED_EQ_BAND_COUNT = 10
 val FIXED_EQ_CENTER_FREQS_HZ = listOf(31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000)
+
+/**
+ * Built-in graphic-EQ presets, ordered to match the preset-name string list in the settings UI.
+ * Each row is the per-band gain in dB for the 10 [FIXED_EQ_CENTER_FREQS_HZ] bands; the UI supplies
+ * the localized display names.
+ */
+private val FIXED_EQ_PRESET_BAND_LEVELS_DB: List<List<Int>> = listOf(
+    listOf(5, 4, 3, 1, -1, -1, 1, 3, 4, 5),      // Rock
+    listOf(-1, 0, 2, 4, 4, 3, 1, 0, -1, -1),     // Pop
+    listOf(4, 3, 1, 2, -1, -1, 0, 1, 3, 4),      // Jazz
+    listOf(5, 4, 3, 2, -1, -1, 0, 2, 3, 4),      // Classical
+    listOf(6, 5, 3, 0, 0, -1, -2, -1, 2, 4),     // Dance
+    listOf(5, 4, 1, 0, -2, 2, 1, 1, 4, 5),       // Electronic
+    listOf(6, 5, 3, 2, -1, -1, 1, 0, 2, 3),      // Hip-Hop
+    listOf(-2, -1, 0, 2, 4, 4, 3, 2, 0, -1),     // Vocal
+    listOf(4, 4, 2, 1, 2, 2, 3, 3, 2, 1),        // Acoustic
+    listOf(7, 6, 5, 3, 1, 0, 0, 0, 0, 0),        // Bass Boost
+    listOf(0, 0, 0, 0, 0, 1, 3, 5, 6, 7)         // Treble Boost
+)
+
+/** Preset band levels expressed in millibels (1 dB = 100 mB) as consumed by the settings UI. */
+val FIXED_EQ_PRESET_BAND_LEVELS_MB: List<List<Int>> =
+    FIXED_EQ_PRESET_BAND_LEVELS_DB.map { levels -> levels.map { it * 100 } }
 
 /**
  * Owns the legacy system audio effects ([BassBoost], [Virtualizer]) for playback.
@@ -194,7 +217,7 @@ class AudioEffectController {
         return EqualizerCapabilities.Fixed.copy(
             bassBoostSupported = bassBoost != null,
             virtualizerSupported = virtualizer != null,
-            reverbSupported = false,
+            reverbSupported = true,
             bassBoostStrengthAdjustable = runCatching { bassBoost?.strengthSupported == true }.getOrDefault(false),
             virtualizerStrengthAdjustable = runCatching { virtualizer?.strengthSupported == true }.getOrDefault(false)
         )

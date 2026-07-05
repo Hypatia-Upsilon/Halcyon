@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -74,6 +75,7 @@ fun EqualizerScreen(
     val compressorRatio by settingsManager.compressorRatio.collectAsState(initial = 2)
     val compressorMakeupDb by settingsManager.compressorMakeupDb.collectAsState(initial = 0)
     val stereoWidth by settingsManager.stereoWidth.collectAsState(initial = 100)
+    val reverbPreset by settingsManager.reverbPreset.collectAsState(initial = AudioEffectSettings.REVERB_PRESET_OFF)
 
     val accent = MiuixTheme.colorScheme.primary
 
@@ -142,11 +144,14 @@ fun EqualizerScreen(
                             onCheckedChange = { scope.launch { settingsManager.setEqEnabled(it) } }
                         )
 
+                        val presetNames = eqPresetDisplayNames()
                         val presetItems = buildList {
                             add(DropdownItem(title = stringResource(R.string.equalizer_preset_custom)))
-                            caps.presetNames.forEach { add(DropdownItem(title = it)) }
+                            presetNames.forEachIndexed { index, name ->
+                                if (index in caps.presetBandLevelsMb.indices) add(DropdownItem(title = name))
+                            }
                         }
-                        val selectedPresetIndex = if (eqPreset in caps.presetNames.indices) eqPreset + 1 else 0
+                        val selectedPresetIndex = if (eqPreset in caps.presetBandLevelsMb.indices) eqPreset + 1 else 0
                         WindowSpinnerPreference(
                             title = stringResource(R.string.equalizer_preset),
                             items = presetItems,
@@ -218,6 +223,9 @@ fun EqualizerScreen(
                         onChange = { scope.launch { settingsManager.setEqQ(it) } }
                     )
                 }
+                SectionResetLink(accent) {
+                    scope.launch { settingsManager.setEqQ(AudioEffectSettings.EQ_Q_DEFAULT) }
+                }
 
                 SmallTitle(text = stringResource(R.string.equalizer_section_tone))
                 SettingsCardGroup {
@@ -236,6 +244,12 @@ fun EqualizerScreen(
                             range = AudioEffectSettings.TONE_GAIN_MIN_DB..AudioEffectSettings.TONE_GAIN_MAX_DB,
                             onChange = { scope.launch { settingsManager.setToneTrebleDb(it) } }
                         )
+                    }
+                }
+                SectionResetLink(accent) {
+                    scope.launch {
+                        settingsManager.setToneBassDb(0)
+                        settingsManager.setToneTrebleDb(0)
                     }
                 }
 
@@ -272,6 +286,14 @@ fun EqualizerScreen(
                         }
                     }
                 }
+                SectionResetLink(accent) {
+                    scope.launch {
+                        settingsManager.setCompressorEnabled(false)
+                        settingsManager.setCompressorThresholdDb(-18)
+                        settingsManager.setCompressorRatio(2)
+                        settingsManager.setCompressorMakeupDb(0)
+                    }
+                }
 
                 SmallTitle(text = stringResource(R.string.equalizer_section_stereo))
                 SettingsCardGroup {
@@ -281,6 +303,27 @@ fun EqualizerScreen(
                         value = stereoWidth,
                         range = AudioEffectSettings.STEREO_WIDTH_MIN..AudioEffectSettings.STEREO_WIDTH_MAX,
                         onChange = { scope.launch { settingsManager.setStereoWidth(it) } }
+                    )
+                }
+                SectionResetLink(accent) {
+                    scope.launch { settingsManager.setStereoWidth(100) }
+                }
+
+                SmallTitle(text = stringResource(R.string.equalizer_reverb))
+                SettingsCardGroup {
+                    val reverbEntries = reverbPresetEntries()
+                    val selectedReverbIndex = reverbEntries
+                        .indexOfFirst { it.first == reverbPreset }
+                        .coerceAtLeast(0)
+                    WindowSpinnerPreference(
+                        title = stringResource(R.string.equalizer_reverb),
+                        items = reverbEntries.map { DropdownItem(title = it.second) },
+                        selectedIndex = selectedReverbIndex,
+                        onSelectedIndexChange = { index ->
+                            reverbEntries.getOrNull(index)?.let { entry ->
+                                scope.launch { settingsManager.setReverbPreset(entry.first) }
+                            }
+                        }
                     )
                 }
             }
@@ -356,6 +399,50 @@ private fun EqControlSlider(
         )
     }
 }
+
+@Composable
+private fun ColumnScope.SectionResetLink(accent: Color, onReset: () -> Unit) {
+    Text(
+        text = stringResource(R.string.equalizer_reset_section),
+        color = accent,
+        fontSize = 13.sp,
+        modifier = Modifier
+            .align(Alignment.End)
+            .padding(end = 8.dp, top = 2.dp, bottom = 6.dp)
+            .pointerInput(Unit) {
+                detectTapGestures { onReset() }
+            }
+    )
+}
+
+/** Localized graphic-EQ preset names, aligned with FIXED_EQ_PRESET_BAND_LEVELS_MB order. */
+@Composable
+private fun eqPresetDisplayNames(): List<String> = listOf(
+    stringResource(R.string.equalizer_preset_rock),
+    stringResource(R.string.equalizer_preset_pop),
+    stringResource(R.string.equalizer_preset_jazz),
+    stringResource(R.string.equalizer_preset_classical),
+    stringResource(R.string.equalizer_preset_dance),
+    stringResource(R.string.equalizer_preset_electronic),
+    stringResource(R.string.equalizer_preset_hiphop),
+    stringResource(R.string.equalizer_preset_vocal),
+    stringResource(R.string.equalizer_preset_acoustic),
+    stringResource(R.string.equalizer_preset_bass_boost),
+    stringResource(R.string.equalizer_preset_treble_boost)
+)
+
+/** Reverb presets in display order, paired with their AudioEffectSettings.REVERB_PRESET_* id. */
+@Composable
+private fun reverbPresetEntries(): List<Pair<Int, String>> = listOf(
+    AudioEffectSettings.REVERB_PRESET_OFF to stringResource(R.string.equalizer_reverb_off),
+    AudioEffectSettings.REVERB_PRESET_STUDIO to stringResource(R.string.equalizer_reverb_studio),
+    AudioEffectSettings.REVERB_PRESET_SMALL_ROOM to stringResource(R.string.equalizer_reverb_small_room),
+    AudioEffectSettings.REVERB_PRESET_MEDIUM_ROOM to stringResource(R.string.equalizer_reverb_medium_room),
+    AudioEffectSettings.REVERB_PRESET_LARGE_ROOM to stringResource(R.string.equalizer_reverb_large_room),
+    AudioEffectSettings.REVERB_PRESET_HALL to stringResource(R.string.equalizer_reverb_hall),
+    AudioEffectSettings.REVERB_PRESET_CHURCH to stringResource(R.string.equalizer_reverb_church),
+    AudioEffectSettings.REVERB_PRESET_PLATE to stringResource(R.string.equalizer_reverb_plate)
+)
 
 private fun formatGainDbInt(db: Int): String = if (db > 0) "+$db dB" else "$db dB"
 
