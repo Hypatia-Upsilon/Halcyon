@@ -28,6 +28,18 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaType
 
 /**
+ * OkHttp client used for plugin host HTTP calls. Uses tight timeouts (and an overall call
+ * timeout) so a single slow/unreachable lyric source can't stall the whole search — searches run
+ * across sources in parallel, so the worst case is bounded by the slowest *responsive* source.
+ */
+private fun defaultPluginHttpClient(): OkHttpClient = OkHttpClient.Builder()
+    .connectTimeout(5, TimeUnit.SECONDS)
+    .readTimeout(6, TimeUnit.SECONDS)
+    .writeTimeout(6, TimeUnit.SECONDS)
+    .callTimeout(8, TimeUnit.SECONDS)
+    .build()
+
+/**
  * Pure-Kotlin implementation of the Platform.* host calls a Lyrico plugin makes. Engine-agnostic:
  * the JS side calls `__hostCall(name, payloadJson)` and this maps it to http/crypto/xml/log work.
  * Ported from Lyrico so the existing plugins run unchanged.
@@ -36,7 +48,7 @@ import okhttp3.MediaType.Companion.toMediaType
 class QuickJsHostApi(
     private val appInfo: HostAppInfo = HostAppInfo(),
     private val runtimeInfo: HostRuntimeInfo = HostRuntimeInfo(),
-    private val okHttpClient: OkHttpClient = OkHttpClient(),
+    private val okHttpClient: OkHttpClient = defaultPluginHttpClient(),
     private val json: Json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true

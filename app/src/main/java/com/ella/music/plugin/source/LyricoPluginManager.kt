@@ -4,6 +4,9 @@ import android.content.Context
 import android.net.Uri
 import com.ella.music.data.SettingsManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
@@ -39,12 +42,19 @@ class LyricoPluginManager(
     }
 
     suspend fun searchSongs(keyword: String, pageSizePerSource: Int = 8): List<PluginSearchHit> = withContext(Dispatchers.IO) {
-        enabledSources().flatMap { source ->
-            ScriptSearchSource(source, configStore.loadConfig(source.manifest)).use { runtime ->
-                runtime.searchSongs(keyword, pageSize = pageSizePerSource).map { result ->
-                    PluginSearchHit(source.manifest.id, source.manifest.name, result)
+        // Query every enabled source in parallel so total search time is bounded by the slowest
+        // responsive source, not the sum of all of them; a single slow/dead source (capped by the
+        // plugin HTTP client's call timeout) can no longer stall the whole search.
+        coroutineScope {
+            enabledSources().map { source ->
+                async {
+                    ScriptSearchSource(source, configStore.loadConfig(source.manifest)).use { runtime ->
+                        runtime.searchSongs(keyword, pageSize = pageSizePerSource).map { result ->
+                            PluginSearchHit(source.manifest.id, source.manifest.name, result)
+                        }
+                    }
                 }
-            }
+            }.awaitAll().flatten()
         }
     }
 
