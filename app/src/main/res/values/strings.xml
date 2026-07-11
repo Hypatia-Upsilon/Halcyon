@@ -1725,4 +1725,6 @@
     <string name="settings_hide_system_bars_summary">进入全屏沉浸，隐藏系统状态栏与导航栏，适合车机等场景</string>
     <string name="settings_player_bg_theme">播放页背景</string>
 
+    <string name="settings_apple_music_lyrics_page">Apple Music 风格歌词页</string>
+    <string name="settings_apple_music_lyrics_page_summary">使用内建焦点歌词、弹簧过渡和光晕效果；关闭后使用原词幕歌词页</string>
 </resources>
