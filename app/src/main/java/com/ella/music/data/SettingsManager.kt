@@ -232,6 +232,7 @@ class SettingsManager(private val context: Context) {
         val KEY_SHORTCUT_LIBRARY_LABEL = stringPreferencesKey("shortcut_library_label")
         val KEY_SHORTCUT_PLAYLISTS_LABEL = stringPreferencesKey("shortcut_playlists_label")
         val KEY_SHORTCUT_FOLDER_LABEL = stringPreferencesKey("shortcut_folder_label")
+        val KEY_APP_SHORTCUT_ORDER = stringPreferencesKey("app_shortcut_order")
         val KEY_WEBDAV_URL = stringPreferencesKey("webdav_url")
         val KEY_WEBDAV_USERNAME = stringPreferencesKey("webdav_username")
         val KEY_WEBDAV_PASSWORD = stringPreferencesKey("webdav_password")
@@ -501,6 +502,52 @@ class SettingsManager(private val context: Context) {
         const val DEFAULT_SHORTCUT_PLAYLISTS_LABEL = "歌单"
         const val DEFAULT_SHORTCUT_FOLDER_LABEL = "文件夹"
 
+        // Android 7.1+ dynamic shortcuts. Keep the identifiers independent from the screen
+        // routes so an existing launcher shortcut does not change identity when a route evolves.
+        const val APP_SHORTCUT_LIBRARY = "library"
+        const val APP_SHORTCUT_SEARCH = "search"
+        const val APP_SHORTCUT_PLAY = "play"
+        const val APP_SHORTCUT_SHUFFLE_ALL = "shuffle_all"
+        const val APP_SHORTCUT_PLAYLISTS = "playlists"
+        const val APP_SHORTCUT_FOLDERS = "folders"
+        const val APP_SHORTCUT_FOLDER_TREE = "folder_tree"
+        const val APP_SHORTCUT_FOLDER_PLAYLISTS = "folder_playlists"
+        const val APP_SHORTCUT_ALBUMS = "albums"
+        const val APP_SHORTCUT_ARTISTS = "artists"
+        const val APP_SHORTCUT_GENRES = "genres"
+        const val APP_SHORTCUT_YEARS = "years"
+        const val APP_SHORTCUT_COMPOSERS = "composers"
+        const val APP_SHORTCUT_LYRICISTS = "lyricists"
+        const val APP_SHORTCUT_ANALYTICS = "analytics"
+        const val APP_SHORTCUT_SCAN_SETTINGS = "scan_settings"
+        const val APP_SHORTCUT_SETTINGS = "settings"
+        const val MAX_APP_SHORTCUTS = 5
+        val APP_SHORTCUT_IDS = listOf(
+            APP_SHORTCUT_LIBRARY,
+            APP_SHORTCUT_SEARCH,
+            APP_SHORTCUT_PLAY,
+            APP_SHORTCUT_SHUFFLE_ALL,
+            APP_SHORTCUT_PLAYLISTS,
+            APP_SHORTCUT_FOLDERS,
+            APP_SHORTCUT_FOLDER_TREE,
+            APP_SHORTCUT_FOLDER_PLAYLISTS,
+            APP_SHORTCUT_ALBUMS,
+            APP_SHORTCUT_ARTISTS,
+            APP_SHORTCUT_GENRES,
+            APP_SHORTCUT_YEARS,
+            APP_SHORTCUT_COMPOSERS,
+            APP_SHORTCUT_LYRICISTS,
+            APP_SHORTCUT_ANALYTICS,
+            APP_SHORTCUT_SCAN_SETTINGS,
+            APP_SHORTCUT_SETTINGS
+        )
+        val DEFAULT_APP_SHORTCUT_ORDER = listOf(
+            APP_SHORTCUT_LIBRARY,
+            APP_SHORTCUT_SEARCH,
+            APP_SHORTCUT_PLAY,
+            APP_SHORTCUT_SHUFFLE_ALL
+        )
+
         @StringRes
         val DEFAULT_SHORTCUT_LIBRARY_LABEL_RES = R.string.settings_shortcut_library
         @StringRes
@@ -581,6 +628,16 @@ class SettingsManager(private val context: Context) {
                 .ifEmpty { DEFAULT_BOTTOM_DOCK_ITEMS.split(',') }
                 .joinToString(",")
         }
+
+        fun normalizeAppShortcutOrder(value: String): List<String> =
+            value
+                .split(',', '，', ';', '；', '\n')
+                .asSequence()
+                .map { it.trim().lowercase(Locale.ROOT) }
+                .filter { it in APP_SHORTCUT_IDS }
+                .distinct()
+                .take(MAX_APP_SHORTCUTS)
+                .toList()
     }
 
     private fun Int.coerceInOplusLyricMode(): Int =
@@ -982,6 +1039,12 @@ class SettingsManager(private val context: Context) {
         context.dataStore.data.map { it[KEY_SHORTCUT_PLAYLISTS_LABEL] ?: DEFAULT_SHORTCUT_PLAYLISTS_LABEL }
     val shortcutFolderLabel: Flow<String> =
         context.dataStore.data.map { it[KEY_SHORTCUT_FOLDER_LABEL] ?: DEFAULT_SHORTCUT_FOLDER_LABEL }
+    val appShortcutOrder: Flow<List<String>> =
+        context.dataStore.data.map { preferences ->
+            preferences[KEY_APP_SHORTCUT_ORDER]
+                ?.let(::normalizeAppShortcutOrder)
+                ?: DEFAULT_APP_SHORTCUT_ORDER
+        }
     val webDavUrl: Flow<String> = context.dataStore.data.map { it[KEY_WEBDAV_URL] ?: "" }
     val webDavUsername: Flow<String> = context.dataStore.data.map { it[KEY_WEBDAV_USERNAME] ?: "" }
     val webDavPassword: Flow<String> = context.dataStore.data.map { it[KEY_WEBDAV_PASSWORD] ?: "" }
@@ -1833,6 +1896,15 @@ class SettingsManager(private val context: Context) {
 
     suspend fun setShortcutFolderLabel(label: String) {
         setShortcutLabel(KEY_SHORTCUT_FOLDER_LABEL, label, DEFAULT_SHORTCUT_FOLDER_LABEL)
+    }
+
+    suspend fun setAppShortcutOrder(shortcutIds: List<String>) {
+        context.dataStore.edit {
+            // Persist an explicit empty value too: users may deliberately choose no dynamic
+            // shortcuts, while a missing preference means "keep the four legacy defaults".
+            it[KEY_APP_SHORTCUT_ORDER] = normalizeAppShortcutOrder(shortcutIds.joinToString(","))
+                .joinToString(",")
+        }
     }
 
     private suspend fun setShortcutLabel(
@@ -2729,6 +2801,7 @@ class SettingsManager(private val context: Context) {
             setString(KEY_SHORTCUT_LIBRARY_LABEL)
             setString(KEY_SHORTCUT_PLAYLISTS_LABEL)
             setString(KEY_SHORTCUT_FOLDER_LABEL)
+            setString(KEY_APP_SHORTCUT_ORDER)
             setString(KEY_LYRICO_PLUGIN_ENABLED_IDS)
             setString(KEY_SCAN_INCLUDE_FOLDERS)
             setString(KEY_SCAN_EXCLUDE_FOLDERS)

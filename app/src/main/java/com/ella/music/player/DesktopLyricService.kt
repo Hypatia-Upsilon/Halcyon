@@ -273,6 +273,11 @@ class DesktopLyricService : Service() {
             setOnTouchListener(::onDrag)
         }
 
+        // Must happen before WindowManager attaches the overlay. On some ROMs Compose creates
+        // its recomposer while dispatching the root LinearLayout's attach event, before the
+        // child view's onAttachedToWindow callback gets a chance to install this owner.
+        lyric.installLifecycleOwnerOn(root)
+
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         } else {

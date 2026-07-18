@@ -268,6 +268,7 @@ class MusicScanner(private val context: Context) {
         includeFolders: List<String> = emptyList(),
         excludeFolders: List<String> = emptyList(),
         deepMetadata: Boolean = false,
+        filesystemFallbackFolders: List<String> = includeFolders,
         onProgress: ((Int) -> Unit)? = null
     ): List<Song> = withContext(Dispatchers.IO) {
         val songs = mutableListOf<Song>()
@@ -292,7 +293,7 @@ class MusicScanner(private val context: Context) {
         }
         val mediaStoreSongCount = songs.size
         val fallbackItems = filesystemFallbackAudioItems(
-            includeFolders = includeFolders,
+            includeFolders = filesystemFallbackFolders,
             excludeFolders = excludeFolders,
             existingPaths = songs.map { it.path }.toSet()
         )
@@ -308,7 +309,7 @@ class MusicScanner(private val context: Context) {
         }
         Log.i(
             TAG,
-            "scanAllSongs mediaStore=$mediaStoreSongCount filesystemFallback=${songs.size - mediaStoreSongCount} total=${songs.size} deepMetadata=$deepMetadata"
+            "scanAllSongs mediaStore=$mediaStoreSongCount filesystemFallback=${songs.size - mediaStoreSongCount} total=${songs.size} deepMetadata=$deepMetadata fallbackFolders=${filesystemFallbackFolders.size}"
         )
         songs
     }

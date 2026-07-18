@@ -710,6 +710,10 @@
     <string name="song_more_metadata_saved">Titelmetadaten gespeichert</string>
     <string name="song_more_metadata_save_failed">Metadaten konnten nicht gespeichert werden</string>
     <string name="song_more_metadata_section_basic">Grundinfos</string>
+    <string name="song_more_metadata_section_lyrico">Lyrico-Onlineabgleich</string>
+    <string name="song_more_metadata_lyrico_title">Lyrico-Abgleich</string>
+    <string name="song_more_metadata_match_lyrico">Mit Lyrico abgleichen</string>
+    <string name="song_more_metadata_match_lyrico_summary">Durchsucht Online-Quellen für Songtexte. Das ausgewählte Ergebnis füllt Songtext und verfügbare Metadaten aus; zum Schreiben in die Audiodatei speichern.</string>
     <string name="song_more_metadata_section_track">Titelinfos</string>
     <string name="song_more_metadata_section_credits">Mitwirkende</string>
     <string name="song_more_metadata_section_rating">Bewertung</string>
@@ -860,6 +864,11 @@
     <string name="settings_shortcut_playlists">Suche</string>
     <string name="settings_shortcut_folder">Alles zufällig</string>
     <string name="settings_shortcut_summary">Verknüpfungslabel, das beim langen Drücken des App-Symbols im Launcher angezeigt wird</string>
+    <string name="settings_shortcuts_manage_summary">Wähle bis zu %1$d Verknüpfungen; gedrückt halten und ziehen, um sie zu sortieren</string>
+    <string name="settings_shortcuts_selected">Ausgewählte Verknüpfungen (%1$d/%2$d)</string>
+    <string name="settings_shortcuts_available">Verfügbare Verknüpfungen</string>
+    <string name="settings_shortcuts_empty">Keine Verknüpfung ausgewählt</string>
+    <string name="settings_shortcuts_add">Hinzufügen</string>
     <string name="settings_scan">Scannen</string>
     <string name="settings_auto_scan">Automatischer Scan</string>
     <string name="settings_auto_scan_summary">Musikdateien beim Start automatisch scannen</string>
@@ -1448,6 +1457,7 @@
     <string name="lyric_match_searching">Suche läuft…</string>
     <string name="lyric_match_fetching">Songtext wird geladen…</string>
     <string name="lyric_match_preview">Songtext-Vorschau</string>
+    <string name="lyric_match_apply_to_tag_editor">Im Tag-Editor übernehmen</string>
     <string name="lyric_match_no_results">Keine Treffer gefunden</string>
     <string name="lyric_match_no_sources">Aktiviere zuerst eine Online-Songtextquelle in den Einstellungen</string>
     <string name="lyric_match_remote_not_supported">Songtexte für Online-Titel können noch nicht geschrieben werden</string>

@@ -879,6 +879,10 @@
     <string name="song_more_metadata_cover_remove">移除封面</string>
     <string name="song_more_metadata_cover_remove_pending">保存后将移除内嵌封面</string>
     <string name="song_more_metadata_section_basic">基本信息</string>
+    <string name="song_more_metadata_section_lyrico">Lyrico 在线匹配</string>
+    <string name="song_more_metadata_lyrico_title">Lyrico 匹配</string>
+    <string name="song_more_metadata_match_lyrico">从 Lyrico 匹配</string>
+    <string name="song_more_metadata_match_lyrico_summary">搜索歌词在线源；选择结果后会填入歌词和可用歌曲信息，保存即可写入音乐文件。</string>
     <string name="song_more_metadata_section_track">音轨信息</string>
     <string name="song_more_metadata_section_credits">创作信息</string>
     <string name="song_more_metadata_section_rating">评分</string>
@@ -1101,6 +1105,11 @@
     <string name="settings_shortcut_playlists">搜索</string>
     <string name="settings_shortcut_folder">随机全部</string>
     <string name="settings_shortcut_summary">长按桌面图标时显示的快捷方式名称</string>
+    <string name="settings_shortcuts_manage_summary">选择最多 %1$d 个快捷方式；长按并拖动可调整顺序</string>
+    <string name="settings_shortcuts_selected">已选快捷方式（%1$d/%2$d）</string>
+    <string name="settings_shortcuts_available">可添加的快捷方式</string>
+    <string name="settings_shortcuts_empty">尚未添加快捷方式</string>
+    <string name="settings_shortcuts_add">添加</string>
     <string name="settings_scan">扫描</string>
     <string name="settings_auto_scan">自动扫描</string>
     <string name="settings_auto_scan_summary">启动时自动扫描音乐文件</string>
@@ -1724,6 +1733,7 @@
     <string name="lyric_match_include_translation">获取翻译</string>
     <string name="lyric_match_include_romanization">获取罗马音</string>
     <string name="lyric_match_preview">歌词预览</string>
+    <string name="lyric_match_apply_to_tag_editor">应用到标签编辑器</string>
     <string name="lyric_match_write_embedded">写入内嵌歌词</string>
     <string name="lyric_match_ttml_write_choice">这是 TTML 歌词，请选择写入的标签。</string>
     <string name="lyric_match_write_ttml_tag">写入 TTMLLYRIC 标签</string>

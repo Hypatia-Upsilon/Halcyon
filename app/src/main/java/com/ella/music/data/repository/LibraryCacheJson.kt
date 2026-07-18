@@ -1,5 +1,6 @@
 package com.ella.music.data.repository
 
+import android.util.AtomicFile
 import android.util.JsonReader
 import android.util.JsonToken
 import com.ella.music.data.model.Album
@@ -65,13 +66,18 @@ internal fun albumsToLibraryCacheJsonArray(albums: List<Album>): JSONArray {
  * multi-MB string plus thousands of transient objects, contributing to the cold-start GC spike.
  */
 internal fun readLibraryCacheSongs(file: File): List<Song> {
-    if (!file.exists()) return emptyList()
+    if (!hasLibraryCache(file)) return emptyList()
     val songs = ArrayList<Song>()
-    file.bufferedReader().use { reader ->
+    var foundSongsArray = false
+    // AtomicFile restores the previous complete snapshot if the process was killed in the
+    // middle of replacing the cache. A plain File reader would see a truncated JSON document
+    // after a crash (for example from an overlay service), leaving every album view empty.
+    AtomicFile(file).openRead().bufferedReader().use { reader ->
         JsonReader(reader).use { json ->
             json.beginObject()
             while (json.hasNext()) {
                 if (json.nextName() == "songs") {
+                    foundSongsArray = true
                     json.beginArray()
                     while (json.hasNext()) {
                         songs.add(json.readCacheSong())
@@ -84,7 +90,23 @@ internal fun readLibraryCacheSongs(file: File): List<Song> {
             json.endObject()
         }
     }
+    check(foundSongsArray) { "Library cache is missing its songs array: ${file.name}" }
     return songs
+}
+
+internal fun hasLibraryCache(file: File): Boolean =
+    file.exists() || File("${file.path}.bak").exists()
+
+internal fun writeLibraryCacheAtomically(file: File, json: String) {
+    val atomicFile = AtomicFile(file)
+    val stream = atomicFile.startWrite()
+    try {
+        stream.write(json.toByteArray(Charsets.UTF_8))
+        atomicFile.finishWrite(stream)
+    } catch (error: Throwable) {
+        atomicFile.failWrite(stream)
+        throw error
+    }
 }
 
 private fun JsonReader.readCacheSong(): Song {

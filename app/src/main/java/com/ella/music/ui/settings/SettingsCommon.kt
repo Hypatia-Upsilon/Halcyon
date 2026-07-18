@@ -9,7 +9,6 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -133,41 +132,17 @@ internal fun SettingsIntSliderPreference(
     onValueChange: (Int) -> Unit
 ) {
     val safeRange = valueRange.first.toFloat()..valueRange.last.toFloat()
-    val safeValue = value.coerceIn(valueRange)
-    // SliderPreference calls its callback for every pointer sample. Writing a DataStore preference
-    // from each sample feeds a new value straight back through every settings collector, which is
-    // why sliders used to hitch badly. Keep the thumb local and persist only after the finger has
-    // been still briefly; the last value is always flushed and external updates still win.
-    var localValue by remember(valueRange) { mutableIntStateOf(safeValue) }
-    var pendingPersistValue by remember(valueRange) { mutableStateOf<Int?>(null) }
-    LaunchedEffect(safeValue) {
-        when {
-            pendingPersistValue == safeValue -> {
-                pendingPersistValue = null
-                localValue = safeValue
-            }
-            pendingPersistValue == null && localValue != safeValue -> localValue = safeValue
-        }
-    }
-    LaunchedEffect(localValue, enabled) {
-        if (!enabled || localValue == safeValue) return@LaunchedEffect
-        delay(180)
-        if (localValue != safeValue) {
-            pendingPersistValue = localValue
-            onValueChange(localValue)
-        }
-    }
     SliderPreference(
         title = title,
         summary = summary,
         valueText = valueText,
-        value = localValue.toFloat(),
+        value = value.coerceIn(valueRange).toFloat(),
         valueRange = safeRange,
         steps = steps,
         showKeyPoints = steps > 0,
         enabled = enabled,
         onValueChange = { next ->
-            localValue = next.toInt().coerceIn(valueRange)
+            onValueChange(next.toInt().coerceIn(valueRange))
         }
     )
 }

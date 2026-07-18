@@ -710,6 +710,10 @@
     <string name="song_more_metadata_saved">曲メタデータを保存しました</string>
     <string name="song_more_metadata_save_failed">メタデータの保存に失敗しました</string>
     <string name="song_more_metadata_section_basic">基本情報</string>
+    <string name="song_more_metadata_section_lyrico">Lyrico オンライン照合</string>
+    <string name="song_more_metadata_lyrico_title">Lyrico 照合</string>
+    <string name="song_more_metadata_match_lyrico">Lyrico で照合</string>
+    <string name="song_more_metadata_match_lyrico_summary">オンライン歌詞ソースを検索します。選択した結果で歌詞と利用可能な曲情報を入力し、保存すると音楽ファイルに書き込みます。</string>
     <string name="song_more_metadata_section_track">トラック情報</string>
     <string name="song_more_metadata_section_credits">クレジット情報</string>
     <string name="song_more_metadata_section_rating">評価</string>
@@ -860,6 +864,11 @@
     <string name="settings_shortcut_playlists">検索</string>
     <string name="settings_shortcut_folder">シャッフル全曲</string>
     <string name="settings_shortcut_summary">デスクトップアイコンを長押しした際に表示されるショートカット名</string>
+    <string name="settings_shortcuts_manage_summary">最大 %1$d 個まで選択できます。長押ししてドラッグすると並べ替えできます</string>
+    <string name="settings_shortcuts_selected">選択中のショートカット（%1$d/%2$d）</string>
+    <string name="settings_shortcuts_available">追加できるショートカット</string>
+    <string name="settings_shortcuts_empty">ショートカットが選択されていません</string>
+    <string name="settings_shortcuts_add">追加</string>
     <string name="settings_scan">スキャン</string>
     <string name="settings_auto_scan">自動スキャン</string>
     <string name="settings_auto_scan_summary">起動時に自動的に音楽ファイルをスキャン</string>
@@ -1448,6 +1457,7 @@
     <string name="lyric_match_searching">検索中…</string>
     <string name="lyric_match_fetching">歌詞を取得中…</string>
     <string name="lyric_match_preview">歌詞プレビュー</string>
+    <string name="lyric_match_apply_to_tag_editor">タグエディターに適用</string>
     <string name="lyric_match_no_results">一致する結果が見つかりません</string>
     <string name="lyric_match_no_sources">先に設定でオンライン歌詞ソースを有効にしてください</string>
     <string name="lyric_match_remote_not_supported">オンライン楽曲への歌詞書き込みはまだ対応していません</string>

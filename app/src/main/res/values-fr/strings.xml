@@ -710,6 +710,10 @@
     <string name="song_more_metadata_saved">Métadonnées du titre enregistrées</string>
     <string name="song_more_metadata_save_failed">Échec de l’enregistrement des métadonnées</string>
     <string name="song_more_metadata_section_basic">Infos de base</string>
+    <string name="song_more_metadata_section_lyrico">Correspondance en ligne Lyrico</string>
+    <string name="song_more_metadata_lyrico_title">Correspondance Lyrico</string>
+    <string name="song_more_metadata_match_lyrico">Rechercher avec Lyrico</string>
+    <string name="song_more_metadata_match_lyrico_summary">Recherchez des sources de paroles en ligne. Le résultat sélectionné renseigne les paroles et les métadonnées disponibles ; enregistrez pour les écrire dans le fichier audio.</string>
     <string name="song_more_metadata_section_track">Infos de piste</string>
     <string name="song_more_metadata_section_credits">Crédits</string>
     <string name="song_more_metadata_section_rating">Note</string>
@@ -860,6 +864,11 @@
     <string name="settings_shortcut_playlists">Recherche</string>
     <string name="settings_shortcut_folder">Tout aléatoire</string>
     <string name="settings_shortcut_summary">Libellé du raccourci affiché lors d’un appui long sur l’icône de l’application dans le lanceur</string>
+    <string name="settings_shortcuts_manage_summary">Choisissez jusqu’à %1$d raccourcis ; maintenez et faites glisser pour réorganiser</string>
+    <string name="settings_shortcuts_selected">Raccourcis sélectionnés (%1$d/%2$d)</string>
+    <string name="settings_shortcuts_available">Raccourcis disponibles</string>
+    <string name="settings_shortcuts_empty">Aucun raccourci sélectionné</string>
+    <string name="settings_shortcuts_add">Ajouter</string>
     <string name="settings_scan">Analyse</string>
     <string name="settings_auto_scan">Analyse automatique</string>
     <string name="settings_auto_scan_summary">Analyser automatiquement les fichiers musicaux au démarrage</string>
@@ -1448,6 +1457,7 @@
     <string name="lyric_match_searching">Recherche…</string>
     <string name="lyric_match_fetching">Récupération des paroles…</string>
     <string name="lyric_match_preview">Aperçu des paroles</string>
+    <string name="lyric_match_apply_to_tag_editor">Appliquer à l’éditeur de tags</string>
     <string name="lyric_match_no_results">Aucun résultat trouvé</string>
     <string name="lyric_match_no_sources">Activez d\'abord une source de paroles en ligne dans les paramètres</string>
     <string name="lyric_match_remote_not_supported">L\'écriture des paroles pour les titres en ligne n\'est pas encore prise en charge</string>

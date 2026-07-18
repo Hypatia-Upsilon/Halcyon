@@ -75,6 +75,7 @@ import com.ella.music.ui.components.CreatePlaylistAndAddSheet
 import com.ella.music.ui.components.createPlaylistOrShowDuplicateToast
 import com.ella.music.ui.components.DefaultAlbumCover
 import com.ella.music.ui.components.DoubleTapScrollOverlay
+import com.ella.music.ui.components.EllaCenteredLoadingIndicator
 import com.ella.music.ui.components.EllaSearchBar
 import com.ella.music.ui.components.FastIndexBar
 import com.ella.music.ui.components.FloatingSelectionControls
@@ -124,6 +125,7 @@ fun AlbumDetailScreen(
     onNavigateToPlayer: () -> Unit
 ) {
     val albums by mainViewModel.albums.collectAsState()
+    val libraryCacheLoaded by mainViewModel.libraryCacheLoaded.collectAsState()
     val playlists by mainViewModel.playlists.collectAsState()
     val context = LocalContext.current
     val currentSong by playerViewModel.currentSong.collectAsState()
@@ -429,7 +431,12 @@ fun AlbumDetailScreen(
             .fillMaxSize()
             .background(ellaPageBackground())
     ) {
-        LazyColumn(
+        if (album == null && albumSongs.isEmpty() && !libraryCacheLoaded) {
+            // Do not render AlbumHeader's "unknown album" fallback while a cold-start cache is
+            // still restoring. Besides being misleading, it made a recoverable service crash
+            // look like it had erased the album the user navigated to.
+            EllaCenteredLoadingIndicator()
+        } else LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 120.dp)

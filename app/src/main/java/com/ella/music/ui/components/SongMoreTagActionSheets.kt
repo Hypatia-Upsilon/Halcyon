@@ -96,6 +96,7 @@ internal fun SongMoreTagActionSheets(
                 song = song,
                 mainViewModel = mainViewModel,
                 onDismiss = { onMetadataEditorSongChange(null) },
+                onWritePermissionRequired = onWritePermissionRequired,
                 onSave = { tags, cover, coverChanged ->
                     scope.launch {
                         val result = mainViewModel.writeSongMetadata(song, tags)

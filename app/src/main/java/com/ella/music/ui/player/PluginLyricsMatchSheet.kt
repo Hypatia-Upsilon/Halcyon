@@ -40,12 +40,12 @@ import com.ella.music.plugin.source.PluginLyricsRenderFormat
 import com.ella.music.plugin.source.PluginLyricsRenderOptions
 import com.ella.music.plugin.source.PluginSearchHit
 import com.ella.music.plugin.source.defaultRenderFormat
+import com.ella.music.plugin.source.toAudioTagInfo
 import com.ella.music.plugin.source.toEmbeddedLyricsText
 import com.ella.music.ui.components.EllaLoadingIndicator
 import com.ella.music.ui.components.EllaMiuixBottomSheet
 import com.ella.music.ui.components.EllaMiuixTextField
 import com.ella.music.viewmodel.MainViewModel
-import com.ella.music.viewmodel.PlayerViewModel
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.Button
@@ -54,13 +54,20 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
+internal data class PluginLyricsTagEditorMatch(
+    val tags: AudioTagInfo,
+    val lyrics: String,
+    val isTtml: Boolean
+)
+
 @Composable
 internal fun PluginLyricsMatchSheet(
     song: Song,
     mainViewModel: MainViewModel,
-    playerViewModel: PlayerViewModel,
     onDismiss: () -> Unit,
-    onWritePermissionRequired: (WritePermissionRequiredException, suspend () -> Unit) -> Unit
+    onWritePermissionRequired: (WritePermissionRequiredException, suspend () -> Unit) -> Unit,
+    onSongUpdated: (Song?) -> Unit = {},
+    onApplyToTagEditor: ((PluginLyricsTagEditorMatch) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -106,7 +113,7 @@ internal fun PluginLyricsMatchSheet(
                 return
             }
             if (result.isSuccess) {
-                playerViewModel.refreshCurrentSongAfterExternalEdit(result.getOrNull())
+                onSongUpdated(result.getOrNull())
                 Toast.makeText(context, R.string.lyric_match_write_success, Toast.LENGTH_SHORT).show()
                 onDismiss()
             } else {
@@ -253,7 +260,26 @@ internal fun PluginLyricsMatchSheet(
                     .verticalScroll(rememberScrollState())
                     .padding(vertical = 8.dp)
             )
-            if (isTtmlLyrics) {
+            if (onApplyToTagEditor != null) {
+                Button(
+                    onClick = {
+                        val hit = selectedHit ?: return@Button
+                        val result = lyricsResult ?: return@Button
+                        onApplyToTagEditor(
+                            PluginLyricsTagEditorMatch(
+                                tags = hit.toAudioTagInfo(result.tags),
+                                lyrics = lyricsText,
+                                isTtml = isTtmlLyrics
+                            )
+                        )
+                        onDismiss()
+                    },
+                    enabled = lyricsText.isNotBlank() && selectedHit != null && lyricsResult != null,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = stringResource(R.string.lyric_match_apply_to_tag_editor))
+                }
+            } else if (isTtmlLyrics) {
                 Text(
                     text = stringResource(R.string.lyric_match_ttml_write_choice),
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,

@@ -31,10 +31,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ella.music.R
+import com.ella.music.data.exception.WritePermissionRequiredException
 import com.ella.music.data.metadata.AudioCoverInfo
 import com.ella.music.data.metadata.AudioTagInfo
 import com.ella.music.data.model.Song
 import com.ella.music.data.model.SongTagInfo
+import com.ella.music.ui.player.PluginLyricsMatchSheet
 import com.ella.music.viewmodel.MainViewModel
 import com.lonx.audiotag.model.AudioTagKeys
 import kotlinx.coroutines.Dispatchers
@@ -77,7 +79,8 @@ internal fun SongMetadataEditorSheet(
     song: Song,
     mainViewModel: MainViewModel,
     onDismiss: () -> Unit,
-    onSave: (AudioTagInfo, AudioCoverInfo?, Boolean) -> Unit
+    onSave: (AudioTagInfo, AudioCoverInfo?, Boolean) -> Unit,
+    onWritePermissionRequired: (WritePermissionRequiredException, suspend () -> Unit) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -135,6 +138,7 @@ internal fun SongMetadataEditorSheet(
         mutableStateOf(initial)
     }
     var showAddTag by remember { mutableStateOf(false) }
+    var showLyricoMatch by remember(song.id) { mutableStateOf(false) }
 
     SongSheetColumn {
         SectionHeader(stringResource(R.string.song_more_metadata_section_cover))
@@ -192,6 +196,24 @@ internal fun SongMetadataEditorSheet(
             )
         }
         Spacer(modifier = Modifier.height(4.dp))
+
+        SectionHeader(stringResource(R.string.song_more_metadata_section_lyrico))
+        EllaMiuixActionRow(
+            actions = listOf(
+                EllaMiuixAction(
+                    text = stringResource(R.string.song_more_metadata_match_lyrico),
+                    onClick = { showLyricoMatch = true },
+                    primary = true
+                )
+            ),
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp)
+        )
+        Text(
+            text = stringResource(R.string.song_more_metadata_match_lyrico_summary),
+            fontSize = 12.sp,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 2.dp)
+        )
 
         SectionHeader(stringResource(R.string.song_more_metadata_section_basic))
         MetadataField(stringResource(R.string.song_more_metadata_title), title) { title = it }
@@ -395,6 +417,43 @@ internal fun SongMetadataEditorSheet(
             modifier = Modifier.padding(horizontal = 18.dp)
         )
         Spacer(modifier = Modifier.padding(bottom = 16.dp))
+    }
+
+    if (showLyricoMatch) {
+        EllaMiuixBottomSheet(
+            show = true,
+            enableNestedScroll = false,
+            title = stringResource(R.string.song_more_metadata_lyrico_title),
+            onDismissRequest = { showLyricoMatch = false }
+        ) {
+            PluginLyricsMatchSheet(
+                song = song,
+                mainViewModel = mainViewModel,
+                onDismiss = { showLyricoMatch = false },
+                onWritePermissionRequired = onWritePermissionRequired,
+                onApplyToTagEditor = { match ->
+                    title = match.tags.title ?: title
+                    artist = match.tags.artist ?: artist
+                    album = match.tags.album ?: album
+                    albumArtist = match.tags.albumArtist ?: albumArtist
+                    genre = match.tags.genre ?: genre
+                    year = match.tags.year ?: year
+                    trackNumber = match.tags.trackNumber?.toString() ?: trackNumber
+                    discNumber = match.tags.discNumber?.toString() ?: discNumber
+                    composer = match.tags.composer ?: composer
+                    lyricist = match.tags.lyricist ?: lyricist
+                    copyright = match.tags.copyright ?: copyright
+                    comment = match.tags.comment ?: comment
+                    if (match.isTtml) {
+                        ttmlLyrics = match.lyrics
+                    } else {
+                        lyrics = match.lyrics
+                        ttmlLyrics = ""
+                    }
+                    showLyricoMatch = false
+                }
+            )
+        }
     }
 }
 

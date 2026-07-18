@@ -312,34 +312,19 @@ internal fun SettingsDesktopShortcutSection(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val settingsManager = remember { SettingsManager.getInstance(context) }
-    val shortcutLibraryLabel by settingsManager.shortcutLibraryLabel.collectAsState(initial = SettingsManager.DEFAULT_SHORTCUT_LIBRARY_LABEL)
-    val shortcutPlaylistsLabel by settingsManager.shortcutPlaylistsLabel.collectAsState(initial = SettingsManager.DEFAULT_SHORTCUT_PLAYLISTS_LABEL)
-    val shortcutFolderLabel by settingsManager.shortcutFolderLabel.collectAsState(initial = SettingsManager.DEFAULT_SHORTCUT_FOLDER_LABEL)
+    val appShortcutOrder by settingsManager.appShortcutOrder.collectAsState(
+        initial = SettingsManager.DEFAULT_APP_SHORTCUT_ORDER
+    )
 
     SmallTitle(text = stringResource(R.string.settings_desktop_shortcuts))
 
     SettingsCardGroup(highlight = highlightKey == "desktop_shortcuts") {
         Column {
-            SplitSettingTextField(
-                label = stringResource(R.string.settings_shortcut_library),
-                value = shortcutLibraryLabel,
-                summary = stringResource(R.string.settings_shortcut_summary),
-                singleLine = true,
-                onValueChange = { value -> scope.launch { settingsManager.setShortcutLibraryLabel(value) } }
-            )
-            SplitSettingTextField(
-                label = stringResource(R.string.settings_shortcut_playlists),
-                value = shortcutPlaylistsLabel,
-                summary = stringResource(R.string.settings_shortcut_summary),
-                singleLine = true,
-                onValueChange = { value -> scope.launch { settingsManager.setShortcutPlaylistsLabel(value) } }
-            )
-            SplitSettingTextField(
-                label = stringResource(R.string.settings_shortcut_folder),
-                value = shortcutFolderLabel,
-                summary = stringResource(R.string.settings_shortcut_summary),
-                singleLine = true,
-                onValueChange = { value -> scope.launch { settingsManager.setShortcutFolderLabel(value) } }
+            SettingsAppShortcutsPreference(
+                shortcutIds = appShortcutOrder,
+                onShortcutIdsChange = { ids ->
+                    scope.launch { settingsManager.setAppShortcutOrder(ids) }
+                }
             )
         }
     }

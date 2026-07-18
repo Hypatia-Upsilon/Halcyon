@@ -433,6 +433,7 @@ fun EllaApp(
     val shortcutLibraryLabel by settingsManager.shortcutLibraryLabel.collectAsState(initial = SettingsManager.DEFAULT_SHORTCUT_LIBRARY_LABEL)
     val shortcutPlaylistsLabel by settingsManager.shortcutPlaylistsLabel.collectAsState(initial = SettingsManager.DEFAULT_SHORTCUT_PLAYLISTS_LABEL)
     val shortcutFolderLabel by settingsManager.shortcutFolderLabel.collectAsState(initial = SettingsManager.DEFAULT_SHORTCUT_FOLDER_LABEL)
+    val appShortcutOrder by settingsManager.appShortcutOrder.collectAsState(initial = SettingsManager.DEFAULT_APP_SHORTCUT_ORDER)
     val isScanning by mainViewModel.isScanning.collectAsState()
     var showInitialScanPrompt by remember { mutableStateOf(false) }
     var showLocalPlaylistScanPrompt by remember { mutableStateOf(false) }
@@ -524,9 +525,10 @@ fun EllaApp(
         currentProcessingIntent.value?.setData(null)
     }
 
-    LaunchedEffect(shortcutLibraryLabel, shortcutPlaylistsLabel, shortcutFolderLabel) {
+    LaunchedEffect(appShortcutOrder, shortcutLibraryLabel, shortcutPlaylistsLabel, shortcutFolderLabel) {
         updateEllaDynamicShortcuts(
             context = context,
+            shortcutIds = appShortcutOrder,
             libraryLabel = shortcutLibraryLabel,
             searchLabel = shortcutPlaylistsLabel,
             shuffleLabel = shortcutFolderLabel

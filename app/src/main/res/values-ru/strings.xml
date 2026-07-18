@@ -709,6 +709,10 @@
     <string name="song_more_metadata_saved">Метаданные песни сохранены.</string>
     <string name="song_more_metadata_save_failed">Не удалось сохранить метаданные.</string>
     <string name="song_more_metadata_section_basic">Основная информация</string>
+    <string name="song_more_metadata_section_lyrico">Онлайн-поиск Lyrico</string>
+    <string name="song_more_metadata_lyrico_title">Поиск Lyrico</string>
+    <string name="song_more_metadata_match_lyrico">Подобрать через Lyrico</string>
+    <string name="song_more_metadata_match_lyrico_summary">Поиск по онлайн-источникам текстов. Выбранный результат заполнит текст и доступные метаданные; сохраните, чтобы записать их в аудиофайл.</string>
     <string name="song_more_metadata_section_track">Информация о треке</string>
     <string name="song_more_metadata_section_credits">Кредиты</string>
     <string name="song_more_metadata_section_rating">Рейтинг</string>
@@ -858,6 +862,11 @@
     <string name="settings_shortcut_playlists">Поиск</string>
     <string name="settings_shortcut_folder">Перемешать все</string>
     <string name="settings_shortcut_summary">Ярлык ярлыка, отображаемый при длительном нажатии значка приложения на панели запуска.</string>
+    <string name="settings_shortcuts_manage_summary">Выберите до %1$d ярлыков; удерживайте и перетаскивайте для изменения порядка</string>
+    <string name="settings_shortcuts_selected">Выбранные ярлыки (%1$d/%2$d)</string>
+    <string name="settings_shortcuts_available">Доступные ярлыки</string>
+    <string name="settings_shortcuts_empty">Нет выбранных ярлыков</string>
+    <string name="settings_shortcuts_add">Добавить</string>
     <string name="settings_scan">Сканирование</string>
     <string name="settings_auto_scan">Автоматическое сканирование</string>
     <string name="settings_auto_scan_summary">Автоматическое сканирование музыкальных файлов при запуске</string>
@@ -1435,6 +1444,7 @@
     <string name="lyric_match_searching">Поиск…</string>
     <string name="lyric_match_fetching">Получение текста…</string>
     <string name="lyric_match_preview">Предпросмотр текста</string>
+    <string name="lyric_match_apply_to_tag_editor">Применить в редакторе тегов</string>
     <string name="lyric_match_no_results">Совпадений не найдено</string>
     <string name="lyric_match_no_sources">Сначала включите онлайн-источник текстов в настройках</string>
     <string name="lyric_match_remote_not_supported">Запись текста для онлайн-треков пока не поддерживается</string>

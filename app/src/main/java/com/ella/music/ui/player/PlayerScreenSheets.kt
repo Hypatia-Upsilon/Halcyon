@@ -159,9 +159,9 @@ internal fun PlayerScreenSheetHost(
             PluginLyricsMatchSheet(
                 song = currentSong,
                 mainViewModel = mainViewModel,
-                playerViewModel = playerViewModel,
                 onDismiss = { onLyricMatchSongChange(null) },
-                onWritePermissionRequired = onWritePermissionRequired
+                onWritePermissionRequired = onWritePermissionRequired,
+                onSongUpdated = playerViewModel::refreshCurrentSongAfterExternalEdit
             )
         }
     }

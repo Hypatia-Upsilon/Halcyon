@@ -730,6 +730,10 @@
     <string name="song_more_metadata_saved">已儲存歌曲中繼資料</string>
     <string name="song_more_metadata_save_failed">中繼資料儲存失敗</string>
     <string name="song_more_metadata_section_basic">基本資訊</string>
+    <string name="song_more_metadata_section_lyrico">Lyrico 線上比對</string>
+    <string name="song_more_metadata_lyrico_title">Lyrico 比對</string>
+    <string name="song_more_metadata_match_lyrico">從 Lyrico 比對</string>
+    <string name="song_more_metadata_match_lyrico_summary">搜尋線上歌詞來源；選擇結果後會填入歌詞和可用歌曲資訊，儲存即可寫入音樂檔案。</string>
     <string name="song_more_metadata_section_track">曲目資訊</string>
     <string name="song_more_metadata_section_credits">製作資訊</string>
     <string name="song_more_metadata_section_rating">評分</string>
@@ -880,6 +884,11 @@
     <string name="settings_shortcut_playlists">搜尋</string>
     <string name="settings_shortcut_folder">全部隨機播放</string>
     <string name="settings_shortcut_summary">長按桌面圖示時顯示的捷徑名稱</string>
+    <string name="settings_shortcuts_manage_summary">最多選擇 %1$d 個捷徑；長按並拖曳可調整順序</string>
+    <string name="settings_shortcuts_selected">已選捷徑（%1$d/%2$d）</string>
+    <string name="settings_shortcuts_available">可加入的捷徑</string>
+    <string name="settings_shortcuts_empty">尚未加入捷徑</string>
+    <string name="settings_shortcuts_add">加入</string>
     <string name="settings_scan">掃描</string>
     <string name="settings_auto_scan">自動掃描</string>
     <string name="settings_auto_scan_summary">啟動時自動掃描音樂檔案</string>
@@ -1469,6 +1478,7 @@
     <string name="lyric_match_searching">搜尋中…</string>
     <string name="lyric_match_fetching">正在取得歌詞…</string>
     <string name="lyric_match_preview">歌詞預覽</string>
+    <string name="lyric_match_apply_to_tag_editor">套用到標籤編輯器</string>
     <string name="lyric_match_no_results">找不到比對結果</string>
     <string name="lyric_match_no_sources">請先在設定中啟用歌詞比對線上來源</string>
     <string name="lyric_match_remote_not_supported">線上歌曲暫不支援寫入歌詞</string>

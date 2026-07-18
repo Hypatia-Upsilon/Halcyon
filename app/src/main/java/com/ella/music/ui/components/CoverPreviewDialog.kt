@@ -98,12 +98,20 @@ internal fun CoverPreviewDialog(
         )
         val viewportCenter = Offset(viewportSize.width / 2f, viewportSize.height / 2f)
         val focalPoint = centroid.takeIf { it != Offset.Unspecified } ?: viewportCenter
-        val scaleRatio = nextScale / previousScale
-        val focalOffset = focalPoint - viewportCenter
-        val scaledOffset = (offset + focalOffset) * scaleRatio - focalOffset
+        val scaledOffset = coverPreviewZoomOffsetForFocalPoint(
+            currentOffset = offset,
+            currentScale = previousScale,
+            targetScale = nextScale,
+            focalPoint = focalPoint,
+            viewportSize = viewportSize
+        )
         scale = nextScale
+        // Do not hard-stop the image on every pointer sample. The previous immediate clamp
+        // made a two-finger zoom followed by a drag feel as though it was moving through heavy
+        // damping. Leave a small, direct overscroll allowance while the gesture is active and
+        // spring it back to the real image bounds after the fingers are lifted.
         offset = (scaledOffset + panChange).coerceWithin(
-            coverPreviewPanBounds(
+            coverPreviewGesturePanBounds(
                 resolution = resolution,
                 viewportSize = viewportSize,
                 scale = nextScale
@@ -115,12 +123,8 @@ internal fun CoverPreviewDialog(
         snapshotFlow { transformState.isTransformInProgress }
             .distinctUntilChanged()
             .collectLatest { transforming ->
-                val settledScale = when {
-                    scale < 1f -> 1f
-                    scale > COVER_MAX_SCALE -> COVER_MAX_SCALE
-                    else -> null
-                }
-                if (!transforming && settledScale != null) {
+                if (!transforming) {
+                    val settledScale = scale.coerceIn(1f, COVER_MAX_SCALE)
                     val initialScale = scale
                     val initialOffset = offset
                     val settledOffset = if (settledScale <= 1f) {
@@ -134,23 +138,25 @@ internal fun CoverPreviewDialog(
                             )
                         )
                     }
-                    animateCoverTransform(
-                        initialScale = initialScale,
-                        targetScale = settledScale,
-                        initialOffset = initialOffset,
-                        targetOffset = settledOffset
-                    ) { animatedScale, animatedOffset ->
-                        scale = animatedScale
-                        offset = animatedOffset.coerceWithin(
-                            coverPreviewPanBounds(
-                                resolution = resolution,
-                                viewportSize = viewportSize,
-                                scale = animatedScale
+                    if (initialScale != settledScale || initialOffset != settledOffset) {
+                        animateCoverTransform(
+                            initialScale = initialScale,
+                            targetScale = settledScale,
+                            initialOffset = initialOffset,
+                            targetOffset = settledOffset
+                        ) { animatedScale, animatedOffset ->
+                            scale = animatedScale
+                            offset = animatedOffset.coerceWithin(
+                                coverPreviewGesturePanBounds(
+                                    resolution = resolution,
+                                    viewportSize = viewportSize,
+                                    scale = animatedScale
+                                )
                             )
-                        )
+                        }
+                        scale = settledScale
+                        offset = settledOffset
                     }
-                    scale = settledScale
-                    offset = settledOffset
                 }
             }
     }
@@ -477,12 +483,28 @@ private fun coverPreviewPanBounds(
     )
 }
 
+private fun coverPreviewGesturePanBounds(
+    resolution: CoverResolution?,
+    viewportSize: ComposeIntSize,
+    scale: Float
+): Offset {
+    val bounds = coverPreviewPanBounds(
+        resolution = resolution,
+        viewportSize = viewportSize,
+        scale = scale
+    )
+    return Offset(
+        x = bounds.x * COVER_GESTURE_PAN_OVERSCROLL_FACTOR,
+        y = bounds.y * COVER_GESTURE_PAN_OVERSCROLL_FACTOR
+    )
+}
+
 private fun Offset.coerceWithin(bounds: Offset): Offset = Offset(
     x = x.coerceIn(-bounds.x, bounds.x),
     y = y.coerceIn(-bounds.y, bounds.y)
 )
 
-private fun coverPreviewZoomOffsetForFocalPoint(
+internal fun coverPreviewZoomOffsetForFocalPoint(
     currentOffset: Offset,
     currentScale: Float,
     targetScale: Float,
@@ -493,7 +515,10 @@ private fun coverPreviewZoomOffsetForFocalPoint(
     val center = Offset(viewportSize.width / 2f, viewportSize.height / 2f)
     val focalOffset = focalPoint - center
     val scaleRatio = targetScale / currentScale
-    return (currentOffset + focalOffset) * scaleRatio - focalOffset
+    // Keep the content under the user's finger stationary. The old expression used the
+    // focal-point term with the opposite sign, which made a double tap zoom to the point
+    // mirrored across the viewport centre instead of the tapped point.
+    return currentOffset * scaleRatio + focalOffset * (1f - scaleRatio)
 }
 
 private suspend fun animateCoverTransform(
@@ -503,22 +528,20 @@ private suspend fun animateCoverTransform(
     targetOffset: Offset,
     onFrame: (scale: Float, offset: Offset) -> Unit
 ) {
-    if (initialScale == targetScale) {
+    if (initialScale == targetScale && initialOffset == targetOffset) {
         onFrame(targetScale, targetOffset)
         return
     }
     animate(
-        initialValue = initialScale,
-        targetValue = targetScale,
+        initialValue = 0f,
+        targetValue = 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMediumLow
         )
-    ) { animatedScale, _ ->
-        val progress = ((animatedScale - initialScale) / (targetScale - initialScale))
-            .coerceIn(0f, 1f)
+    ) { progress, _ ->
         onFrame(
-            animatedScale,
+            initialScale + (targetScale - initialScale) * progress,
             Offset(
                 x = initialOffset.x + (targetOffset.x - initialOffset.x) * progress,
                 y = initialOffset.y + (targetOffset.y - initialOffset.y) * progress
@@ -530,7 +553,10 @@ private suspend fun animateCoverTransform(
 private data class CoverResolution(val width: Int, val height: Int)
 
 private const val COVER_MIN_SCALE = 0.82f
-private const val COVER_MAX_SCALE = 6f
-private const val COVER_GESTURE_MAX_SCALE = 6.75f
+// 5× stays below the overly aggressive 6× experiment while still providing a larger
+// inspection range than the previous 4× release.
+private const val COVER_MAX_SCALE = 5f
+private const val COVER_GESTURE_MAX_SCALE = 5.5f
 private const val COVER_DOUBLE_TAP_SCALE = COVER_MAX_SCALE
+private const val COVER_GESTURE_PAN_OVERSCROLL_FACTOR = 1.18f
 private const val COVER_SHARE_CACHE_MAX_AGE_MS = 24L * 60L * 60L * 1000L

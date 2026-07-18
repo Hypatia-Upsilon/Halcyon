@@ -172,27 +172,33 @@ class MusicRepository(private val context: Context) {
         excludeFolders: List<String> = emptyList(),
         fullRescan: Boolean = false,
         deepRescan: Boolean = fullRescan,
-        deepMetadataEnabled: Boolean = true
+        deepMetadataEnabled: Boolean = true,
+        filesystemFallbackFolders: List<String> = includeFolders
     ): MusicScanSummary {
         val mode = if (includeFolders.isEmpty()) "media_library" else "custom_folders"
-        val previousSongs = readLocalScanBaselineSongs()
+        val previousSongs = readLocalScanBaselineSongs().ifEmpty { _songs.value }
         AppLogStore.info(
             context,
             "MusicScanner",
-            "Start scan mode=$mode minDuration=${minDurationMs}ms include=${includeFolders.size} exclude=${excludeFolders.size} fullRescan=$fullRescan deepRescan=$deepRescan deepMetadataEnabled=$deepMetadataEnabled",
+            "Start scan mode=$mode minDuration=${minDurationMs}ms include=${includeFolders.size} fallbackFolders=${filesystemFallbackFolders.size} exclude=${excludeFolders.size} fullRescan=$fullRescan deepRescan=$deepRescan deepMetadataEnabled=$deepMetadataEnabled",
             AppLogType.LIBRARY
         )
-        val effectiveDeepRescan = deepRescan && deepMetadataEnabled
+        // A complete scan must always rebuild tags, even when the normal-scan full-tag option is
+        // off. Otherwise a long press only re-enumerates MediaStore and can retain stale metadata.
+        val effectiveDeepRescan = fullRescan || (deepRescan && deepMetadataEnabled)
         if (effectiveDeepRescan) {
             clearScanMetadataCaches()
+            if (fullRescan) snapshotManager.clearLibraryCache()
         }
         val scanResult = if (fullRescan || effectiveDeepRescan) {
             val scannedSongs = scanner.scanAllSongs(
                 minDurationMs = minDurationMs,
                 includeFolders = includeFolders,
                 excludeFolders = excludeFolders,
-                deepMetadata = effectiveDeepRescan
-            ) { count -> scanProgressState.update(count) }
+                deepMetadata = effectiveDeepRescan,
+                onProgress = { count -> scanProgressState.update(count) },
+                filesystemFallbackFolders = filesystemFallbackFolders
+            )
             LibraryScanResult(
                 songs = scannedSongs,
                 summary = buildFullScanSummary(previousSongs, scannedSongs, fullRescan = true)
@@ -207,19 +213,37 @@ class MusicRepository(private val context: Context) {
             )
         }
         val scannedSongs = scanResult.songs
-        val clearedRatingSnapshots = snapshotManager.clearMissingFileSnapshots(scannedSongs.map { it.path }.toSet())
-        val albums = scannedSongs.toAlbums()
-        _songs.value = scannedSongs
+        // A transient MediaStore/provider failure must not overwrite both on-disk snapshots with
+        // an empty library during an ordinary refresh. A deliberate full scan still owns the
+        // result, including an intentionally empty library.
+        val preservePreviousLibrary = !fullRescan && scannedSongs.isEmpty() && previousSongs.isNotEmpty()
+        val resolvedSongs = if (preservePreviousLibrary) previousSongs else scannedSongs
+        if (preservePreviousLibrary) {
+            AppLogStore.warn(
+                context,
+                "MusicScanner",
+                "Ignoring unexpected empty incremental scan and preserving ${previousSongs.size} cached songs",
+                type = AppLogType.LIBRARY
+            )
+        }
+        val resolvedSummary = if (preservePreviousLibrary) {
+            MusicScanSummary(total = resolvedSongs.size, failed = scanResult.summary.failed)
+        } else {
+            scanResult.summary.copy(total = resolvedSongs.size)
+        }
+        val clearedRatingSnapshots = snapshotManager.clearMissingFileSnapshots(resolvedSongs.map { it.path }.toSet())
+        val albums = resolvedSongs.toAlbums()
+        _songs.value = resolvedSongs
         _albums.value = albums
-        saveLibraryCache(scannedSongs, albums)
-        saveLocalScanBaseline(scannedSongs, albums)
+        saveLibraryCache(resolvedSongs, albums)
+        saveLocalScanBaseline(resolvedSongs, albums)
         AppLogStore.info(
             context,
             "MusicScanner",
-            "Scan finished mode=$mode songs=${scannedSongs.size} albums=${_albums.value.size} added=${scanResult.summary.added} removed=${scanResult.summary.deleted} updated=${scanResult.summary.updated} ratingSnapshotsCleared=$clearedRatingSnapshots",
+            "Scan finished mode=$mode songs=${resolvedSongs.size} albums=${_albums.value.size} added=${resolvedSummary.added} removed=${resolvedSummary.deleted} updated=${resolvedSummary.updated} ratingSnapshotsCleared=$clearedRatingSnapshots preservedPrevious=$preservePreviousLibrary",
             AppLogType.LIBRARY
         )
-        return scanResult.summary.copy(total = scannedSongs.size)
+        return resolvedSummary
     }
 
     /**
@@ -520,21 +544,49 @@ class MusicRepository(private val context: Context) {
     }
 
     suspend fun loadCachedLibrary() = withContext(Dispatchers.IO) {
-        if (!libraryCacheFile.exists()) {
-            clearInMemoryLibrary()
-            return@withContext
-        }
-
-        runCatching {
-            val songs = readLibraryCacheSongs(libraryCacheFile)
+        fun applyCachedSongs(songs: List<Song>) {
             val albums = songs.toAlbums()
             _songs.value = songs
             _albums.value = albums
-            if (!localScanBaselineFile.exists()) {
+            if (!hasLibraryCache(localScanBaselineFile)) {
                 saveLocalScanBaseline(songs, albums)
             }
-        }.onFailure {
-            Log.w("MusicRepo", "Failed to load music library cache", it)
+        }
+
+        val primarySongs = if (hasLibraryCache(libraryCacheFile)) {
+            runCatching { readLibraryCacheSongs(libraryCacheFile) }
+                .onFailure { Log.w("MusicRepo", "Failed to load music library cache", it) }
+                .getOrNull()
+        } else {
+            null
+        }
+        if (!primarySongs.isNullOrEmpty()) {
+            applyCachedSongs(primarySongs)
+            return@withContext
+        }
+
+        // If a service-process crash lands between the primary and baseline writes, the primary
+        // cache can be a valid-but-empty snapshot while the baseline still has the last complete
+        // library. Prefer that non-empty recovery snapshot, then heal the primary cache.
+        val baselineSongs = if (hasLibraryCache(localScanBaselineFile)) {
+            runCatching { readLibraryCacheSongs(localScanBaselineFile) }
+                .onFailure { Log.w("MusicRepo", "Failed to restore local scan baseline", it) }
+                .getOrNull()
+        } else {
+            null
+        }
+        if (!baselineSongs.isNullOrEmpty()) {
+            val albums = baselineSongs.toAlbums()
+            _songs.value = baselineSongs
+            _albums.value = albums
+            saveLibraryCacheTo(libraryCacheFile, baselineSongs, albums)
+        } else if (primarySongs != null) {
+            applyCachedSongs(primarySongs)
+        } else if (baselineSongs != null) {
+            applyCachedSongs(baselineSongs)
+            saveLibraryCacheTo(libraryCacheFile, baselineSongs, baselineSongs.toAlbums())
+        } else {
+            clearInMemoryLibrary()
         }
     }
 
@@ -556,7 +608,7 @@ class MusicRepository(private val context: Context) {
             ?: runCatching { readLibraryCacheSongs(cacheFile) }.getOrDefault(emptyList())
 
         fun applyCache(): Boolean {
-            if (!cacheFile.exists()) return false
+            if (!hasLibraryCache(cacheFile)) return false
             val cached = runCatching { readLibraryCacheSongs(cacheFile) }.getOrDefault(emptyList())
             if (cached.isEmpty()) return false
             _songs.value = cached
@@ -678,14 +730,14 @@ class MusicRepository(private val context: Context) {
                 .put("version", 1)
                 .put("songs", songsToLibraryCacheJsonArray(songs))
                 .put("albums", albumsToLibraryCacheJsonArray(albums))
-            file.writeText(root.toString())
+            writeLibraryCacheAtomically(file, root.toString())
         }.onFailure {
             Log.w("MusicRepo", "Failed to save library cache snapshot", it)
         }
     }
 
     private fun readCachedSongs(): List<Song> {
-        if (!libraryCacheFile.exists()) return emptyList()
+        if (!hasLibraryCache(libraryCacheFile)) return emptyList()
         return runCatching {
             readLibraryCacheSongs(libraryCacheFile)
         }.getOrElse {
@@ -695,8 +747,8 @@ class MusicRepository(private val context: Context) {
     }
 
     private fun readLocalScanBaselineSongs(): List<Song> {
-        val baselineFile = if (localScanBaselineFile.exists()) localScanBaselineFile else libraryCacheFile
-        if (!baselineFile.exists()) return emptyList()
+        val baselineFile = if (hasLibraryCache(localScanBaselineFile)) localScanBaselineFile else libraryCacheFile
+        if (!hasLibraryCache(baselineFile)) return emptyList()
         return runCatching {
             readLibraryCacheSongs(baselineFile)
         }.getOrElse {
@@ -1451,7 +1503,7 @@ class MusicRepository(private val context: Context) {
                 .put("version", 1)
                 .put("songs", songsToLibraryCacheJsonArray(songs))
                 .put("albums", albumsToLibraryCacheJsonArray(albums))
-            targetFile.writeText(root.toString())
+            writeLibraryCacheAtomically(targetFile, root.toString())
         }.onFailure {
             Log.w("MusicRepo", "Failed to save music library cache", it)
         }

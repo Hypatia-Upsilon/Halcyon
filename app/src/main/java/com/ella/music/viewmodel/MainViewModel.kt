@@ -255,29 +255,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val useAndroidMediaLibrary = settingsManager.useAndroidMediaLibrary.first()
             val fullTagSearchEnabled = settingsManager.fullTagSearchEnabled.first()
             val effectiveUseAndroidMediaLibrary = useAndroidMediaLibrary || !fullTagSearchEnabled
-            val effectiveDeepRescan = deepRescan && fullTagSearchEnabled
+            // A long-press full scan is intentionally stronger than the normal full-tag-search
+            // preference: it re-reads tags and also checks configured folders that MediaStore may
+            // not have indexed yet.
+            val effectiveDeepRescan = fullRescan || (deepRescan && fullTagSearchEnabled)
+            val scanIncludeFolders = when {
+                preferExplicitFolders -> includeFolders
+                effectiveUseAndroidMediaLibrary -> emptyList()
+                else -> includeFolders.ifEmpty { listOf("__ella_no_custom_folder__") }
+            }
+            val filesystemFallbackFolders = when {
+                preferExplicitFolders -> includeFolders
+                fullRescan && effectiveUseAndroidMediaLibrary -> includeFolders
+                else -> scanIncludeFolders
+            }
             var summary = repository.scanMusic(
                 minDuration,
-                if (preferExplicitFolders) {
-                    includeFolders
-                } else if (effectiveUseAndroidMediaLibrary) {
-                    emptyList()
-                } else {
-                    includeFolders.ifEmpty { listOf("__ella_no_custom_folder__") }
-                },
+                scanIncludeFolders,
                 excludeFolders,
                 fullRescan = fullRescan,
                 deepRescan = effectiveDeepRescan,
-                deepMetadataEnabled = fullTagSearchEnabled
+                deepMetadataEnabled = fullRescan || fullTagSearchEnabled,
+                filesystemFallbackFolders = filesystemFallbackFolders
             )
-            if (!preferExplicitFolders && summary.total == 0 && useAndroidMediaLibrary && fullTagSearchEnabled && includeFolders.isNotEmpty()) {
+            if (!preferExplicitFolders && summary.total == 0 && includeFolders.isNotEmpty() && (fullRescan || (useAndroidMediaLibrary && fullTagSearchEnabled))) {
                 summary = repository.scanMusic(
                     minDuration,
                     includeFolders,
                     excludeFolders,
                     fullRescan = fullRescan,
                     deepRescan = effectiveDeepRescan,
-                    deepMetadataEnabled = true
+                    deepMetadataEnabled = fullRescan || fullTagSearchEnabled
                 )
             }
             val usbFolderUris = settingsManager.usbFolderUris.first()

@@ -448,11 +448,20 @@ fun AlbumScreen(
             // the viewport until the user scrolls. On a fresh album-page entry, explicitly
             // anchor the first resolved pinned ordering at index zero.
             var needsInitialPinnedPosition by remember { mutableStateOf(true) }
+            // Returning from a child album-detail route is the same album-page session, so keep
+            // the saved grid position. This deliberately only skips the anchor once: returning
+            // to the parent page and opening Albums again still follows #161 and starts at top.
+            var skipPinnedAnchorOnChildReturn by rememberSaveable { mutableStateOf(false) }
             var fastScrollJob by remember { mutableStateOf<Job?>(null) }
             LaunchedEffect(scrollToTopRequest) {
                 if (scrollToTopRequest > 0) gridState.animateScrollToItem(0)
             }
             LaunchedEffect(pinnedAlbumKeys, sortedAlbums.size) {
+                if (skipPinnedAnchorOnChildReturn) {
+                    skipPinnedAnchorOnChildReturn = false
+                    needsInitialPinnedPosition = false
+                    return@LaunchedEffect
+                }
                 if (
                     needsInitialPinnedPosition &&
                     pinnedAlbumKeys.isNotEmpty() &&
@@ -515,7 +524,12 @@ fun AlbumScreen(
                                 selected = selected,
                                 isPinned = album.id.toString() in pinnedAlbumKeys,
                                 onClick = {
-                                    if (selectionMode) toggleAlbumSelection(album) else onAlbumClick(album.id)
+                                    if (selectionMode) {
+                                        toggleAlbumSelection(album)
+                                    } else {
+                                        skipPinnedAnchorOnChildReturn = true
+                                        onAlbumClick(album.id)
+                                    }
                                 },
                                 onLongClick = {
                                     if (selectionMode) {
