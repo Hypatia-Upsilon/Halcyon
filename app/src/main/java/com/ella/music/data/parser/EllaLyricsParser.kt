@@ -862,58 +862,11 @@ internal object EllaLyricsParser {
     }
 
     private fun mergeNearbyCompanionLines(lines: List<LyricLine>): List<LyricLine> {
-        if (lines.size < 2) return lines
-        val result = mutableListOf<LyricLine>()
-        var i = 0
-        while (i < lines.size) {
-            val current = lines[i]
-            if (i + 1 < lines.size) {
-                val next = lines[i + 1]
-                val timeGap = next.timeMs - current.timeMs
-                if (timeGap in 0..500 && next.endMs?.let { it >= current.timeMs } == true) {
-                    val currentText = current.text.cleanLyricText()
-                    val nextText = next.text.cleanLyricText()
-                    val nextIsCjk = nextText.hasCjk()
-                    val currentIsCjk = currentText.hasCjk()
-                    val currentIsCredit = currentText.isLyricCreditLine()
-                    val nextIsCredit = nextText.isLyricCreditLine()
-                    // Credit lines only merge with other credit lines (e.g. "Lyrics by:" + "Composed by:")
-                    // Non-credit English lines should pair with CJK translations, not other English lines
-                    if (currentIsCredit && nextIsCredit) {
-                        val mergedTranslation = listOfNotNull(current.translation, nextText)
-                            .filter { it.isNotBlank() }
-                            .distinct()
-                            .joinToString("\n")
-                            .takeIf { it.isNotBlank() }
-                        result.add(current.copy(
-                            translation = current.translation.mergeLyricCompanionText(mergedTranslation),
-                            endMs = current.endMs ?: next.endMs
-                        ))
-                        i += 2
-                        continue
-                    }
-                    // Pair non-CJK (English) with CJK (translation): e.g. "I'm at a payphone" + "我在电话亭里"
-                    // But only if neither is a credit line
-                    if (!currentIsCredit && !nextIsCredit && !currentIsCjk && nextIsCjk
-                        && !currentText.contains(nextText) && !nextText.contains(currentText)) {
-                        val mergedTranslation = listOfNotNull(current.translation, nextText)
-                            .filter { it.isNotBlank() }
-                            .distinct()
-                            .joinToString("\n")
-                            .takeIf { it.isNotBlank() }
-                        result.add(current.copy(
-                            translation = current.translation.mergeLyricCompanionText(mergedTranslation),
-                            endMs = current.endMs ?: next.endMs
-                        ))
-                        i += 2
-                        continue
-                    }
-                }
-            }
-            result.add(current)
-            i++
-        }
-        return result
+        // Only exact timestamp groups are reliable lyric companions. A previous 500 ms
+        // proximity heuristic turned independently timed credits such as "词：" and "曲："
+        // into a primary line plus translation, and could also swallow closely sung lyrics.
+        // Exact groups have already been merged above, so preserve every remaining line.
+        return lines
     }
 
     private fun List<LyricLine>.shouldKeepIndependentDuetLines(): Boolean =

@@ -216,6 +216,9 @@ internal object AccompanistLyricsParser {
         }
         if (previousNormalized.lastOrNull()?.isWhitespace() == true) return false
         if (currentNormalized.firstOrNull()?.isWhitespace() == true) return false
+        // eLRC authoring commonly keeps an intentional separator before a CJK/Latin boundary
+        // (e.g. "よ Day"). Preserve that authored whitespace before applying language heuristics.
+        if (hasExplicitWhitespaceBoundary) return true
         val prev = previousNormalized.lastOrNull { !it.isWhitespace() } ?: return false
         val next = currentNormalized.firstOrNull { !it.isWhitespace() } ?: return false
         if (prev.isCjkWordChar() || next.isCjkWordChar()) return false
@@ -234,7 +237,9 @@ internal object AccompanistLyricsParser {
 
     private fun String.normalizeTimedTokenText(preserveLatinWordSpaces: Boolean, trimEnd: Boolean): String =
         if (preserveLatinWordSpaces) {
-            replace(Regex("""\s+"""), " ").trim()
+            // Keep a leading separator on timed eLRC text. It carries visible spacing between
+            // tokens and is later moved to the preceding render word for stable wrapping.
+            replace(Regex("""\s+"""), " ").trimEnd()
         } else if (trimEnd) {
             trimEnd()
         } else {

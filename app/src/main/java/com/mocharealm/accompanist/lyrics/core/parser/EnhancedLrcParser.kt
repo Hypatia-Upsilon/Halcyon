@@ -293,7 +293,9 @@ object EnhancedLrcParser : ILyricsParser {
                         (line is KaraokeLine.AccompanimentKaraokeLine && nextLine is KaraokeLine.MainKaraokeLine) ||
                         nextLine is SyncedLine
 
-                if (isCompatibleType && abs(line.start - nextLine.start) <= 150) {
+                // A translation must share the same cue. Adjacent lyric/credit cues may be
+                // only a few milliseconds apart, but they are still independent lines.
+                if (isCompatibleType && line.start == nextLine.start) {
                     val nextContent = when (nextLine) {
                         is KaraokeLine -> nextLine.syllables.contentToString().trim()
                         is SyncedLine -> nextLine.content.trim()

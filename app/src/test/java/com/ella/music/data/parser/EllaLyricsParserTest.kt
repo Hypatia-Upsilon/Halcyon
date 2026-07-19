@@ -8,6 +8,39 @@ import org.junit.Test
 
 class EllaLyricsParserTest {
     @Test
+    fun enhancedLrcKeepsExplicitSpacesAcrossCjkAndLatinTokens() {
+        val result = EllaLyricsParser.parse(
+            """
+            [00:12.829]<00:12.829>二<00:13.538>人を<00:14.198>近<00:15.009>付<00:15.306>け<00:15.720>る<00:16.024>よ<00:16.431> Day<00:17.144> by<00:17.857> day<00:18.591>
+            """.trimIndent()
+        )
+
+        assertEquals("二人を近付けるよ Day by day", result.lyrics.single().text)
+        assertEquals(
+            listOf("二", "人を", "近", "付", "け", "る", "よ", " Day", " by", " day"),
+            result.lyrics.single().words.map { it.text }
+        )
+    }
+
+    @Test
+    fun nearbyTimedCreditLinesStayIndependentInsteadOfBecomingTranslations() {
+        val result = EllaLyricsParser.parse(
+            """
+            [00:00.000]狂风卷奔云飙 - 黄国俊/江得胜
+            [00:00.210]词：徐进良
+            [00:00.420]曲：郭子
+            [00:07.500]狂风卷奔云飙
+            """.trimIndent()
+        )
+
+        assertEquals(
+            listOf("狂风卷奔云飙 - 黄国俊/江得胜", "词：徐进良", "曲：郭子", "狂风卷奔云飙"),
+            result.lyrics.map { it.text }
+        )
+        assertEquals(listOf(null, null, null, null), result.lyrics.map { it.translation })
+    }
+
+    @Test
     fun placeholderOnlyTimedLinesAreIgnored() {
         val result = LrcParser.parse(
             """
