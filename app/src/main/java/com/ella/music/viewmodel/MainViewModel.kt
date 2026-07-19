@@ -123,6 +123,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun scanMusic(fullRescan: Boolean = false, deepRescan: Boolean = fullRescan) {
         if (scanJob?.isActive == true || isScanning.value) return
         scanJob = viewModelScope.launch {
+            awaitCachedLibraryRestoreBeforeScanning()
             val source = settingsManager.librarySource.first()
             if (source != SettingsManager.LIBRARY_SOURCE_LOCAL) {
                 // Remote library: the refresh button re-fetches the whole remote library.
@@ -139,6 +140,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             settingsManager.setLibrarySource(requestedSource)
             val activeSource = settingsManager.librarySource.first()
             scanJob?.cancel()
+            // The prior source's cache restore must not finish after this source switch and put
+            // an obsolete library back into the repository while the new source is scanning.
+            cachedLibraryLoadJob?.cancel()
+            cachedLibraryLoadJob = null
             _libraryCacheLoaded.value = false
             scanJob = viewModelScope.launch {
                 repository.clearInMemoryLibrary()
@@ -175,6 +180,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val includeFolders = folders.map { it.trim() }.filter { it.isNotBlank() }.distinct()
         if (includeFolders.isEmpty()) return
         scanJob = viewModelScope.launch {
+            awaitCachedLibraryRestoreBeforeScanning()
             scanWithIncludeFolders(
                 includeFolders = includeFolders,
                 preferExplicitFolders = true,
@@ -197,6 +203,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val normalizedFolders = folders.map { it.trim() }.filter { it.isNotBlank() }.distinct()
         if (normalizedFolders.isEmpty()) return
         scanJob = viewModelScope.launch {
+            awaitCachedLibraryRestoreBeforeScanning()
             repository.startScanning()
             val summary = try {
                 val minDuration = settingsManager.minDurationSec.first() * 1000L
@@ -221,6 +228,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         autoScanRequested = true
         if (scanJob?.isActive == true || isScanning.value) return
         scanJob = viewModelScope.launch {
+            awaitCachedLibraryRestoreBeforeScanning()
             val source = settingsManager.librarySource.first()
             if (source != SettingsManager.LIBRARY_SOURCE_LOCAL) {
                 // Remote libraries are already restored during startup via loadCachedLibrary().
@@ -231,6 +239,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (!settingsManager.autoScan.first()) return@launch
             scanFromCurrentSettings(fullRescan = false, deepRescan = false)
         }
+    }
+
+    /**
+     * A cache restore and a full scan both replace the entire library state. Let the lightweight
+     * restore finish first so an old on-disk snapshot cannot win a race after a user-initiated
+     * scan has already discovered moved files and rebuilt their metadata.
+     */
+    private suspend fun awaitCachedLibraryRestoreBeforeScanning() {
+        cachedLibraryLoadJob?.takeIf { it.isActive }?.join()
     }
 
     private suspend fun scanFromCurrentSettings(fullRescan: Boolean = false, deepRescan: Boolean = fullRescan) {
