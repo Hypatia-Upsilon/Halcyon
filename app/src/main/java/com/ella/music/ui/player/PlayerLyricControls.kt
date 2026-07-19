@@ -313,8 +313,10 @@ internal fun LyricStyleSettingsContent(
                 valueRange = 0f..45f,
                 steps = 9,
                 label = "${previewPerspectiveYAngle.toInt()}°",
-                onValueChange = { previewPerspectiveYAngle = it },
-                onValueChangeFinished = { onPerspectiveYAngle(it.toInt()) },
+                onValueChange = {
+                    previewPerspectiveYAngle = it
+                    onPerspectiveYAngle(it.toInt())
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(82.dp)
@@ -332,8 +334,10 @@ internal fun LyricStyleSettingsContent(
             valueRange = fontScaleRange.first / 100f..fontScaleRange.last / 100f,
             steps = (fontScaleRange.last - fontScaleRange.first) / 5,
             label = "${(previewFontScale * 100f).roundToInt()}%",
-            onValueChange = { previewFontScale = it },
-            onValueChangeFinished = onFontScale,
+            onValueChange = {
+                previewFontScale = it
+                onFontScale(it)
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(82.dp)
@@ -350,8 +354,10 @@ internal fun LyricStyleSettingsContent(
             valueRange = primaryTextSizeRange.first.toFloat()..primaryTextSizeRange.last.toFloat(),
             steps = primaryTextSizeRange.last - primaryTextSizeRange.first,
             label = "${previewPrimaryTextSize.roundToInt()}sp",
-            onValueChange = { previewPrimaryTextSize = it },
-            onValueChangeFinished = onPrimaryTextSize,
+            onValueChange = {
+                previewPrimaryTextSize = it
+                onPrimaryTextSize(it)
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(82.dp)
@@ -368,8 +374,10 @@ internal fun LyricStyleSettingsContent(
             valueRange = secondaryFontScaleRange.first / 100f..secondaryFontScaleRange.last / 100f,
             steps = (secondaryFontScaleRange.last - secondaryFontScaleRange.first) / 5,
             label = "${(previewSecondaryFontScale * 100f).roundToInt()}%",
-            onValueChange = { previewSecondaryFontScale = it },
-            onValueChangeFinished = onSecondaryFontScale,
+            onValueChange = {
+                previewSecondaryFontScale = it
+                onSecondaryFontScale(it)
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(82.dp)
@@ -386,8 +394,10 @@ internal fun LyricStyleSettingsContent(
             valueRange = secondaryTextSizeRange.first.toFloat()..secondaryTextSizeRange.last.toFloat(),
             steps = secondaryTextSizeRange.last - secondaryTextSizeRange.first,
             label = "${previewSecondaryTextSize.roundToInt()}sp",
-            onValueChange = { previewSecondaryTextSize = it },
-            onValueChangeFinished = onSecondaryTextSize,
+            onValueChange = {
+                previewSecondaryTextSize = it
+                onSecondaryTextSize(it)
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(82.dp)
