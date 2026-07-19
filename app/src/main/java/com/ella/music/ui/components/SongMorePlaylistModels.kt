@@ -3,6 +3,7 @@ package com.ella.music.ui.components
 import com.ella.music.R
 import com.ella.music.data.model.FAVORITES_PLAYLIST_ID
 import com.ella.music.data.model.UserPlaylist
+import com.ella.music.ui.playlist.applyPlaylistCustomOrder
 import java.util.Locale
 
 internal enum class AddPlaylistSortMode(val labelRes: Int) {
@@ -14,11 +15,14 @@ internal enum class AddPlaylistSortMode(val labelRes: Int) {
     fun next(): AddPlaylistSortMode = entries[(ordinal + 1) % entries.size]
 }
 
-internal fun List<UserPlaylist>.sortedForAddToPlaylist(mode: AddPlaylistSortMode): List<UserPlaylist> {
+internal fun List<UserPlaylist>.sortedForAddToPlaylist(
+    mode: AddPlaylistSortMode,
+    customOrderIds: List<String> = emptyList()
+): List<UserPlaylist> {
     val favorites = firstOrNull { it.id == FAVORITES_PLAYLIST_ID }
     val others = filterNot { it.id == FAVORITES_PLAYLIST_ID }
     val sortedOthers = when (mode) {
-        AddPlaylistSortMode.Custom -> others
+        AddPlaylistSortMode.Custom -> others.applyPlaylistCustomOrder(customOrderIds)
         AddPlaylistSortMode.UpdatedAt -> others.sortedWith(
             compareByDescending<UserPlaylist> { it.updatedAt }
                 .thenByDescending { it.createdAt }

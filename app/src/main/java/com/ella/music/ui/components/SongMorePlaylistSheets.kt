@@ -57,6 +57,7 @@ fun AddToPlaylistSheet(
     val scope = rememberCoroutineScope()
     val settingsManager = remember(context) { SettingsManager.getInstance(context) }
     val savedAppendToEnd by settingsManager.addToPlaylistAppendToEnd.collectAsState(initial = false)
+    val playlistCustomOrderIds by settingsManager.playlistCustomOrder.collectAsState(initial = emptyList())
     // Server playlists are shown as read-only snapshots. Keep this picker limited to writable
     // local playlists so a tap never looks successful while changing nothing remotely.
     val writablePlaylists = remember(playlists) { playlists.filter { !it.isRemote || it.remoteWritable } }
@@ -65,8 +66,11 @@ fun AddToPlaylistSheet(
     var multiSelect by remember { mutableStateOf(false) }
     var appendToEnd by remember(savedAppendToEnd) { mutableStateOf(savedAppendToEnd) }
     var sortMode by remember { mutableStateOf(AddPlaylistSortMode.Custom) }
-    val sortedPlaylists = remember(writablePlaylists, sortMode) {
-        writablePlaylists.sortedForAddToPlaylist(sortMode)
+    val sortedPlaylists = remember(writablePlaylists, playlistCustomOrderIds, sortMode) {
+        writablePlaylists.sortedForAddToPlaylist(
+            mode = sortMode,
+            customOrderIds = playlistCustomOrderIds
+        )
     }
     val visiblePlaylists = remember(sortedPlaylists, query) {
         query.trim().takeIf { it.isNotBlank() }?.let { q ->
