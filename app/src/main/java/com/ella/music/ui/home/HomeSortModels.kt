@@ -53,11 +53,6 @@ internal fun HomeSortMode.isDescending(): Boolean = when (this) {
     else -> false
 }
 
-internal fun HomeSortMode.nextForField(field: HomeSortField): HomeSortMode {
-    val descending = sortField() == field && !isDescending()
-    return field.toMode(descending)
-}
-
 internal fun HomeSortField.toMode(descending: Boolean = false): HomeSortMode = when (this) {
     HomeSortField.Title -> if (descending) HomeSortMode.TitleDesc else HomeSortMode.Title
     HomeSortField.FileName -> if (descending) HomeSortMode.FileNameDesc else HomeSortMode.FileName

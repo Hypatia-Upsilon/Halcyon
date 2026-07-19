@@ -100,8 +100,9 @@ import com.ella.music.ui.components.ArtworkUsage
 import com.ella.music.ui.components.ConfirmDangerDialog
 import com.ella.music.ui.components.EllaSearchBar
 import com.ella.music.ui.components.SongMoreActionHost
-import com.ella.music.ui.components.SortDropdownItem
+import com.ella.music.ui.components.DirectionalSortModeField
 import com.ella.music.ui.components.SortDropdownMenu
+import com.ella.music.ui.components.directionalSortModeDropdownItems
 import com.ella.music.ui.components.createPlaylistOrShowDuplicateToast
 import com.ella.music.ui.components.FloatingSelectionControls
 import com.ella.music.ui.components.rememberSongArtworkState
@@ -790,29 +791,75 @@ fun ArtistScreen(
                     .align(Alignment.TopEnd)
             ) {
                 val sortItems = if (selectedArtistTab == ArtistTab.Songs) {
-                    ArtistDetailSongSortMode.entries.map { mode ->
-                        SortDropdownItem(
-                            text = stringResource(mode.labelRes),
-                            selected = sortMode == mode,
-                            onClick = {
-                                LibrarySortUiState.artistDetailSongSortIndex = mode.ordinal
-                                scope.launch { mainViewModel.settingsManager.setArtistDetailSongSortIndex(mode.ordinal) }
-                                scrollToTopRequest++
-                            }
-                        )
-                    }
+                    directionalSortModeDropdownItems(
+                        fields = listOf(
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.artist_sort_title),
+                                ascendingMode = ArtistDetailSongSortMode.Title
+                            ),
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.artist_sort_album_track),
+                                ascendingMode = ArtistDetailSongSortMode.AlbumTrack
+                            ),
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.artist_sort_file_name),
+                                ascendingMode = ArtistDetailSongSortMode.FileName
+                            ),
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.artist_sort_duration),
+                                descendingMode = ArtistDetailSongSortMode.Duration
+                            ),
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.playlist_song_sort_date_added),
+                                ascendingMode = ArtistDetailSongSortMode.DateAddedAsc,
+                                descendingMode = ArtistDetailSongSortMode.DateAdded
+                            ),
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.playlist_song_sort_date_modified),
+                                ascendingMode = ArtistDetailSongSortMode.DateModifiedAsc,
+                                descendingMode = ArtistDetailSongSortMode.DateModified
+                            ),
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.playlist_song_sort_year),
+                                ascendingMode = ArtistDetailSongSortMode.YearAsc,
+                                descendingMode = ArtistDetailSongSortMode.YearDesc
+                            )
+                        ),
+                        selectedMode = sortMode,
+                        onSelect = { mode ->
+                            LibrarySortUiState.artistDetailSongSortIndex = mode.ordinal
+                            scope.launch { mainViewModel.settingsManager.setArtistDetailSongSortIndex(mode.ordinal) }
+                            scrollToTopRequest++
+                        }
+                    )
                 } else {
-                    ArtistDetailAlbumSortMode.entries.map { mode ->
-                        SortDropdownItem(
-                            text = stringResource(mode.labelRes),
-                            selected = albumSortMode == mode,
-                            onClick = {
-                                LibrarySortUiState.artistDetailAlbumSortIndex = mode.ordinal
-                                scope.launch { mainViewModel.settingsManager.setArtistDetailAlbumSortIndex(mode.ordinal) }
-                                scrollToTopRequest++
-                            }
-                        )
-                    }
+                    directionalSortModeDropdownItems(
+                        fields = listOf(
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.playlist_song_sort_year),
+                                ascendingMode = ArtistDetailAlbumSortMode.YearAsc,
+                                descendingMode = ArtistDetailAlbumSortMode.YearDesc
+                            ),
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.artist_sort_song_count),
+                                descendingMode = ArtistDetailAlbumSortMode.SongCount
+                            ),
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.artist_sort_duration),
+                                descendingMode = ArtistDetailAlbumSortMode.Duration
+                            ),
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.artist_sort_album_name),
+                                ascendingMode = ArtistDetailAlbumSortMode.Name
+                            )
+                        ),
+                        selectedMode = albumSortMode,
+                        onSelect = { mode ->
+                            LibrarySortUiState.artistDetailAlbumSortIndex = mode.ordinal
+                            scope.launch { mainViewModel.settingsManager.setArtistDetailAlbumSortIndex(mode.ordinal) }
+                            scrollToTopRequest++
+                        }
+                    )
                 }
                 SortDropdownMenu(
                     items = sortItems,

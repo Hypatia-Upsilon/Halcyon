@@ -86,8 +86,9 @@ import com.ella.music.ui.components.ShuffleAllFloatingButton
 import com.ella.music.ui.components.SideIndexListEndPadding
 import com.ella.music.ui.components.SongItem
 import com.ella.music.ui.components.SongMoreActionHost
-import com.ella.music.ui.components.SortDropdownItem
+import com.ella.music.ui.components.DirectionalSortModeField
 import com.ella.music.ui.components.SortDropdownMenu
+import com.ella.music.ui.components.directionalSortModeDropdownItems
 import com.ella.music.ui.components.createPlaylistOrShowDuplicateToast
 import com.ella.music.ui.components.ellaPageBackground
 import com.ella.music.ui.components.requestPinnedEllaShortcut
@@ -468,15 +469,39 @@ fun FolderDetailScreen(
                         )
                     }
                     SortDropdownMenu(
-                        items = FolderSongSortMode.entries.map { mode ->
-                            SortDropdownItem(
-                                text = stringResource(mode.labelRes),
-                                selected = sortMode == mode,
-                                onClick = {
-                                    updateSortMode(mode)
-                                }
-                            )
-                        }
+                        items = directionalSortModeDropdownItems(
+                            fields = listOf(
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_title),
+                                    ascendingMode = FolderSongSortMode.Title
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_file_name),
+                                    ascendingMode = FolderSongSortMode.FileName
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_duration),
+                                    descendingMode = FolderSongSortMode.Duration
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_date_added),
+                                    ascendingMode = FolderSongSortMode.DateAddedAsc,
+                                    descendingMode = FolderSongSortMode.DateAdded
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_date_modified),
+                                    ascendingMode = FolderSongSortMode.DateModifiedAsc,
+                                    descendingMode = FolderSongSortMode.DateModified
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_year),
+                                    ascendingMode = FolderSongSortMode.YearAsc,
+                                    descendingMode = FolderSongSortMode.YearDesc
+                                )
+                            ),
+                            selectedMode = sortMode,
+                            onSelect = ::updateSortMode
+                        )
                     )
                 }
             }

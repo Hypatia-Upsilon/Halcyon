@@ -70,8 +70,9 @@ import com.ella.music.ui.components.LibraryFloatingControlsBottomPadding
 import com.ella.music.ui.components.LibraryFloatingControlsEndPadding
 import com.ella.music.ui.components.LazyListScrollIndicator
 import com.ella.music.ui.components.SideIndexListEndPadding
-import com.ella.music.ui.components.SortDropdownItem
+import com.ella.music.ui.components.DirectionalSortModeField
 import com.ella.music.ui.components.SortDropdownMenu
+import com.ella.music.ui.components.directionalSortModeDropdownItems
 import com.ella.music.ui.components.ellaPageBackground
 import com.ella.music.viewmodel.MainViewModel
 import kotlinx.coroutines.Dispatchers
@@ -459,16 +460,35 @@ fun ArtistListScreen(
                             )
                         }
                         SortDropdownMenu(
-                            items = ArtistSortMode.entries.map { mode ->
-                                SortDropdownItem(
-                                    text = stringResource(mode.labelRes),
-                                    selected = sortMode == mode,
-                                    onClick = {
-                                        LibrarySortUiState.artistListSortIndex = mode.ordinal
-                                        scope.launch { mainViewModel.settingsManager.setArtistListSortIndex(mode.ordinal) }
-                                    }
-                                )
-                            }
+                            items = directionalSortModeDropdownItems(
+                                fields = listOf(
+                                    DirectionalSortModeField(
+                                        text = stringResource(R.string.artist_list_sort_name),
+                                        ascendingMode = ArtistSortMode.Name
+                                    ),
+                                    DirectionalSortModeField(
+                                        text = stringResource(R.string.artist_list_sort_song_count),
+                                        descendingMode = ArtistSortMode.SongCount
+                                    ),
+                                    DirectionalSortModeField(
+                                        text = stringResource(R.string.artist_list_sort_album_count),
+                                        descendingMode = ArtistSortMode.AlbumCount
+                                    ),
+                                    DirectionalSortModeField(
+                                        text = stringResource(R.string.artist_list_sort_release_album_count),
+                                        descendingMode = ArtistSortMode.ReleaseAlbumCount
+                                    ),
+                                    DirectionalSortModeField(
+                                        text = stringResource(R.string.artist_list_sort_duration),
+                                        descendingMode = ArtistSortMode.Duration
+                                    )
+                                ),
+                                selectedMode = sortMode,
+                                onSelect = { mode ->
+                                    LibrarySortUiState.artistListSortIndex = mode.ordinal
+                                    scope.launch { mainViewModel.settingsManager.setArtistListSortIndex(mode.ordinal) }
+                                }
+                            )
                         )
                     }
                 }

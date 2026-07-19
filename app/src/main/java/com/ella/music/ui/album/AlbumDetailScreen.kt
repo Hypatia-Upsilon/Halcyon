@@ -87,8 +87,9 @@ import com.ella.music.ui.components.LocateCurrentSongFloatingButton
 import com.ella.music.ui.components.SafeCoverImage
 import com.ella.music.ui.components.ShuffleAllFloatingButton
 import com.ella.music.ui.components.SongMoreActionHost
-import com.ella.music.ui.components.SortDropdownItem
+import com.ella.music.ui.components.DirectionalSortModeField
 import com.ella.music.ui.components.SortDropdownMenu
+import com.ella.music.ui.components.directionalSortModeDropdownItems
 import com.ella.music.ui.components.ellaPageBackground
 import com.ella.music.ui.components.rememberSongArtworkState
 import com.ella.music.ui.components.rememberSongDeleteRequester
@@ -712,17 +713,42 @@ fun AlbumDetailScreen(
                     .align(Alignment.TopEnd)
             ) {
                 SortDropdownMenu(
-                    items = AlbumDetailSongSortMode.entries.map { mode ->
-                        SortDropdownItem(
-                            text = stringResource(mode.labelRes),
-                            selected = sortMode == mode,
-                            onClick = {
-                                LibrarySortUiState.albumDetailSongSortIndex = mode.ordinal
-                                scope.launch { mainViewModel.settingsManager.setAlbumDetailSongSortIndex(mode.ordinal) }
-                                scrollToTopRequest++
-                            }
-                        )
-                    }
+                    items = directionalSortModeDropdownItems(
+                        fields = listOf(
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.album_sort_track),
+                                ascendingMode = AlbumDetailSongSortMode.Track
+                            ),
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.playlist_song_sort_title),
+                                ascendingMode = AlbumDetailSongSortMode.Title
+                            ),
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.playlist_song_sort_file_name),
+                                ascendingMode = AlbumDetailSongSortMode.FileName
+                            ),
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.playlist_song_sort_duration),
+                                descendingMode = AlbumDetailSongSortMode.Duration
+                            ),
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.playlist_song_sort_date_added),
+                                ascendingMode = AlbumDetailSongSortMode.DateAddedAsc,
+                                descendingMode = AlbumDetailSongSortMode.DateAdded
+                            ),
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.playlist_song_sort_date_modified),
+                                ascendingMode = AlbumDetailSongSortMode.DateModifiedAsc,
+                                descendingMode = AlbumDetailSongSortMode.DateModified
+                            )
+                        ),
+                        selectedMode = sortMode,
+                        onSelect = { mode ->
+                            LibrarySortUiState.albumDetailSongSortIndex = mode.ordinal
+                            scope.launch { mainViewModel.settingsManager.setAlbumDetailSongSortIndex(mode.ordinal) }
+                            scrollToTopRequest++
+                        }
+                    )
                 )
             }
         }

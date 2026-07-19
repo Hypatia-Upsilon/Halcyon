@@ -78,8 +78,9 @@ import com.ella.music.ui.components.SelectionCheck
 import com.ella.music.ui.components.ShuffleAllFloatingButton
 import com.ella.music.ui.components.SongItem
 import com.ella.music.ui.components.SongMoreActionHost
-import com.ella.music.ui.components.SortDropdownItem
+import com.ella.music.ui.components.DirectionalSortModeField
 import com.ella.music.ui.components.SortDropdownMenu
+import com.ella.music.ui.components.directionalSortModeDropdownItems
 import com.ella.music.ui.components.ellaPageBackground
 import com.ella.music.viewmodel.MainViewModel
 import com.ella.music.viewmodel.PlayerViewModel
@@ -346,16 +347,45 @@ fun FolderPlaylistsScreen(
                         )
                     }
                     SortDropdownMenu(
-                        items = FolderPlaylistSortMode.entries.map { mode ->
-                            SortDropdownItem(
-                                text = stringResource(mode.labelRes),
-                                selected = sortMode == mode,
-                                onClick = {
-                                    LibrarySortUiState.folderPlaylistListSortIndex = mode.ordinal
-                                    scope.launch { mainViewModel.settingsManager.setFolderPlaylistListSortIndex(mode.ordinal) }
-                                }
-                            )
-                        }
+                        items = directionalSortModeDropdownItems(
+                            fields = listOf(
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_sort_custom),
+                                    ascendingMode = FolderPlaylistSortMode.Custom,
+                                    descendingMode = FolderPlaylistSortMode.CustomDesc
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_sort_updated_at),
+                                    descendingMode = FolderPlaylistSortMode.DateUpdated
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_sort_created_at),
+                                    ascendingMode = FolderPlaylistSortMode.DateCreated,
+                                    descendingMode = FolderPlaylistSortMode.DateCreatedDesc
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_sort_name),
+                                    ascendingMode = FolderPlaylistSortMode.Name
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.folder_playlist_sort_folder_count),
+                                    descendingMode = FolderPlaylistSortMode.FolderCount
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_sort_song_count),
+                                    descendingMode = FolderPlaylistSortMode.SongCount
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_sort_duration),
+                                    descendingMode = FolderPlaylistSortMode.Duration
+                                )
+                            ),
+                            selectedMode = sortMode,
+                            onSelect = { mode ->
+                                LibrarySortUiState.folderPlaylistListSortIndex = mode.ordinal
+                                scope.launch { mainViewModel.settingsManager.setFolderPlaylistListSortIndex(mode.ordinal) }
+                            }
+                        )
                     )
                 }
             }
@@ -1040,20 +1070,80 @@ fun FolderPlaylistDetailScreen(
                 }
                 SortDropdownMenu(
                     items = when (selectedTab) {
-                        FolderPlaylistTab.Songs -> FolderPlaylistSongSortMode.entries.map { mode ->
-                            SortDropdownItem(
-                                text = stringResource(mode.labelRes),
-                                selected = songSortMode == mode,
-                                onClick = { scope.launch { mainViewModel.settingsManager.setFolderPlaylistDetailSongSortIndex(mode.ordinal) } }
-                            )
-                        }
-                        FolderPlaylistTab.Folders -> FolderPlaylistFolderSortMode.entries.map { mode ->
-                            SortDropdownItem(
-                                text = stringResource(mode.labelRes),
-                                selected = folderSortMode == mode,
-                                onClick = { scope.launch { mainViewModel.settingsManager.setFolderPlaylistDetailFolderSortIndex(mode.ordinal) } }
-                            )
-                        }
+                        FolderPlaylistTab.Songs -> directionalSortModeDropdownItems(
+                            fields = listOf(
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_sort_custom),
+                                    ascendingMode = FolderPlaylistSongSortMode.Custom,
+                                    descendingMode = FolderPlaylistSongSortMode.CustomDesc
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_title),
+                                    ascendingMode = FolderPlaylistSongSortMode.Title
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_file_name),
+                                    ascendingMode = FolderPlaylistSongSortMode.FileName
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_duration),
+                                    descendingMode = FolderPlaylistSongSortMode.Duration
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_year),
+                                    ascendingMode = FolderPlaylistSongSortMode.YearAsc,
+                                    descendingMode = FolderPlaylistSongSortMode.YearDesc
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_date_added),
+                                    ascendingMode = FolderPlaylistSongSortMode.DateAddedAsc,
+                                    descendingMode = FolderPlaylistSongSortMode.DateAdded
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_date_modified),
+                                    ascendingMode = FolderPlaylistSongSortMode.DateModifiedAsc,
+                                    descendingMode = FolderPlaylistSongSortMode.DateModified
+                                )
+                            ),
+                            selectedMode = songSortMode,
+                            onSelect = { mode ->
+                                scope.launch { mainViewModel.settingsManager.setFolderPlaylistDetailSongSortIndex(mode.ordinal) }
+                            }
+                        )
+                        FolderPlaylistTab.Folders -> directionalSortModeDropdownItems(
+                            fields = listOf(
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_sort_custom),
+                                    ascendingMode = FolderPlaylistFolderSortMode.Custom,
+                                    descendingMode = FolderPlaylistFolderSortMode.CustomDesc
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_sort_name),
+                                    ascendingMode = FolderPlaylistFolderSortMode.Name
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_sort_song_count),
+                                    descendingMode = FolderPlaylistFolderSortMode.SongCount
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.folder_sort_album_count),
+                                    descendingMode = FolderPlaylistFolderSortMode.AlbumCount
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_sort_duration),
+                                    descendingMode = FolderPlaylistFolderSortMode.Duration
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_date_modified),
+                                    ascendingMode = FolderPlaylistFolderSortMode.DateModifiedAsc,
+                                    descendingMode = FolderPlaylistFolderSortMode.DateModified
+                                )
+                            ),
+                            selectedMode = folderSortMode,
+                            onSelect = { mode ->
+                                scope.launch { mainViewModel.settingsManager.setFolderPlaylistDetailFolderSortIndex(mode.ordinal) }
+                            }
+                        )
                     }
                 )
                 }
@@ -1539,13 +1629,24 @@ private fun FolderPlaylistEditorSheet(
                         modifier = Modifier.weight(1f)
                     )
                     SortDropdownMenu(
-                        items = EditorFolderSort.entries.map { mode ->
-                            SortDropdownItem(
-                                text = stringResource(mode.labelRes),
-                                selected = editorSort == mode,
-                                onClick = { editorSort = mode }
-                            )
-                        }
+                        items = directionalSortModeDropdownItems(
+                            fields = listOf(
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_date_modified),
+                                    descendingMode = EditorFolderSort.ModifiedTime
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_sort_name),
+                                    ascendingMode = EditorFolderSort.Name
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_sort_song_count),
+                                    descendingMode = EditorFolderSort.SongCount
+                                )
+                            ),
+                            selectedMode = editorSort,
+                            onSelect = { editorSort = it }
+                        )
                     )
                 }
             }

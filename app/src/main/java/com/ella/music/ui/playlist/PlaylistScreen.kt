@@ -54,7 +54,8 @@ import com.ella.music.ui.components.FastIndexBar
 import com.ella.music.ui.components.FloatingSelectionControls
 import com.ella.music.ui.components.LazyListScrollIndicator
 import com.ella.music.ui.components.SideIndexListEndPadding
-import com.ella.music.ui.components.SortDropdownItem
+import com.ella.music.ui.components.DirectionalSortModeField
+import com.ella.music.ui.components.directionalSortModeDropdownItems
 import com.ella.music.ui.components.createPlaylistOrShowDuplicateToast
 import com.ella.music.ui.components.requestPinnedEllaShortcut
 import com.ella.music.ui.components.shareLocalSongs
@@ -459,17 +460,42 @@ fun PlaylistScreen(
                 selectedCount = selectedPlaylistIds.size,
                 totalCount = displayedCustomPlaylists.size,
                 showBackButton = showBackButton,
-                sortItems = PlaylistSortMode.entries.map { mode ->
-                SortDropdownItem(
-                    text = stringResource(mode.labelRes),
-                    selected = playlistSortMode == mode,
-                    onClick = {
+                sortItems = directionalSortModeDropdownItems(
+                    fields = listOf(
+                        DirectionalSortModeField(
+                            text = stringResource(R.string.playlist_sort_custom),
+                            ascendingMode = PlaylistSortMode.Custom,
+                            descendingMode = PlaylistSortMode.CustomDesc
+                        ),
+                        DirectionalSortModeField(
+                            text = stringResource(R.string.playlist_sort_updated_at),
+                            descendingMode = PlaylistSortMode.UpdatedAt
+                        ),
+                        DirectionalSortModeField(
+                            text = stringResource(R.string.playlist_sort_created_at),
+                            ascendingMode = PlaylistSortMode.CreatedAtAsc,
+                            descendingMode = PlaylistSortMode.CreatedAt
+                        ),
+                        DirectionalSortModeField(
+                            text = stringResource(R.string.playlist_sort_name),
+                            ascendingMode = PlaylistSortMode.Name
+                        ),
+                        DirectionalSortModeField(
+                            text = stringResource(R.string.playlist_sort_song_count),
+                            descendingMode = PlaylistSortMode.SongCount
+                        ),
+                        DirectionalSortModeField(
+                            text = stringResource(R.string.playlist_sort_duration),
+                            descendingMode = PlaylistSortMode.Duration
+                        )
+                    ),
+                    selectedMode = playlistSortMode,
+                    onSelect = { mode ->
                         LibrarySortUiState.pendingPlaylistListSortIndex = mode.ordinal
                         LibrarySortUiState.playlistListSortIndex = mode.ordinal
                         saveScope.launch { mainViewModel.settingsManager.setPlaylistListSortIndex(mode.ordinal) }
                     }
-                )
-            },
+                ),
             onBackClick = { if (selectionMode) finishSelectionMode() else onBack() },
             onExportSelectedClick = {
                 val targets = selectedPlaylists()

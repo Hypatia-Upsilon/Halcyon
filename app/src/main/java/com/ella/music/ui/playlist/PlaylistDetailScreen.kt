@@ -56,7 +56,8 @@ import com.ella.music.ui.components.LocateCurrentSongFloatingButton
 import com.ella.music.ui.components.ShuffleAllFloatingButton
 import com.ella.music.ui.components.SongItem
 import com.ella.music.ui.components.SongMoreActionHost
-import com.ella.music.ui.components.SortDropdownItem
+import com.ella.music.ui.components.DirectionalSortModeField
+import com.ella.music.ui.components.directionalSortModeDropdownItems
 import com.ella.music.ui.components.createPlaylistOrShowDuplicateToast
 import com.ella.music.ui.components.ellaPageBackground
 import com.ella.music.ui.components.toFastIndexSection
@@ -453,16 +454,51 @@ fun PlaylistDetailScreen(
                                 if (openPlayerOnPlay) onNavigateToPlayer()
                             }
                         },
-                        sortItems = PlaylistSongSortMode.entries.map { mode ->
-                            SortDropdownItem(
-                                text = stringResource(mode.labelRes),
-                                selected = sortMode == mode,
-                                onClick = {
-                                    scope.launch { mainViewModel.settingsManager.setPlaylistDetailSongSortIndex(mode.ordinal) }
-                                    scope.launch { listState.animateScrollToItem(0) }
-                                }
-                            )
-                        }
+                        sortItems = directionalSortModeDropdownItems(
+                            fields = listOf(
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_sort_custom),
+                                    ascendingMode = PlaylistSongSortMode.Custom,
+                                    descendingMode = PlaylistSongSortMode.CustomDesc
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_added_at),
+                                    ascendingMode = PlaylistSongSortMode.AddedAt
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_title),
+                                    ascendingMode = PlaylistSongSortMode.Title
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_file_name),
+                                    ascendingMode = PlaylistSongSortMode.FileName
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_duration),
+                                    descendingMode = PlaylistSongSortMode.Duration
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_year),
+                                    ascendingMode = PlaylistSongSortMode.YearAsc,
+                                    descendingMode = PlaylistSongSortMode.YearDesc
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_date_added),
+                                    ascendingMode = PlaylistSongSortMode.DateAddedAsc,
+                                    descendingMode = PlaylistSongSortMode.DateAdded
+                                ),
+                                DirectionalSortModeField(
+                                    text = stringResource(R.string.playlist_song_sort_date_modified),
+                                    ascendingMode = PlaylistSongSortMode.DateModifiedAsc,
+                                    descendingMode = PlaylistSongSortMode.DateModified
+                                )
+                            ),
+                            selectedMode = sortMode,
+                            onSelect = { mode ->
+                                scope.launch { mainViewModel.settingsManager.setPlaylistDetailSongSortIndex(mode.ordinal) }
+                                scope.launch { listState.animateScrollToItem(0) }
+                            }
+                        )
                     )
                 }
 

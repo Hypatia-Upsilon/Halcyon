@@ -16,7 +16,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
@@ -93,6 +92,7 @@ import com.ella.music.ui.components.EllaMiuixTextField
 import com.ella.music.ui.components.EllaCenteredLoadingIndicator
 import com.ella.music.ui.components.ArtistPickerSheet
 import com.ella.music.ui.components.DoubleTapScrollOverlay
+import com.ella.music.ui.components.DirectionalSortField
 import com.ella.music.ui.components.EllaSmallTopAppBar
 import com.ella.music.ui.components.FastIndexBar
 import com.ella.music.ui.components.LazyListScrollIndicator
@@ -102,7 +102,6 @@ import com.ella.music.ui.components.SongMoreActionHost
 import com.ella.music.ui.components.SongSelectionActionRow
 import com.ella.music.ui.components.ShuffleAllFloatingButton
 import com.ella.music.ui.components.ScanRefreshIconButton
-import com.ella.music.ui.components.SortDropdownItem
 import com.ella.music.ui.components.SortDropdownMenu
 import com.ella.music.ui.components.TagEditorOption
 import com.ella.music.ui.components.TagEditorOptionKind
@@ -113,6 +112,8 @@ import com.ella.music.ui.components.launchTagEditorOption
 import com.ella.music.ui.components.openSongSpectrumWithAspectPro
 import com.ella.music.ui.components.shareLocalSong
 import com.ella.music.ui.components.wallpaperContentOverlayColor
+import com.ella.music.ui.components.directionalSortDropdownItems
+import com.ella.music.ui.listmodel.SortDirection
 import com.ella.music.viewmodel.MainViewModel
 import com.ella.music.viewmodel.PlayerViewModel
 import kotlinx.coroutines.Dispatchers
@@ -172,7 +173,6 @@ fun LibraryScreen(
     var searchExpanded by remember { mutableStateOf(false) }
     var ratingFilter by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var favoriteFilter by remember { mutableStateOf(false) }
-    var sortExpanded by remember { mutableStateOf(false) }
     val sortIndex by settingsManager.librarySongSortIndex.collectAsState(initial = LibrarySortUiState.librarySongSortIndex)
     val sortMode = HomeSortMode.entries.getOrElse(sortIndex) { HomeSortMode.Title }
     LaunchedEffect(sortIndex) {
@@ -199,10 +199,6 @@ fun LibraryScreen(
         LibrarySortUiState.librarySongSortIndex = mode.ordinal
         scope.launch { settingsManager.setLibrarySongSortIndex(mode.ordinal) }
         scrollToTopRequest++
-    }
-
-    fun selectHomeSortField(field: HomeSortField) {
-        applyHomeSortMode(sortMode.nextForField(field))
     }
 
     fun navigateToArtistOrChoose(artistText: String) {
@@ -524,19 +520,29 @@ fun LibraryScreen(
                             )
                         }
                         SortDropdownMenu(
-                            items = HomeSortField.entries.map { field ->
-                                val selected = sortMode.sortField() == field
-                                SortDropdownItem(
-                                    text = stringResource(field.labelRes),
-                                    selected = selected,
-                                    summary = if (selected) {
-                                        stringResource(
-                                            if (sortMode.isDescending()) R.string.common_sort_descending else R.string.common_sort_ascending
-                                        )
-                                    } else {
-                                        null
-                                    },
-                                    onClick = { selectHomeSortField(field) }
+                            items = directionalSortDropdownItems(
+                                fields = HomeSortField.entries.map { field ->
+                                    DirectionalSortField(
+                                        field = field,
+                                        text = stringResource(field.labelRes),
+                                        defaultDirection = when (field) {
+                                            HomeSortField.DateAdded,
+                                            HomeSortField.DateModified -> SortDirection.Descending
+                                            else -> SortDirection.Ascending
+                                        }
+                                    )
+                                },
+                                selectedField = sortMode.sortField(),
+                                selectedDirection = if (sortMode.isDescending()) {
+                                    SortDirection.Descending
+                                } else {
+                                    SortDirection.Ascending
+                                },
+                                ascendingSummary = stringResource(R.string.common_sort_ascending),
+                                descendingSummary = stringResource(R.string.common_sort_descending)
+                            ) { field, direction ->
+                                applyHomeSortMode(
+                                    field.toMode(direction == SortDirection.Descending)
                                 )
                             }
                         )
@@ -552,7 +558,7 @@ fun LibraryScreen(
             )
         }
 
-        BackHandler(enabled = selectionMode || searchExpanded || sortExpanded || ratingFilterExpanded) {
+        BackHandler(enabled = selectionMode || searchExpanded || ratingFilterExpanded) {
             when {
                 selectionMode -> {
                     finishSelectionMode()
@@ -561,50 +567,7 @@ fun LibraryScreen(
                     searchExpanded = false
                     searchQuery = ""
                 }
-                sortExpanded -> sortExpanded = false
                 ratingFilterExpanded -> ratingFilterExpanded = false
-            }
-        }
-
-        AnimatedVisibility(
-            visible = sortExpanded && !selectionMode,
-            enter = expandVertically(),
-            exit = shrinkVertically()
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
-            ) {
-                HomeSortField.entries.forEach { field ->
-                    val selected = sortMode.sortField() == field
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                selectHomeSortField(field)
-                                sortExpanded = false
-                            }
-                            .padding(vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = listOf(
-                                stringResource(field.labelRes),
-                                if (selected) {
-                                    stringResource(
-                                        if (sortMode.isDescending()) R.string.common_sort_descending else R.string.common_sort_ascending
-                                    )
-                                } else {
-                                    null
-                                }
-                            ).filterNotNull().joinToString(" · "),
-                            fontSize = 14.sp,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (selected) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface
-                        )
-                    }
-                }
             }
         }
 

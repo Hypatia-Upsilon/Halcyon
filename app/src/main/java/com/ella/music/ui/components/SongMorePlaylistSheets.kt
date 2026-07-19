@@ -100,13 +100,28 @@ fun AddToPlaylistSheet(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             Box(modifier = Modifier.weight(1f)) {
                 SortDropdownMenuContent(
-                    items = AddPlaylistSortMode.entries.map { mode ->
-                        SortDropdownItem(
-                            text = stringResource(mode.labelRes),
-                            selected = sortMode == mode,
-                            onClick = { sortMode = mode }
-                        )
-                    }
+                    items = directionalSortModeDropdownItems(
+                        fields = listOf(
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.playlist_sort_custom),
+                                ascendingMode = AddPlaylistSortMode.Custom
+                            ),
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.playlist_sort_updated_at),
+                                descendingMode = AddPlaylistSortMode.UpdatedAt
+                            ),
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.playlist_sort_name),
+                                ascendingMode = AddPlaylistSortMode.Name
+                            ),
+                            DirectionalSortModeField(
+                                text = stringResource(R.string.playlist_sort_song_count),
+                                descendingMode = AddPlaylistSortMode.SongCount
+                            )
+                        ),
+                        selectedMode = sortMode,
+                        onSelect = { sortMode = it }
+                    )
                 ) {
                     Box(
                         modifier = Modifier

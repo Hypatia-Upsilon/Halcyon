@@ -107,8 +107,9 @@ import com.ella.music.ui.components.SideIndexListEndPadding
 import com.ella.music.ui.components.SongItem
 import com.ella.music.ui.components.SongMoreActionHost
 import com.ella.music.ui.components.ArtworkUsage
-import com.ella.music.ui.components.SortDropdownItem
+import com.ella.music.ui.components.DirectionalSortModeField
 import com.ella.music.ui.components.SortDropdownMenu
+import com.ella.music.ui.components.directionalSortModeDropdownItems
 import com.ella.music.ui.components.createPlaylistOrShowDuplicateToast
 import com.ella.music.ui.components.ellaPageBackground
 import com.ella.music.ui.components.rememberSongArtworkState
@@ -533,29 +534,81 @@ fun MetadataCategoryDetailScreen(
                             )
                         }
                         val sortItems = if (selectedTab == MetadataDetailTab.Albums) {
-                            MetadataDetailAlbumSortMode.entries.map { mode ->
-                                SortDropdownItem(
-                                    text = mode.label(),
-                                    selected = albumSortMode == mode,
-                                    onClick = {
-                                        LibrarySortUiState.updateMetadataCategoryDetailAlbumSortIndex(type, mode.ordinal)
-                                        saveScope.launch { mainViewModel.settingsManager.setMetadataCategoryDetailAlbumSortIndex(type, mode.ordinal) }
-                                    }
-                                )
-                            }
-                        } else {
-                            MetadataDetailSongSortMode.entries
-                                .filterNot { type == "folder" && it == MetadataDetailSongSortMode.AlbumTrack }
-                                .map { mode ->
-                                    SortDropdownItem(
-                                        text = mode.label(),
-                                        selected = sortMode == mode,
-                                        onClick = {
-                                            LibrarySortUiState.updateMetadataCategoryDetailSongSortIndex(type, mode.ordinal)
-                                            saveScope.launch { mainViewModel.settingsManager.setMetadataCategoryDetailSongSortIndex(type, mode.ordinal) }
-                                        }
+                            directionalSortModeDropdownItems(
+                                fields = listOf(
+                                    DirectionalSortModeField(
+                                        text = stringResource(R.string.playlist_song_sort_year),
+                                        ascendingMode = MetadataDetailAlbumSortMode.YearAsc,
+                                        descendingMode = MetadataDetailAlbumSortMode.YearDesc
+                                    ),
+                                    DirectionalSortModeField(
+                                        text = stringResource(R.string.playlist_sort_song_count),
+                                        descendingMode = MetadataDetailAlbumSortMode.SongCount
+                                    ),
+                                    DirectionalSortModeField(
+                                        text = stringResource(R.string.playlist_sort_duration),
+                                        descendingMode = MetadataDetailAlbumSortMode.Duration
+                                    ),
+                                    DirectionalSortModeField(
+                                        text = stringResource(R.string.category_sort_album_name),
+                                        ascendingMode = MetadataDetailAlbumSortMode.Name
                                     )
+                                ),
+                                selectedMode = albumSortMode,
+                                onSelect = { mode ->
+                                    LibrarySortUiState.updateMetadataCategoryDetailAlbumSortIndex(type, mode.ordinal)
+                                    saveScope.launch { mainViewModel.settingsManager.setMetadataCategoryDetailAlbumSortIndex(type, mode.ordinal) }
                                 }
+                            )
+                        } else {
+                            directionalSortModeDropdownItems(
+                                fields = buildList {
+                                    if (type != "folder") {
+                                        add(
+                                            DirectionalSortModeField(
+                                                text = stringResource(R.string.category_sort_album_track),
+                                                ascendingMode = MetadataDetailSongSortMode.AlbumTrack
+                                            )
+                                        )
+                                    }
+                                    addAll(
+                                        listOf(
+                                            DirectionalSortModeField(
+                                                text = stringResource(R.string.playlist_song_sort_title),
+                                                ascendingMode = MetadataDetailSongSortMode.Title
+                                            ),
+                                            DirectionalSortModeField(
+                                                text = stringResource(R.string.playlist_song_sort_file_name),
+                                                ascendingMode = MetadataDetailSongSortMode.FileName
+                                            ),
+                                            DirectionalSortModeField(
+                                                text = stringResource(R.string.playlist_sort_duration),
+                                                descendingMode = MetadataDetailSongSortMode.Duration
+                                            ),
+                                            DirectionalSortModeField(
+                                                text = stringResource(R.string.playlist_song_sort_year),
+                                                ascendingMode = MetadataDetailSongSortMode.YearAsc,
+                                                descendingMode = MetadataDetailSongSortMode.YearDesc
+                                            ),
+                                            DirectionalSortModeField(
+                                                text = stringResource(R.string.playlist_song_sort_date_added),
+                                                ascendingMode = MetadataDetailSongSortMode.DateAddedAsc,
+                                                descendingMode = MetadataDetailSongSortMode.DateAdded
+                                            ),
+                                            DirectionalSortModeField(
+                                                text = stringResource(R.string.playlist_song_sort_date_modified),
+                                                ascendingMode = MetadataDetailSongSortMode.DateModifiedAsc,
+                                                descendingMode = MetadataDetailSongSortMode.DateModified
+                                            )
+                                        )
+                                    )
+                                },
+                                selectedMode = sortMode,
+                                onSelect = { mode ->
+                                    LibrarySortUiState.updateMetadataCategoryDetailSongSortIndex(type, mode.ordinal)
+                                    saveScope.launch { mainViewModel.settingsManager.setMetadataCategoryDetailSongSortIndex(type, mode.ordinal) }
+                                }
+                            )
                         }
                         SortDropdownMenu(items = sortItems)
                     }
