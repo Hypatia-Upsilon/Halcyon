@@ -7,6 +7,13 @@ internal fun <T> List<T>.movePlaylistItem(from: Int, to: Int): List<T> {
     }
 }
 
+/** Keep an in-progress drag until persistence has caught up to that exact order. */
+internal fun shouldApplyPersistedPlaylistOrder(
+    localOrderDirty: Boolean,
+    persistedIds: List<String>,
+    localIds: List<String>
+): Boolean = !localOrderDirty || persistedIds == localIds
+
 internal fun <T, K> List<T>.moveSelectedItemsAsBlock(
     from: Int,
     to: Int,

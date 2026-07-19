@@ -133,9 +133,23 @@ fun PlaylistScreen(
     val orderedCustomPlaylists = remember(storedCustomPlaylists, playlistCustomOrderIds) {
         storedCustomPlaylists.applyPlaylistCustomOrder(playlistCustomOrderIds)
     }
-    var manualCustomPlaylists by remember(orderedCustomPlaylists) { mutableStateOf(orderedCustomPlaylists) }
+    // Keep the drag result locally until its exact order is observed from persistence. Recreating
+    // this state for every store/DataStore emission can otherwise restore an earlier drag while a
+    // second drag of the same playlist is in progress.
+    var manualCustomPlaylists by remember { mutableStateOf(orderedCustomPlaylists) }
+    var manualCustomOrderDirty by remember { mutableStateOf(false) }
     LaunchedEffect(orderedCustomPlaylists) {
-        manualCustomPlaylists = orderedCustomPlaylists
+        val persistedIds = orderedCustomPlaylists.map(UserPlaylist::id)
+        if (
+            shouldApplyPersistedPlaylistOrder(
+                localOrderDirty = manualCustomOrderDirty,
+                persistedIds = persistedIds,
+                localIds = manualCustomPlaylists.map(UserPlaylist::id)
+            )
+        ) {
+            manualCustomPlaylists = orderedCustomPlaylists
+            manualCustomOrderDirty = false
+        }
     }
     val customPlaylists = remember(storedCustomPlaylists, orderedCustomPlaylists, playlistSortMode) {
         when (playlistSortMode) {
@@ -408,6 +422,9 @@ fun PlaylistScreen(
         }
         selectionMode = true
     }
+    fun persistManualPlaylistOrder() {
+        mainViewModel.reorderPlaylists(manualCustomPlaylists.map(UserPlaylist::id))
+    }
     val playlistListHeaderCount = (if (showFavorites) 1 else 0) + (if (showFiveStar) 1 else 0) + 1
     val reorderableLazyListState = rememberReorderableLazyListState(
         lazyListState = listState,
@@ -428,6 +445,7 @@ fun PlaylistScreen(
                 selectedKeys = selectedPlaylistIds,
                 keyOf = UserPlaylist::id
             )
+            manualCustomOrderDirty = true
         }
     )
 
@@ -659,18 +677,14 @@ fun PlaylistScreen(
                                 onDragStarted = { draggedPlaylistId = playlist.id },
                                 onDragStopped = {
                                     draggedPlaylistId = null
-                                    val orderedIds = manualCustomPlaylists.map { it.id }
-                                    scope.launch { mainViewModel.settingsManager.setPlaylistCustomOrder(orderedIds) }
-                                    mainViewModel.reorderPlaylists(orderedIds)
+                                    persistManualPlaylistOrder()
                                 }
                             )
                             .longPressDraggableHandle(
                                 onDragStarted = { draggedPlaylistId = playlist.id },
                                 onDragStopped = {
                                     draggedPlaylistId = null
-                                    val orderedIds = manualCustomPlaylists.map { it.id }
-                                    scope.launch { mainViewModel.settingsManager.setPlaylistCustomOrder(orderedIds) }
-                                    mainViewModel.reorderPlaylists(orderedIds)
+                                    persistManualPlaylistOrder()
                                 }
                             )
                         PlaylistRow(
@@ -833,7 +847,6 @@ fun PlaylistScreen(
                     text = stringResource(R.string.common_pin_to_top),
                     onClick = {
                         val orderedIds = (listOf(playlist.id) + storedCustomPlaylists.map { it.id }).distinct()
-                        scope.launch { mainViewModel.settingsManager.setPlaylistCustomOrder(orderedIds) }
                         mainViewModel.reorderPlaylists(orderedIds)
                         playlistMenuTarget = null
                     }

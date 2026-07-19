@@ -16,6 +16,8 @@ import com.ella.music.data.model.toSong
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 internal class MainViewModelPlaylistCoordinator(
     private val playlistStore: PlaylistStore,
@@ -23,6 +25,12 @@ internal class MainViewModelPlaylistCoordinator(
     private val scope: CoroutineScope,
     private val currentSongs: () -> List<Song>
 ) {
+    /**
+     * A playlist-list drag can finish twice before the first disk write reaches the store.
+     * Keep the writes ordered so an older drag cannot overwrite the final position.
+     */
+    private val playlistOrderMutex = Mutex()
+
     fun playlistSongs(playlist: UserPlaylist): List<Song> {
         val libraryByKey = currentSongs().associateBy { it.playlistIdentityKey() }
         return playlist.songs.map { item -> libraryByKey[item.key] ?: item.toSong() }
@@ -80,7 +88,12 @@ internal class MainViewModelPlaylistCoordinator(
 
     fun reorderPlaylists(orderedIds: List<String>) {
         if (orderedIds.isEmpty()) return
-        scope.launch { playlistStore.reorderPlaylists(orderedIds) }
+        scope.launch {
+            playlistOrderMutex.withLock {
+                playlistStore.reorderPlaylists(orderedIds)
+                settingsManager.setPlaylistCustomOrder(orderedIds)
+            }
+        }
     }
 
     fun importLocalPlaylist(uri: Uri, onResult: (Result<PlaylistImportResult>) -> Unit) {
@@ -153,14 +166,16 @@ internal class MainViewModelPlaylistCoordinator(
     }
 
     private suspend fun syncPlaylistCustomOrder(newPlaylistIds: List<String> = emptyList()) {
-        val customPlaylists = playlistStore.playlists.value
-            .filterNot { it.isFavorites || it.isFiveStarRating }
-        settingsManager.setPlaylistCustomOrder(
-            buildPlaylistCustomOrder(
-                customPlaylists = customPlaylists,
-                currentOrder = settingsManager.playlistCustomOrder.first(),
-                newPlaylistIds = newPlaylistIds
+        playlistOrderMutex.withLock {
+            val customPlaylists = playlistStore.playlists.value
+                .filterNot { it.isFavorites || it.isFiveStarRating }
+            settingsManager.setPlaylistCustomOrder(
+                buildPlaylistCustomOrder(
+                    customPlaylists = customPlaylists,
+                    currentOrder = settingsManager.playlistCustomOrder.first(),
+                    newPlaylistIds = newPlaylistIds
+                )
             )
-        )
+        }
     }
 }

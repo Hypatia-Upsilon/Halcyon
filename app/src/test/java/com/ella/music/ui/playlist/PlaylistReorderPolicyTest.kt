@@ -66,5 +66,29 @@ class PlaylistReorderPolicyTest {
         assertEquals(entries("1", "2", "4", "3", "5", "6", "7"), reordered)
     }
 
+    @Test
+    fun stalePersistedOrderDoesNotReplaceANewerLocalDrag() {
+        assertEquals(
+            false,
+            shouldApplyPersistedPlaylistOrder(
+                localOrderDirty = true,
+                persistedIds = listOf("1", "2", "A", "3"),
+                localIds = listOf("1", "2", "3", "A")
+            )
+        )
+    }
+
+    @Test
+    fun matchingPersistedOrderCompletesTheLocalDrag() {
+        assertEquals(
+            true,
+            shouldApplyPersistedPlaylistOrder(
+                localOrderDirty = true,
+                persistedIds = listOf("1", "2", "3", "A"),
+                localIds = listOf("1", "2", "3", "A")
+            )
+        )
+    }
+
     private fun entries(vararg ids: String): List<Entry> = ids.map(::Entry)
 }
