@@ -126,10 +126,9 @@ fun FolderPlaylistsScreen(
     val availableFolders = remember(songs) { songs.availableFolderPlaylistFolders() }
     var editorTarget by remember { mutableStateOf<FolderPlaylist?>(null) }
     var showEditor by remember { mutableStateOf(false) }
-    // Hoist the editor's draft state so it persists across dialog open/close within the same
-    // session. Reset only when the editor target changes (i.e. user opens "new" or a different
-    // playlist). This keeps previously-selected folders pinned to the top even after closing
-    // and reopening the editor, avoiding accidental mis-taps.
+    // Keep an edit draft while reopening the same existing playlist, but explicitly clear every
+    // field when creating a new folder playlist. `null` is not a distinct remember key for two
+    // consecutive "new" actions, so relying on the target key alone retains the old draft.
     var editorDraftName by remember(editorTarget?.id) { mutableStateOf(editorTarget?.name.orEmpty()) }
     var editorDraftFolders by remember(editorTarget?.id) { mutableStateOf(editorTarget?.folders.orEmpty().toSet()) }
     // Folders that should stay pinned to the top for the duration of this editor session. Unlike
@@ -138,6 +137,13 @@ fun FolderPlaylistsScreen(
     // after the user accidentally unchecks it, until the editor target changes.
     var editorPinnedFolders by remember(editorTarget?.id) {
         mutableStateOf(editorTarget?.folders.orEmpty().toSet())
+    }
+    fun openNewFolderPlaylistEditor() {
+        editorTarget = null
+        editorDraftName = ""
+        editorDraftFolders = emptySet()
+        editorPinnedFolders = emptySet()
+        showEditor = true
     }
     var pendingDelete by remember { mutableStateOf<FolderPlaylist?>(null) }
     var searchExpanded by remember { mutableStateOf(false) }
@@ -411,10 +417,7 @@ fun FolderPlaylistsScreen(
                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary
                     )
                     Spacer(modifier = Modifier.height(12.dp))
-                    Button(onClick = {
-                        editorTarget = null
-                        showEditor = true
-                    }) {
+                    Button(onClick = ::openNewFolderPlaylistEditor) {
                         Text(text = stringResource(R.string.folder_playlist_create))
                     }
                 }
@@ -441,10 +444,7 @@ fun FolderPlaylistsScreen(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = MiuixTheme.colorScheme.primary,
-                    modifier = Modifier.clickable {
-                        editorTarget = null
-                        showEditor = true
-                    }
+                    modifier = Modifier.clickable(onClick = ::openNewFolderPlaylistEditor)
                 )
             }
             Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
