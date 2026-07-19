@@ -30,7 +30,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeViewModelStoreOwner
+import androidx.savedstate.SavedStateRegistry
+import androidx.savedstate.SavedStateRegistryController
+import androidx.savedstate.SavedStateRegistryOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.ella.music.data.SettingsManager
 import com.ella.music.data.model.LyricLine
 import com.ella.music.data.model.LyricWord
@@ -64,10 +71,11 @@ internal class DesktopComposeLyricView(context: Context) : FrameLayout(context) 
     private var wordLiftEnabled by mutableStateOf(true)
 
     init {
-        setViewTreeLifecycleOwner(composeLifecycleOwner)
+        installLifecycleOwnerOn(this)
         composeLifecycleOwner.start()
         addView(
             ComposeView(context).apply {
+                installLifecycleOwnerOn(this)
                 setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
                 setContent {
                     DesktopLyricContent()
@@ -79,11 +87,14 @@ internal class DesktopComposeLyricView(context: Context) : FrameLayout(context) 
 
     /**
      * WindowManager overlays are not attached to an Activity decor tree. Install the owner on
-     * the service-created root before it is attached so Compose never tries to resolve it from a
-     * bare [android.widget.LinearLayout].
+     * the service-created root before it is attached so Compose never tries to resolve state from
+     * a bare [android.widget.LinearLayout]. A WindowManager overlay has no Activity decor tree,
+     * so it needs the complete set of owners that Compose normally inherits from an Activity.
      */
     fun installLifecycleOwnerOn(root: View) {
         root.setViewTreeLifecycleOwner(composeLifecycleOwner)
+        root.setViewTreeViewModelStoreOwner(composeLifecycleOwner)
+        root.setViewTreeSavedStateRegistryOwner(composeLifecycleOwner)
     }
 
     override fun onAttachedToWindow() {
@@ -367,11 +378,23 @@ internal class DesktopComposeLyricView(context: Context) : FrameLayout(context) 
         equals("v1", ignoreCase = true) || equals("v2", ignoreCase = true)
 }
 
-private class DesktopComposeLifecycleOwner : LifecycleOwner {
+private class DesktopComposeLifecycleOwner :
+    LifecycleOwner,
+    ViewModelStoreOwner,
+    SavedStateRegistryOwner {
     private val registry = LifecycleRegistry(this)
+    private val stateController = SavedStateRegistryController.create(this)
     private var destroyed = false
 
     override val lifecycle: Lifecycle = registry
+    override val viewModelStore = ViewModelStore()
+    override val savedStateRegistry: SavedStateRegistry
+        get() = stateController.savedStateRegistry
+
+    init {
+        stateController.performAttach()
+        stateController.performRestore(null)
+    }
 
     fun start() {
         if (destroyed) return
@@ -388,6 +411,7 @@ private class DesktopComposeLifecycleOwner : LifecycleOwner {
         registry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
         registry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
         registry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+        viewModelStore.clear()
     }
 }
 
