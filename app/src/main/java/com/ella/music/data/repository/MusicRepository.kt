@@ -70,6 +70,7 @@ import okhttp3.Request
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 enum class CoverUsage {
     ListThumbnail,
@@ -125,6 +126,7 @@ class MusicRepository(private val context: Context) {
 
     private val _albums = MutableStateFlow<List<Album>>(emptyList())
     val albums: StateFlow<List<Album>> = _albums.asStateFlow()
+    private val albumAggregationGeneration = AtomicLong(0L)
 
     private val scanProgressState = LibraryScanProgressState()
     val isScanning: StateFlow<Boolean> = scanProgressState.isScanning
@@ -1309,11 +1311,18 @@ class MusicRepository(private val context: Context) {
 
     /** Rebuilds album identities after a grouping rule changes without scanning media again. */
     suspend fun rebuildAlbumAggregation() {
+        val aggregationGeneration = albumAggregationGeneration.incrementAndGet()
         val currentSongs = _songs.value
         val rebuiltAlbums = withContext(Dispatchers.Default) {
             currentSongs.toAlbums()
         }
-        _albums.value = rebuiltAlbums
+        // Settings flows emit immediately at startup. If their aggregation began while the
+        // in-memory list was still empty, do not let that stale result overwrite the cache that
+        // finished restoring in the meantime. The generation check also prevents an older
+        // grouping-rule calculation from winning a later settings update for the same song list.
+        if (albumAggregationGeneration.get() == aggregationGeneration && _songs.value === currentSongs) {
+            _albums.value = rebuiltAlbums
+        }
     }
 
     fun clearCache() {
