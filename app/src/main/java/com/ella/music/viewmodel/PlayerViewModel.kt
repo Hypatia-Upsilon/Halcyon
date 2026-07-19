@@ -57,7 +57,6 @@ private const val LYRIC_POSITION_BACKWARD_DRIFT_TOLERANCE_MS = 600L
 private const val PLAYBACK_POSITION_UPDATE_INTERVAL_MS = 100L
 
 private const val DECODER_MODE_SYSTEM = 0
-private const val DECODER_MODE_FFMPEG_PREFER = 1
 private const val DECODER_MODE_AUTO = 2
 
 class PlayerViewModel(application: Application) : AndroidViewModel(application) {
@@ -220,7 +219,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     private var lyricOffsetOverrides = emptyMap<String, Long>()
     private var lyricBlacklistRules = emptyList<LyricBlacklistRule>()
     private var appliedDecoderMode: Int? = null
-    private var appliedDecoderModeOverride: Int? = null
     private var appliedAudioFocusDisabled: Boolean? = null
     private var appliedPlaybackOutputSettings: PlaybackOutputSettings? = null
     private var appliedLyricSourceMode: Int? = null
@@ -251,7 +249,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         initPreviousButtonAction()
         initResumePlaybackPosition()
         initDecoderMode()
-        observeAutoDecoderMode()
         initAudioFocusMode()
         initPlaybackOutputSettings()
         initReplayGain()
@@ -520,37 +517,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 appliedDecoderMode = mode
                 if (mode != DECODER_MODE_AUTO) {
                     PlaybackService.decoderModeOverride.value = null
-                    appliedDecoderModeOverride = null
                 }
                 playerManager.recreatePlaybackService()
                 AppLogStore.info(getApplication(), "PlayerDecoder", "Decoder mode changed to $mode")
-            }
-        }
-    }
-
-    private fun observeAutoDecoderMode() {
-        viewModelScope.launch {
-            currentSong.collect { song ->
-                if (appliedDecoderMode != DECODER_MODE_AUTO) return@collect
-                PlaybackService.decoderModeOverride.value?.let { currentOverride ->
-                    if (currentOverride != appliedDecoderModeOverride) {
-                        appliedDecoderModeOverride = currentOverride
-                    }
-                }
-                val desiredOverride = if (song != null && song.isM4aOrAppleLosslessOrAAC()) DECODER_MODE_FFMPEG_PREFER else null
-                if (desiredOverride == appliedDecoderModeOverride) return@collect
-                if (desiredOverride == DECODER_MODE_FFMPEG_PREFER) {
-                    appliedDecoderModeOverride = DECODER_MODE_FFMPEG_PREFER
-                    PlaybackService.decoderModeOverride.value = DECODER_MODE_FFMPEG_PREFER
-                    if (playerManager.isConnected()) {
-                        playerManager.recreatePlaybackService()
-                        AppLogStore.info(
-                            getApplication(),
-                            "PlayerDecoder",
-                            "Auto decoder switched to FFmpeg for ${song?.title}"
-                        )
-                    }
-                }
             }
         }
     }
@@ -1311,7 +1280,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             if (appliedDecoderMode != safeMode) {
                 appliedDecoderMode = safeMode
                 PlaybackService.decoderModeOverride.value = null
-                appliedDecoderModeOverride = null
                 playerManager.recreatePlaybackService()
                 AppLogStore.info(getApplication(), "PlayerDecoder", "Decoder mode changed to $safeMode")
             }
@@ -1347,28 +1315,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         // state, which made the whole app appear to reload after returning from background.
         playerManager.ensureConnected(refreshStateIfConnected = false)
         startPositionUpdates()
-        viewModelScope.launch {
-            repairAutoDecoderChainIfNeeded()
-        }
     }
 
     fun livePositionMs(): Long = playerManager.livePositionMs()
-
-    private suspend fun repairAutoDecoderChainIfNeeded() {
-        if (settingsManager.decoderMode.first() != DECODER_MODE_AUTO) return
-        val song = currentSong.value ?: return
-        if (!song.isM4aOrAppleLosslessOrAAC()) return
-        if (PlaybackService.decoderModeOverride.value == DECODER_MODE_FFMPEG_PREFER) return
-
-        PlaybackService.decoderModeOverride.value = DECODER_MODE_FFMPEG_PREFER
-        appliedDecoderModeOverride = DECODER_MODE_FFMPEG_PREFER
-        AppLogStore.info(
-            getApplication(),
-            "PlayerDecoder",
-            "Re-establish FFmpeg chain on reconnect for ${song.title}"
-        )
-        playerManager.recreatePlaybackService(resumePlayback = isPlaying.value)
-    }
 
     fun playQueueIndex(index: Int) {
         if (!lazyOnlineQueueController.playIndex(index)) playerManager.playQueueIndex(index)

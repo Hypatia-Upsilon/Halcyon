@@ -85,23 +85,6 @@ class ExoPlayerManager(private val context: Context) {
         val song: Song
     )
 
-    private sealed interface PendingDecoderAction {
-        data class SetPlaylist(
-            val songs: List<Song>,
-            val startIndex: Int,
-            val honorShuffle: Boolean,
-            val resetQueueLock: Boolean
-        ) : PendingDecoderAction
-
-        data class PlayResolvedVirtual(
-            val songs: List<Song>,
-            val currentIndex: Int,
-            val resolvedSong: Song
-        ) : PendingDecoderAction
-
-        data class PlayQueueIndex(val index: Int) : PendingDecoderAction
-    }
-
     private val _playlist = MutableStateFlow<List<Song>>(emptyList())
     val playlistFlow: StateFlow<List<Song>> = _playlist.asStateFlow()
     private var playerListener: Player.Listener? = null
@@ -112,7 +95,6 @@ class ExoPlayerManager(private val context: Context) {
     private var virtualPlaylistCurrentIndex: Int? = null
     private var playWhenConnected = false
     private var pendingPlaylist: PendingPlaylist? = null
-    private var pendingDecoderAction: PendingDecoderAction? = null
     private var reorderingPlaylistForShuffle = false
     private var playlistBeforeShuffle: List<Song>? = null
     private var pendingShuffleReorder = false
@@ -134,8 +116,6 @@ class ExoPlayerManager(private val context: Context) {
     private var currentSongRefreshJob: Job? = null
     private var decoderRecoveryJob: Job? = null
     private var autoDecoderRetrySongKey: String? = null
-    @Volatile
-    private var decoderModeSetting = DECODER_MODE_SYSTEM
     private var artworkAppliedSongKey: String? = null
     private var sessionMetadataSongKey: String? = null
     private var bluetoothMetadataPatchState = MediaNotificationLyricPatchPolicy.onCleared()
@@ -147,11 +127,6 @@ class ExoPlayerManager(private val context: Context) {
         // start. The actual service state still wins once connected; this is only a persisted
         // visual snapshot, matching the no-flash restoration used by native players.
         seedSavedPlaybackPreview()
-        persistenceScope.launch {
-            settingsManager.decoderMode.collect { mode ->
-                decoderModeSetting = mode.coerceIn(DECODER_MODE_SYSTEM, DECODER_MODE_AUTO)
-            }
-        }
     }
 
     fun connect() {
@@ -355,46 +330,17 @@ class ExoPlayerManager(private val context: Context) {
         }
         mediaController?.addListener(playerListener!!)
 
-        when (val pendingDecoder = pendingDecoderAction) {
-            is PendingDecoderAction.SetPlaylist -> {
-                pendingDecoderAction = null
-                setPlaylist(
-                    songs = pendingDecoder.songs,
-                    startIndex = pendingDecoder.startIndex,
-                    honorShuffle = pendingDecoder.honorShuffle,
-                    resetQueueLock = pendingDecoder.resetQueueLock
-                )
-            }
-
-            is PendingDecoderAction.PlayResolvedVirtual -> {
-                pendingDecoderAction = null
-                playResolvedFromVirtualQueue(
-                    songs = pendingDecoder.songs,
-                    currentIndex = pendingDecoder.currentIndex,
-                    resolvedSong = pendingDecoder.resolvedSong
-                )
-            }
-
-            is PendingDecoderAction.PlayQueueIndex -> {
-                pendingDecoderAction = null
-                restoreSavedQueueIfNeeded()
-                playQueueIndex(pendingDecoder.index)
-            }
-
-            null -> {
-                val pending = pendingPlaylist
-                if (pending != null) {
-                    pendingPlaylist = null
-                    setPlaylist(
-                        pending.songs,
-                        pending.startIndex,
-                        honorShuffle = pending.honorShuffle,
-                        resetQueueLock = pending.resetQueueLock
-                    )
-                } else {
-                    restoreSavedQueueIfNeeded()
-                }
-            }
+        val pending = pendingPlaylist
+        if (pending != null) {
+            pendingPlaylist = null
+            setPlaylist(
+                pending.songs,
+                pending.startIndex,
+                honorShuffle = pending.honorShuffle,
+                resetQueueLock = pending.resetQueueLock
+            )
+        } else {
+            restoreSavedQueueIfNeeded()
         }
         refreshStateFromController()
         if (playWhenConnected) {
@@ -432,18 +378,6 @@ class ExoPlayerManager(private val context: Context) {
         if (songs.isEmpty()) return
         if (resetQueueLock) _queueLocked.value = false
         val requestedIndex = startIndex.coerceIn(songs.indices)
-        if (prepareAutoDecoderPlayback(
-                song = songs[requestedIndex],
-                action = PendingDecoderAction.SetPlaylist(
-                    songs = songs,
-                    startIndex = requestedIndex,
-                    honorShuffle = honorShuffle,
-                    resetQueueLock = resetQueueLock
-                )
-            )
-        ) {
-            return
-        }
         externalSnapshotGuard = null
         suppressExternalSnapshotsUntilMs = 0L
         AppLogStore.debug(context, "PlayerQueue", "setPlaylist size=${songs.size} start=$startIndex")
@@ -536,17 +470,6 @@ class ExoPlayerManager(private val context: Context) {
     fun playResolvedFromVirtualQueue(songs: List<Song>, currentIndex: Int, resolvedSong: Song) {
         if (songs.isEmpty()) return
         val safeIndex = currentIndex.coerceIn(songs.indices)
-        if (prepareAutoDecoderPlayback(
-                song = resolvedSong,
-                action = PendingDecoderAction.PlayResolvedVirtual(
-                    songs = songs,
-                    currentIndex = safeIndex,
-                    resolvedSong = resolvedSong
-                )
-            )
-        ) {
-            return
-        }
         externalSnapshotGuard = null
         suppressExternalSnapshotsUntilMs = 0L
         AppLogStore.debug(context, "PlayerQueue", "playResolvedVirtual size=${songs.size} index=$currentIndex title=${resolvedSong.title}")
@@ -719,13 +642,6 @@ class ExoPlayerManager(private val context: Context) {
 
     fun playQueueIndex(index: Int) {
         if (index !in playlist.indices) return
-        if (prepareAutoDecoderPlayback(
-                song = playlist[index],
-                action = PendingDecoderAction.PlayQueueIndex(index)
-            )
-        ) {
-            return
-        }
         externalSnapshotGuard = null
         suppressExternalSnapshotsUntilMs = 0L
         resetPlayNextForwardStack()
@@ -792,7 +708,6 @@ class ExoPlayerManager(private val context: Context) {
         suppressExternalSnapshotsUntilMs = SystemClock.elapsedRealtime() + CLEAR_EXTERNAL_SNAPSHOT_SUPPRESSION_MS
         currentSongRefreshJob?.cancel()
         currentSongRefreshJob = null
-        pendingDecoderAction = null
         virtualPlaylistCurrentIndex = null
         clearPendingShuffleReorder(disableNativeShuffle = true, clearOriginalOrder = true)
         resetPlayNextForwardStack()
@@ -876,18 +791,6 @@ class ExoPlayerManager(private val context: Context) {
 
     fun skipToNext() {
         val controller = mediaController ?: return
-        val targetIndex = when {
-            controller.currentMediaItemIndex + 1 in playlist.indices -> controller.currentMediaItemIndex + 1
-            playlist.isNotEmpty() && controller.repeatMode != Player.REPEAT_MODE_OFF -> 0
-            else -> null
-        }
-        if (targetIndex != null && prepareAutoDecoderPlayback(
-                song = playlist[targetIndex],
-                action = PendingDecoderAction.PlayQueueIndex(targetIndex)
-            )
-        ) {
-            return
-        }
         rememberCurrentSongResumePosition()
         if (!performPendingShuffleReorder(trigger = "skipNext", seekToNextAfterReorder = true)) {
             controller.seekToNextMediaItem()
@@ -898,18 +801,6 @@ class ExoPlayerManager(private val context: Context) {
 
     fun skipToPrevious() {
         val controller = mediaController ?: return
-        val pendingTargetIndex = when {
-            controller.currentMediaItemIndex - 1 in playlist.indices -> controller.currentMediaItemIndex - 1
-            playlist.isNotEmpty() && controller.repeatMode != Player.REPEAT_MODE_OFF -> playlist.lastIndex
-            else -> null
-        }
-        if (pendingTargetIndex != null && prepareAutoDecoderPlayback(
-                song = playlist[pendingTargetIndex],
-                action = PendingDecoderAction.PlayQueueIndex(pendingTargetIndex)
-            )
-        ) {
-            return
-        }
         rememberCurrentSongResumePosition()
         val previousIndex = (controller.currentMediaItemIndex - 1).takeIf { it in playlist.indices }
         if (previousIndex != null) {
@@ -1471,30 +1362,12 @@ class ExoPlayerManager(private val context: Context) {
         return item.matchesSong(guard.song)
     }
 
-    private fun prepareAutoDecoderPlayback(
-        song: Song,
-        action: PendingDecoderAction
-    ): Boolean {
-        if (!song.isM4aOrAppleLosslessOrAAC()) return false
-        if (decoderModeSetting != DECODER_MODE_AUTO) return false
-        if (PlaybackService.decoderModeOverride.value == DECODER_MODE_FFMPEG_PREFER) return false
-
-        PlaybackService.decoderModeOverride.value = DECODER_MODE_FFMPEG_PREFER
-        AppLogStore.info(
-            context,
-            "PlayerDecoder",
-            "Switch to FFmpeg before playing ${song.title}"
-        )
-
-        pendingDecoderAction = action
-        decoderRecoveryJob?.cancel()
-        decoderRecoveryJob = persistenceScope.launch {
-            recreatePlaybackService(resumePlayback = false)
-        }
-        return true
-    }
-
     private suspend fun tryRecoverAutoDecoderPlayback(song: Song): Boolean {
+        // Keep Auto genuinely automatic: normal queue changes stay inside the existing Media3
+        // player (which already prepares its next media period). Rebuilding the service before
+        // every AAC/ALAC track made rapid skips visibly stall and contradicted the setting's
+        // "fallback only when unsupported" contract. We only pay that cost after a real decode
+        // failure, then retain the FFmpeg override for the remaining connected session.
         if (!song.isM4aOrAppleLosslessOrAAC()) return false
         if (settingsManager.decoderMode.first() != DECODER_MODE_AUTO) return false
         if (PlaybackService.decoderModeOverride.value == DECODER_MODE_FFMPEG_PREFER) return false
@@ -2027,7 +1900,6 @@ class ExoPlayerManager(private val context: Context) {
         const val KEY_QUEUE = "queue"
         const val KEY_STATE = "state"
         const val KEY_APP_SHUFFLE = "app_shuffle_enabled"
-        const val DECODER_MODE_SYSTEM = 0
         const val DECODER_MODE_FFMPEG_PREFER = 1
         const val DECODER_MODE_AUTO = 2
     }
