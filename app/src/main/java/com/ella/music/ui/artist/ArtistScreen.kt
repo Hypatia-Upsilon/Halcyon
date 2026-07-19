@@ -205,8 +205,10 @@ fun ArtistScreen(
     val releaseAlbums = remember(albums, songs, artistName) {
         mainViewModel.getReleaseAlbumsForArtist(artistName)
     }
-    val showReleaseAlbums = remember(albums, songs, artistName, showAlbumArtists) {
-        showAlbumArtists && mainViewModel.hasAlbumArtistTags() && releaseAlbums.isNotEmpty()
+    val showReleaseAlbums = remember(albums, songs, artistName, showAlbumArtists, artistSongs) {
+        mainViewModel.hasAlbumArtistTags() &&
+            releaseAlbums.isNotEmpty() &&
+            (showAlbumArtists || artistSongs.isEmpty())
     }
     val albumDurations = remember(songs) {
         LibraryAlbumAggregator.durationsByAlbumIdentity(songs)

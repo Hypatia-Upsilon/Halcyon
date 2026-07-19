@@ -263,8 +263,11 @@ fun MetadataCategoryDetailScreen(
     val albumArtistContextName = remember(type, name) {
         name.takeIf { type == "composer" || type == "lyricist" }
     }
-    val hasSameNameArtist = remember(type, name, librarySongs) {
-        (type == "composer" || type == "lyricist") && mainViewModel.getSongsForArtist(name).isNotEmpty()
+    val hasSameNameArtist = remember(type, name, librarySongs, libraryAlbums) {
+        (type == "composer" || type == "lyricist") && (
+            mainViewModel.getSongsForArtist(name).isNotEmpty() ||
+                mainViewModel.getReleaseAlbumsForArtist(name).isNotEmpty()
+        )
     }
     val hasSameNameComposer = remember(type, name, librarySongs) {
         type == "lyricist" && mainViewModel.getSongsForMetadataCategory("composer", name).isNotEmpty()
