@@ -1499,6 +1499,8 @@
     <string name="lyric_match_write_ttml_tag">Écrire la balise TTMLLYRIC</string>
     <string name="settings_lyric_plugin_config">Paramètres des plug-ins</string>
     <string name="settings_player_bg_theme">Arrière-plan du lecteur</string>
+    <string name="settings_apple_music_lyrics_page">Page de paroles style Apple Music</string>
+    <string name="settings_apple_music_lyrics_page_summary">Utilise les paroles focalisées intégrées, des transitions à ressort et des effets lumineux ; désactivez cette option pour utiliser la page Lyricon classique.</string>
     <string name="settings_wallpaper_opacity">Wallpaper opacity</string>
     <string name="settings_wallpaper_opacity_summary">Adjust the strength of the custom app wallpaper.</string>
     <string name="settings_wallpaper_dim">Wallpaper dim</string>

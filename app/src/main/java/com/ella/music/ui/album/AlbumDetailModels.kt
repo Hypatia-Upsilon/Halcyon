@@ -14,7 +14,11 @@ internal enum class AlbumDetailSongSortMode(val labelRes: Int) {
     DateAdded(R.string.playlist_song_sort_date_added),
     DateAddedAsc(R.string.playlist_song_sort_date_added_asc),
     DateModified(R.string.playlist_song_sort_date_modified),
-    DateModifiedAsc(R.string.playlist_song_sort_date_modified_asc)
+    DateModifiedAsc(R.string.playlist_song_sort_date_modified_asc),
+    TrackDesc(R.string.album_sort_track),
+    TitleDesc(R.string.playlist_song_sort_title),
+    FileNameDesc(R.string.playlist_song_sort_file_name),
+    DurationAsc(R.string.playlist_song_sort_duration)
 }
 
 internal data class AlbumDiscGroup(
@@ -42,9 +46,20 @@ internal fun List<Song>.sortedForAlbumDetail(mode: AlbumDetailSongSortMode): Lis
                 .thenBy { it.title.lowercase(Locale.ROOT) }
                 .thenBy { it.id }
         )
+        AlbumDetailSongSortMode.TrackDesc -> sortedWith(
+            compareBy<Song> { it.discNumber <= 0 && it.trackNumber <= 0 }
+                .thenBy { if (it.discNumber > 0) it.discNumber else Int.MAX_VALUE }
+                .thenBy { if (it.trackNumber > 0) it.trackNumber else Int.MAX_VALUE }
+                .thenBy { it.title.lowercase(Locale.ROOT) }
+                .thenBy { it.id }
+                .reversed()
+        )
         AlbumDetailSongSortMode.Title -> sortedBy { it.title.lowercase(Locale.ROOT) }
+        AlbumDetailSongSortMode.TitleDesc -> sortedByDescending { it.title.lowercase(Locale.ROOT) }
         AlbumDetailSongSortMode.FileName -> sortedBy { it.fileName.ifBlank { it.path.substringAfterLast('/') }.lowercase(Locale.ROOT) }
+        AlbumDetailSongSortMode.FileNameDesc -> sortedByDescending { it.fileName.ifBlank { it.path.substringAfterLast('/') }.lowercase(Locale.ROOT) }
         AlbumDetailSongSortMode.Duration -> sortedByDescending { it.duration }
+        AlbumDetailSongSortMode.DurationAsc -> sortedBy { it.duration }
         AlbumDetailSongSortMode.DateAdded -> sortedByDescending { it.dateAdded }
         AlbumDetailSongSortMode.DateAddedAsc -> sortedBy { it.dateAdded }
         AlbumDetailSongSortMode.DateModified -> sortedByDescending { it.dateModified }

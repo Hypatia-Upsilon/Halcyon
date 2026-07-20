@@ -27,7 +27,10 @@ internal enum class FolderPlaylistSongSortMode(@param:StringRes val labelRes: In
     DateAdded(R.string.playlist_song_sort_date_added),
     DateAddedAsc(R.string.playlist_song_sort_date_added_asc),
     DateModified(R.string.playlist_song_sort_date_modified),
-    DateModifiedAsc(R.string.playlist_song_sort_date_modified_asc)
+    DateModifiedAsc(R.string.playlist_song_sort_date_modified_asc),
+    TitleDesc(R.string.playlist_sort_name),
+    FileNameDesc(R.string.playlist_song_sort_file_name),
+    DurationAsc(R.string.playlist_song_sort_duration)
 }
 
 internal enum class FolderPlaylistFolderSortMode(@param:StringRes val labelRes: Int) {
@@ -38,7 +41,11 @@ internal enum class FolderPlaylistFolderSortMode(@param:StringRes val labelRes: 
     AlbumCount(R.string.folder_sort_album_count),
     Duration(R.string.playlist_sort_duration),
     DateModified(R.string.playlist_song_sort_date_modified),
-    DateModifiedAsc(R.string.playlist_song_sort_date_modified_asc)
+    DateModifiedAsc(R.string.playlist_song_sort_date_modified_asc),
+    NameDesc(R.string.playlist_sort_name),
+    SongCountAsc(R.string.playlist_sort_song_count),
+    AlbumCountAsc(R.string.folder_sort_album_count),
+    DurationAsc(R.string.playlist_sort_duration)
 }
 
 internal data class FolderPlaylistFolderEntry(
@@ -54,7 +61,10 @@ internal data class FolderPlaylistFolderEntry(
 internal enum class EditorFolderSort(@param:StringRes val labelRes: Int) {
     ModifiedTime(R.string.playlist_song_sort_date_modified),
     Name(R.string.playlist_sort_name),
-    SongCount(R.string.playlist_sort_song_count)
+    SongCount(R.string.playlist_sort_song_count),
+    ModifiedTimeAsc(R.string.playlist_song_sort_date_modified),
+    NameDesc(R.string.playlist_sort_name),
+    SongCountAsc(R.string.playlist_sort_song_count)
 }
 
 internal fun List<Song>.sortedForFolderPlaylistDetail(
@@ -65,8 +75,11 @@ internal fun List<Song>.sortedForFolderPlaylistDetail(
     FolderPlaylistSongSortMode.CustomDesc ->
         sortedWith(compareBy<Song> { it.dateModified }.thenBy { it.title.musicSortKey() })
     FolderPlaylistSongSortMode.Title -> sortedBy { it.title.musicSortKey() }
+    FolderPlaylistSongSortMode.TitleDesc -> sortedByDescending { it.title.musicSortKey() }
     FolderPlaylistSongSortMode.FileName -> sortedBy { it.fileName.musicSortKey() }
+    FolderPlaylistSongSortMode.FileNameDesc -> sortedByDescending { it.fileName.musicSortKey() }
     FolderPlaylistSongSortMode.Duration -> sortedByDescending { it.duration }
+    FolderPlaylistSongSortMode.DurationAsc -> sortedBy { it.duration }
     FolderPlaylistSongSortMode.YearAsc ->
         sortedWith(compareBy<Song> { it.year.toIntOrNull() ?: Int.MAX_VALUE }.thenBy { it.title.musicSortKey() })
     FolderPlaylistSongSortMode.YearDesc ->
@@ -83,12 +96,19 @@ internal fun List<FolderPlaylistFolderEntry>.sortedForFolderPlaylistDetail(
     FolderPlaylistFolderSortMode.Custom,
     FolderPlaylistFolderSortMode.Name -> sortedBy { it.displayName.musicSortKey() }
     FolderPlaylistFolderSortMode.CustomDesc -> sortedByDescending { it.displayName.musicSortKey() }
+    FolderPlaylistFolderSortMode.NameDesc -> sortedByDescending { it.displayName.musicSortKey() }
     FolderPlaylistFolderSortMode.SongCount ->
         sortedWith(compareByDescending<FolderPlaylistFolderEntry> { it.songCount }.thenBy { it.displayName.musicSortKey() })
+    FolderPlaylistFolderSortMode.SongCountAsc ->
+        sortedWith(compareBy<FolderPlaylistFolderEntry> { it.songCount }.thenBy { it.displayName.musicSortKey() })
     FolderPlaylistFolderSortMode.AlbumCount ->
         sortedWith(compareByDescending<FolderPlaylistFolderEntry> { it.albumCount }.thenBy { it.displayName.musicSortKey() })
+    FolderPlaylistFolderSortMode.AlbumCountAsc ->
+        sortedWith(compareBy<FolderPlaylistFolderEntry> { it.albumCount }.thenBy { it.displayName.musicSortKey() })
     FolderPlaylistFolderSortMode.Duration ->
         sortedWith(compareByDescending<FolderPlaylistFolderEntry> { it.duration }.thenBy { it.displayName.musicSortKey() })
+    FolderPlaylistFolderSortMode.DurationAsc ->
+        sortedWith(compareBy<FolderPlaylistFolderEntry> { it.duration }.thenBy { it.displayName.musicSortKey() })
     FolderPlaylistFolderSortMode.DateModified ->
         sortedWith(compareByDescending<FolderPlaylistFolderEntry> { it.dateModified }.thenBy { it.displayName.musicSortKey() })
     FolderPlaylistFolderSortMode.DateModifiedAsc ->
@@ -99,14 +119,18 @@ internal fun FolderPlaylistFolderEntry.summaryForSort(
     mode: FolderPlaylistFolderSortMode,
     context: Context
 ): String = when (mode) {
-    FolderPlaylistFolderSortMode.SongCount -> context.getString(R.string.song_count, songCount)
-    FolderPlaylistFolderSortMode.AlbumCount -> context.getString(R.string.album_count, albumCount)
-    FolderPlaylistFolderSortMode.Duration -> duration.formatPlaybackDuration()
+    FolderPlaylistFolderSortMode.SongCount,
+    FolderPlaylistFolderSortMode.SongCountAsc -> context.getString(R.string.song_count, songCount)
+    FolderPlaylistFolderSortMode.AlbumCount,
+    FolderPlaylistFolderSortMode.AlbumCountAsc -> context.getString(R.string.album_count, albumCount)
+    FolderPlaylistFolderSortMode.Duration,
+    FolderPlaylistFolderSortMode.DurationAsc -> duration.formatPlaybackDuration()
     FolderPlaylistFolderSortMode.DateModified,
     FolderPlaylistFolderSortMode.DateModifiedAsc -> dateModified.formatFolderPlaylistDateTime(context)
     FolderPlaylistFolderSortMode.Custom,
     FolderPlaylistFolderSortMode.CustomDesc,
-    FolderPlaylistFolderSortMode.Name -> listOf(
+    FolderPlaylistFolderSortMode.Name,
+    FolderPlaylistFolderSortMode.NameDesc -> listOf(
         context.getString(R.string.song_count, songCount),
         context.getString(R.string.album_count, albumCount),
         duration.formatPlaybackDuration()
@@ -119,7 +143,8 @@ internal fun FolderPlaylistFolderEntry.detailSummaryForSort(
 ): String = when (mode) {
     FolderPlaylistFolderSortMode.Custom,
     FolderPlaylistFolderSortMode.CustomDesc,
-    FolderPlaylistFolderSortMode.Name -> "${context.getString(R.string.song_count, songCount)} · $path"
+    FolderPlaylistFolderSortMode.Name,
+    FolderPlaylistFolderSortMode.NameDesc -> "${context.getString(R.string.song_count, songCount)} · $path"
     else -> "${summaryForSort(mode, context)} · $path"
 }
 

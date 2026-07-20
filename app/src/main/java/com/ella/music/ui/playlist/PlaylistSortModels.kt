@@ -21,7 +21,11 @@ internal enum class PlaylistSortMode(val labelRes: Int) {
     CreatedAtAsc(R.string.playlist_sort_created_at),
     Name(R.string.playlist_sort_name),
     SongCount(R.string.playlist_sort_song_count),
-    Duration(R.string.playlist_sort_duration)
+    Duration(R.string.playlist_sort_duration),
+    UpdatedAtAsc(R.string.playlist_sort_updated_at),
+    NameDesc(R.string.playlist_sort_name),
+    SongCountAsc(R.string.playlist_sort_song_count),
+    DurationAsc(R.string.playlist_sort_duration)
 }
 
 internal fun List<UserPlaylist>.sortedForPlaylistList(mode: PlaylistSortMode): List<UserPlaylist> {
@@ -31,6 +35,12 @@ internal fun List<UserPlaylist>.sortedForPlaylistList(mode: PlaylistSortMode): L
         PlaylistSortMode.UpdatedAt -> sortedWith(
             compareByDescending<UserPlaylist> { it.updatedAt }
                 .thenByDescending { it.createdAt }
+                .thenBy { it.name.lowercase(Locale.ROOT) }
+                .thenBy { it.id }
+        )
+        PlaylistSortMode.UpdatedAtAsc -> sortedWith(
+            compareBy<UserPlaylist> { it.updatedAt }
+                .thenBy { it.createdAt }
                 .thenBy { it.name.lowercase(Locale.ROOT) }
                 .thenBy { it.id }
         )
@@ -51,6 +61,11 @@ internal fun List<UserPlaylist>.sortedForPlaylistList(mode: PlaylistSortMode): L
                 .thenByDescending { it.createdAt }
                 .thenBy { it.id }
         )
+        PlaylistSortMode.NameDesc -> sortedWith(
+            compareByDescending<UserPlaylist> { it.name.lowercase(Locale.ROOT) }
+                .thenByDescending { it.createdAt }
+                .thenBy { it.id }
+        )
         PlaylistSortMode.SongCount -> sortedWith(
             compareByDescending<UserPlaylist> { it.songs.size }
                 .thenByDescending { it.updatedAt }
@@ -58,10 +73,24 @@ internal fun List<UserPlaylist>.sortedForPlaylistList(mode: PlaylistSortMode): L
                 .thenBy { it.name.lowercase(Locale.ROOT) }
                 .thenBy { it.id }
         )
+        PlaylistSortMode.SongCountAsc -> sortedWith(
+            compareBy<UserPlaylist> { it.songs.size }
+                .thenBy { it.updatedAt }
+                .thenBy { it.createdAt }
+                .thenBy { it.name.lowercase(Locale.ROOT) }
+                .thenBy { it.id }
+        )
         PlaylistSortMode.Duration -> sortedWith(
             compareByDescending<UserPlaylist> { playlist -> playlist.songs.sumOf { it.duration } }
                 .thenByDescending { it.updatedAt }
                 .thenByDescending { it.createdAt }
+                .thenBy { it.name.lowercase(Locale.ROOT) }
+                .thenBy { it.id }
+        )
+        PlaylistSortMode.DurationAsc -> sortedWith(
+            compareBy<UserPlaylist> { playlist -> playlist.songs.sumOf { it.duration } }
+                .thenBy { it.updatedAt }
+                .thenBy { it.createdAt }
                 .thenBy { it.name.lowercase(Locale.ROOT) }
                 .thenBy { it.id }
         )
@@ -111,7 +140,11 @@ internal enum class PlaylistSongSortMode(val labelRes: Int) {
     DateAdded(R.string.playlist_song_sort_date_added),
     DateAddedAsc(R.string.playlist_song_sort_date_added_asc),
     DateModified(R.string.playlist_song_sort_date_modified),
-    DateModifiedAsc(R.string.playlist_song_sort_date_modified_asc)
+    DateModifiedAsc(R.string.playlist_song_sort_date_modified_asc),
+    AddedAtDesc(R.string.playlist_song_sort_added_at),
+    TitleDesc(R.string.playlist_song_sort_title),
+    FileNameDesc(R.string.playlist_song_sort_file_name),
+    DurationAsc(R.string.playlist_song_sort_duration)
 }
 
 internal fun List<Song>.sortedForPlaylistDetail(mode: PlaylistSongSortMode): List<Song> {
@@ -119,6 +152,7 @@ internal fun List<Song>.sortedForPlaylistDetail(mode: PlaylistSongSortMode): Lis
         PlaylistSongSortMode.Custom -> this
         PlaylistSongSortMode.CustomDesc -> asReversed()
         PlaylistSongSortMode.AddedAt -> this
+        PlaylistSongSortMode.AddedAtDesc -> asReversed()
         else -> LibraryListSorter.sortSongs(this, mode.toSongSortSpec()).items
     }
 }
@@ -142,9 +176,12 @@ internal fun String.safePlaylistFileName(): String =
 private fun PlaylistSongSortMode.toSongSortSpec(): SortSpec<SongSortField> =
     SortSpec(
         field = when (this) {
-            PlaylistSongSortMode.Title -> SongSortField.Title
-            PlaylistSongSortMode.FileName -> SongSortField.FileName
-            PlaylistSongSortMode.Duration -> SongSortField.Duration
+            PlaylistSongSortMode.Title,
+            PlaylistSongSortMode.TitleDesc -> SongSortField.Title
+            PlaylistSongSortMode.FileName,
+            PlaylistSongSortMode.FileNameDesc -> SongSortField.FileName
+            PlaylistSongSortMode.Duration,
+            PlaylistSongSortMode.DurationAsc -> SongSortField.Duration
             PlaylistSongSortMode.YearAsc,
             PlaylistSongSortMode.YearDesc -> SongSortField.Year
             PlaylistSongSortMode.DateAdded,
@@ -153,14 +190,18 @@ private fun PlaylistSongSortMode.toSongSortSpec(): SortSpec<SongSortField> =
             PlaylistSongSortMode.DateModifiedAsc -> SongSortField.DateModified
             PlaylistSongSortMode.Custom,
             PlaylistSongSortMode.CustomDesc,
-            PlaylistSongSortMode.AddedAt -> SongSortField.Custom
+            PlaylistSongSortMode.AddedAt,
+            PlaylistSongSortMode.AddedAtDesc -> SongSortField.Custom
         },
         direction = when (this) {
+            PlaylistSongSortMode.TitleDesc,
+            PlaylistSongSortMode.FileNameDesc,
             PlaylistSongSortMode.Duration,
             PlaylistSongSortMode.YearDesc,
             PlaylistSongSortMode.DateAdded,
             PlaylistSongSortMode.DateModified,
-            PlaylistSongSortMode.CustomDesc -> SortDirection.Descending
+            PlaylistSongSortMode.CustomDesc,
+            PlaylistSongSortMode.AddedAtDesc -> SortDirection.Descending
             else -> SortDirection.Ascending
         }
     )

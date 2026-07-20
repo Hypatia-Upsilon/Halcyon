@@ -54,6 +54,10 @@ import com.ella.music.ui.settings.SettingsScreen
 import com.ella.music.viewmodel.MainViewModel
 import com.ella.music.viewmodel.PlayerViewModel
 
+private const val AlbumListRestoreScrollRequestKey = "album_list_restore_scroll_request"
+private const val AlbumListRestoreAnchorIdKey = "album_list_restore_anchor_id"
+private const val AlbumListRestoreAnchorOffsetKey = "album_list_restore_anchor_offset"
+
 sealed class Screen(val route: String) {
     data object Home : Screen("home")
     data object Library : Screen("library")
@@ -282,14 +286,28 @@ fun AppNavigation(
             arguments = listOf(navArgument("fromDock") { type = NavType.BoolType; defaultValue = false })
         ) { backStackEntry ->
             val fromDock = backStackEntry.arguments?.getBoolean("fromDock") == true
+            val restoreScrollRequest by backStackEntry.savedStateHandle
+                .getStateFlow(AlbumListRestoreScrollRequestKey, 0)
+                .collectAsState()
+            val restoreAnchorAlbumId by backStackEntry.savedStateHandle
+                .getStateFlow<Long?>(AlbumListRestoreAnchorIdKey, null)
+                .collectAsState()
+            val restoreAnchorOffset by backStackEntry.savedStateHandle
+                .getStateFlow(AlbumListRestoreAnchorOffsetKey, 0)
+                .collectAsState()
             AlbumScreen(
                 mainViewModel = mainViewModel,
                 playerViewModel = playerViewModel,
                 showBackButton = !(fromDock && isDockItem(SettingsManager.BOTTOM_DOCK_ITEM_ALBUM)),
                 onBack = { navController.popBackStack() },
-                onAlbumClick = { albumId ->
+                onAlbumClick = { albumId, anchorAlbumId, anchorOffset ->
+                    backStackEntry.savedStateHandle[AlbumListRestoreAnchorIdKey] = anchorAlbumId
+                    backStackEntry.savedStateHandle[AlbumListRestoreAnchorOffsetKey] = anchorOffset
                     navController.navigate(Screen.AlbumDetail.createRoute(albumId))
-                }
+                },
+                restoreScrollRequest = restoreScrollRequest,
+                restoreAnchorAlbumId = restoreAnchorAlbumId,
+                restoreAnchorOffset = restoreAnchorOffset
             )
         }
 
@@ -318,7 +336,17 @@ fun AppNavigation(
                 albumId = albumId,
                 mainViewModel = mainViewModel,
                 playerViewModel = playerViewModel,
-                onBack = { navController.popBackStack() },
+                onBack = {
+                    val previousEntry = navController.previousBackStackEntry
+                    if (previousEntry?.destination?.route == Screen.Album.route) {
+                        val nextRequest = previousEntry.savedStateHandle
+                            .get<Int>(AlbumListRestoreScrollRequestKey)
+                            ?: 0
+                            .plus(1)
+                        previousEntry.savedStateHandle[AlbumListRestoreScrollRequestKey] = nextRequest
+                    }
+                    navController.popBackStack()
+                },
                 onNavigateToAlbum = { targetAlbumId ->
                     navController.navigate(Screen.AlbumDetail.createRoute(targetAlbumId))
                 },

@@ -2,67 +2,46 @@ package com.ella.music.ui.components
 
 import com.ella.music.ui.listmodel.SortDirection
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SortDropdownMenuTest {
+    private enum class Mode { NameAsc, NameDesc, DurationAsc, DurationDesc }
+
     @Test
-    fun pairedModesShareOneRowAndApplyTheRequestedDirection() {
-        var selected = TestSortMode.YearDescending
+    fun everySortFieldKeepsBothDirectionalActionsAvailable() {
         val items = directionalSortModeDropdownItems(
             fields = listOf(
-                DirectionalSortModeField(
-                    text = "Year",
-                    ascendingMode = TestSortMode.YearAscending,
-                    descendingMode = TestSortMode.YearDescending
-                ),
-                DirectionalSortModeField(
-                    text = "Duration",
-                    descendingMode = TestSortMode.DurationDescending
-                )
+                DirectionalSortModeField("Name", Mode.NameAsc, Mode.NameDesc),
+                DirectionalSortModeField("Duration", Mode.DurationAsc, Mode.DurationDesc)
             ),
-            selectedMode = selected,
-            onSelect = { selected = it }
+            selectedMode = Mode.NameAsc,
+            onSelect = {}
         )
 
         assertEquals(2, items.size)
         assertTrue(items[0].selected)
-        assertEquals(SortDirection.Descending, items[0].direction)
-        assertNotNull(items[0].onSelectAscending)
-        assertNotNull(items[0].onSelectDescending)
-        assertNotNull(items[1].onSelectDescending)
-        assertEquals(null, items[1].onSelectAscending)
-
-        items[0].onSelectAscending?.invoke()
-        assertEquals(TestSortMode.YearAscending, selected)
+        assertEquals(SortDirection.Ascending, items[0].direction)
+        items.forEach { item ->
+            assertNotNull(item.onSelectAscending)
+            assertNotNull(item.onSelectDescending)
+        }
     }
 
     @Test
-    fun unavailableDirectionStaysDisabledInsteadOfChangingSortSemantics() {
-        var selected = TestSortMode.DurationDescending
-        val item = directionalSortModeDropdownItems(
+    fun selectedDescendingDirectionIsReportedForItsOwnField() {
+        val items = directionalSortModeDropdownItems(
             fields = listOf(
-                DirectionalSortModeField(
-                    text = "Duration",
-                    descendingMode = TestSortMode.DurationDescending
-                )
+                DirectionalSortModeField("Name", Mode.NameAsc, Mode.NameDesc),
+                DirectionalSortModeField("Duration", Mode.DurationAsc, Mode.DurationDesc)
             ),
-            selectedMode = selected,
-            onSelect = { selected = it }
-        ).single()
+            selectedMode = Mode.DurationDesc,
+            onSelect = {}
+        )
 
-        assertTrue(item.selected)
-        assertEquals(SortDirection.Descending, item.direction)
-        assertFalse(item.onSelectAscending != null)
-        item.onClick()
-        assertEquals(TestSortMode.DurationDescending, selected)
-    }
-
-    private enum class TestSortMode {
-        YearAscending,
-        YearDescending,
-        DurationDescending
+        assertTrue(items[1].selected)
+        assertEquals(SortDirection.Descending, items[1].direction)
+        assertEquals(SortDirection.Ascending, items[0].direction)
     }
 }

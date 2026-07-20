@@ -10,7 +10,11 @@ internal enum class AddPlaylistSortMode(val labelRes: Int) {
     Custom(R.string.playlist_sort_custom),
     UpdatedAt(R.string.playlist_sort_updated_at),
     Name(R.string.playlist_sort_name),
-    SongCount(R.string.playlist_sort_song_count);
+    SongCount(R.string.playlist_sort_song_count),
+    CustomDesc(R.string.playlist_sort_custom_desc),
+    UpdatedAtAsc(R.string.playlist_sort_updated_at),
+    NameDesc(R.string.playlist_sort_name),
+    SongCountAsc(R.string.playlist_sort_song_count);
 
     fun next(): AddPlaylistSortMode = entries[(ordinal + 1) % entries.size]
 }
@@ -23,9 +27,16 @@ internal fun List<UserPlaylist>.sortedForAddToPlaylist(
     val others = filterNot { it.id == FAVORITES_PLAYLIST_ID }
     val sortedOthers = when (mode) {
         AddPlaylistSortMode.Custom -> others.applyPlaylistCustomOrder(customOrderIds)
+        AddPlaylistSortMode.CustomDesc -> others.applyPlaylistCustomOrder(customOrderIds).asReversed()
         AddPlaylistSortMode.UpdatedAt -> others.sortedWith(
             compareByDescending<UserPlaylist> { it.updatedAt }
                 .thenByDescending { it.createdAt }
+                .thenBy { it.name.lowercase(Locale.ROOT) }
+                .thenBy { it.id }
+        )
+        AddPlaylistSortMode.UpdatedAtAsc -> others.sortedWith(
+            compareBy<UserPlaylist> { it.updatedAt }
+                .thenBy { it.createdAt }
                 .thenBy { it.name.lowercase(Locale.ROOT) }
                 .thenBy { it.id }
         )
@@ -35,10 +46,23 @@ internal fun List<UserPlaylist>.sortedForAddToPlaylist(
                 .thenByDescending { it.createdAt }
                 .thenBy { it.id }
         )
+        AddPlaylistSortMode.NameDesc -> others.sortedWith(
+            compareByDescending<UserPlaylist> { it.name.lowercase(Locale.ROOT) }
+                .thenBy { it.updatedAt }
+                .thenBy { it.createdAt }
+                .thenBy { it.id }
+        )
         AddPlaylistSortMode.SongCount -> others.sortedWith(
             compareByDescending<UserPlaylist> { it.songs.size }
                 .thenByDescending { it.updatedAt }
                 .thenByDescending { it.createdAt }
+                .thenBy { it.name.lowercase(Locale.ROOT) }
+                .thenBy { it.id }
+        )
+        AddPlaylistSortMode.SongCountAsc -> others.sortedWith(
+            compareBy<UserPlaylist> { it.songs.size }
+                .thenBy { it.updatedAt }
+                .thenBy { it.createdAt }
                 .thenBy { it.name.lowercase(Locale.ROOT) }
                 .thenBy { it.id }
         )

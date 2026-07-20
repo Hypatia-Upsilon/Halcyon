@@ -22,7 +22,10 @@ internal enum class MetadataCategorySortMode {
     AlbumCount,
     Duration,
     DateModified,
-    DateModifiedAsc
+    DateModifiedAsc,
+    SongCountAsc,
+    AlbumCountAsc,
+    DurationAsc
 }
 
 internal enum class MetadataCategorySortField {
@@ -72,8 +75,11 @@ internal fun MetadataCategorySortMode.displayLabel(type: String): String {
             MetadataCategorySortMode.Name -> R.string.category_sort_name
             MetadataCategorySortMode.NameDesc -> R.string.category_sort_name
             MetadataCategorySortMode.SongCount -> R.string.playlist_sort_song_count
-            MetadataCategorySortMode.AlbumCount -> R.string.category_sort_album_count
-            MetadataCategorySortMode.Duration -> R.string.playlist_sort_duration
+            MetadataCategorySortMode.SongCountAsc -> R.string.playlist_sort_song_count
+            MetadataCategorySortMode.AlbumCount,
+            MetadataCategorySortMode.AlbumCountAsc -> R.string.category_sort_album_count
+            MetadataCategorySortMode.Duration,
+            MetadataCategorySortMode.DurationAsc -> R.string.playlist_sort_duration
             MetadataCategorySortMode.DateModified -> R.string.playlist_song_sort_date_modified
             MetadataCategorySortMode.DateModifiedAsc -> R.string.category_sort_date_modified_asc
         }).let { base ->
@@ -100,8 +106,11 @@ internal fun List<MetadataCategoryItem>.sortedForCategory(
             sortedByDescending { it.nameSortKey() }
         }
         MetadataCategorySortMode.SongCount -> sortedByDescending { it.songCount }
+        MetadataCategorySortMode.SongCountAsc -> sortedBy { it.songCount }
         MetadataCategorySortMode.AlbumCount -> sortedByDescending { it.albumCount }
+        MetadataCategorySortMode.AlbumCountAsc -> sortedBy { it.albumCount }
         MetadataCategorySortMode.Duration -> sortedByDescending { it.duration }
+        MetadataCategorySortMode.DurationAsc -> sortedBy { it.duration }
         MetadataCategorySortMode.DateModified -> sortedByDescending { it.dateModified }
         MetadataCategorySortMode.DateModifiedAsc -> sortedBy { it.dateModified }
     }
@@ -110,9 +119,12 @@ internal fun List<MetadataCategoryItem>.sortedForCategory(
 internal fun MetadataCategorySortMode.sortField(): MetadataCategorySortField = when (this) {
     MetadataCategorySortMode.Name,
     MetadataCategorySortMode.NameDesc -> MetadataCategorySortField.Name
-    MetadataCategorySortMode.SongCount -> MetadataCategorySortField.SongCount
-    MetadataCategorySortMode.AlbumCount -> MetadataCategorySortField.AlbumCount
-    MetadataCategorySortMode.Duration -> MetadataCategorySortField.Duration
+    MetadataCategorySortMode.SongCount,
+    MetadataCategorySortMode.SongCountAsc -> MetadataCategorySortField.SongCount
+    MetadataCategorySortMode.AlbumCount,
+    MetadataCategorySortMode.AlbumCountAsc -> MetadataCategorySortField.AlbumCount
+    MetadataCategorySortMode.Duration,
+    MetadataCategorySortMode.DurationAsc -> MetadataCategorySortField.Duration
     MetadataCategorySortMode.DateModified,
     MetadataCategorySortMode.DateModifiedAsc -> MetadataCategorySortField.DateModified
 }
@@ -128,9 +140,9 @@ internal fun MetadataCategorySortMode.isDescending(): Boolean = when (this) {
 
 internal fun MetadataCategorySortField.toMode(descending: Boolean): MetadataCategorySortMode = when (this) {
     MetadataCategorySortField.Name -> if (descending) MetadataCategorySortMode.NameDesc else MetadataCategorySortMode.Name
-    MetadataCategorySortField.SongCount -> MetadataCategorySortMode.SongCount
-    MetadataCategorySortField.AlbumCount -> MetadataCategorySortMode.AlbumCount
-    MetadataCategorySortField.Duration -> MetadataCategorySortMode.Duration
+    MetadataCategorySortField.SongCount -> if (descending) MetadataCategorySortMode.SongCount else MetadataCategorySortMode.SongCountAsc
+    MetadataCategorySortField.AlbumCount -> if (descending) MetadataCategorySortMode.AlbumCount else MetadataCategorySortMode.AlbumCountAsc
+    MetadataCategorySortField.Duration -> if (descending) MetadataCategorySortMode.Duration else MetadataCategorySortMode.DurationAsc
     MetadataCategorySortField.DateModified -> if (descending) MetadataCategorySortMode.DateModified else MetadataCategorySortMode.DateModifiedAsc
 }
 
@@ -143,8 +155,10 @@ internal fun MetadataCategoryItem.matchesCategorySearch(query: String, type: Str
 internal fun MetadataCategoryItem.categorySortSummary(sortMode: MetadataCategorySortMode): String {
     val context = LocalContext.current
     return when (sortMode) {
-        MetadataCategorySortMode.AlbumCount -> context.getString(R.string.category_album_count_detail, albumCount)
-        MetadataCategorySortMode.Duration -> duration.formatDuration()
+        MetadataCategorySortMode.AlbumCount,
+        MetadataCategorySortMode.AlbumCountAsc -> context.getString(R.string.category_album_count_detail, albumCount)
+        MetadataCategorySortMode.Duration,
+        MetadataCategorySortMode.DurationAsc -> duration.formatDuration()
         else -> context.getString(R.string.category_song_count_card, songCount)
     }
 }
@@ -153,8 +167,10 @@ internal fun MetadataCategoryItem.categorySortSummary(sortMode: MetadataCategory
 internal fun MetadataCategoryItem.folderSortSummary(sortMode: MetadataCategorySortMode): String {
     val context = LocalContext.current
     return when (sortMode) {
-        MetadataCategorySortMode.AlbumCount -> context.getString(R.string.category_album_count_detail, albumCount)
-        MetadataCategorySortMode.Duration -> duration.formatDuration()
+        MetadataCategorySortMode.AlbumCount,
+        MetadataCategorySortMode.AlbumCountAsc -> context.getString(R.string.category_album_count_detail, albumCount)
+        MetadataCategorySortMode.Duration,
+        MetadataCategorySortMode.DurationAsc -> duration.formatDuration()
         MetadataCategorySortMode.DateModified,
         MetadataCategorySortMode.DateModifiedAsc -> dateModified.formatDateTimeText(context)
         else -> context.getString(R.string.analytics_song_count_value, songCount)
@@ -165,7 +181,8 @@ internal fun MetadataCategoryItem.folderSortSummary(sortMode: MetadataCategorySo
 internal fun MetadataCategoryItem.personSortSummary(sortMode: MetadataCategorySortMode): String {
     val context = LocalContext.current
     return when (sortMode) {
-        MetadataCategorySortMode.Duration -> context.getString(R.string.category_person_sort_duration, duration.formatDuration(), albumCount)
+        MetadataCategorySortMode.Duration,
+        MetadataCategorySortMode.DurationAsc -> context.getString(R.string.category_person_sort_duration, duration.formatDuration(), albumCount)
         else -> context.getString(R.string.category_person_sort, songCount, albumCount)
     }
 }
@@ -180,17 +197,25 @@ internal enum class MetadataDetailSongSortMode {
     DateAdded,
     DateAddedAsc,
     DateModified,
-    DateModifiedAsc
+    DateModifiedAsc,
+    AlbumTrackDesc,
+    TitleDesc,
+    FileNameDesc,
+    DurationAsc
 }
 
 @Composable
 internal fun MetadataDetailSongSortMode.label(): String {
     val context = LocalContext.current
     return context.getString(when (this) {
-        MetadataDetailSongSortMode.AlbumTrack -> R.string.category_sort_album_track
-        MetadataDetailSongSortMode.Title -> R.string.playlist_song_sort_title
-        MetadataDetailSongSortMode.FileName -> R.string.playlist_song_sort_file_name
-        MetadataDetailSongSortMode.Duration -> R.string.playlist_sort_duration
+        MetadataDetailSongSortMode.AlbumTrack,
+        MetadataDetailSongSortMode.AlbumTrackDesc -> R.string.category_sort_album_track
+        MetadataDetailSongSortMode.Title,
+        MetadataDetailSongSortMode.TitleDesc -> R.string.playlist_song_sort_title
+        MetadataDetailSongSortMode.FileName,
+        MetadataDetailSongSortMode.FileNameDesc -> R.string.playlist_song_sort_file_name
+        MetadataDetailSongSortMode.Duration,
+        MetadataDetailSongSortMode.DurationAsc -> R.string.playlist_sort_duration
         MetadataDetailSongSortMode.YearAsc -> R.string.playlist_song_sort_year_asc
         MetadataDetailSongSortMode.YearDesc -> R.string.playlist_song_sort_year_desc
         MetadataDetailSongSortMode.DateAdded -> R.string.playlist_song_sort_date_added
@@ -210,11 +235,22 @@ internal fun List<com.ella.music.data.model.Song>.sortedForMetadataDetail(
                 .thenBy { if (it.trackNumber > 0) it.trackNumber else Int.MAX_VALUE }
                 .thenBy { it.title.lowercase(Locale.ROOT) }
         )
+        MetadataDetailSongSortMode.AlbumTrackDesc -> sortedWith(
+            compareByDescending<com.ella.music.data.model.Song> { it.album.lowercase(Locale.ROOT) }
+                .thenByDescending { if (it.discNumber > 0) it.discNumber else Int.MIN_VALUE }
+                .thenByDescending { if (it.trackNumber > 0) it.trackNumber else Int.MIN_VALUE }
+                .thenByDescending { it.title.lowercase(Locale.ROOT) }
+        )
         MetadataDetailSongSortMode.Title -> sortedBy { it.title.musicSortKey() }
+        MetadataDetailSongSortMode.TitleDesc -> sortedByDescending { it.title.musicSortKey() }
         MetadataDetailSongSortMode.FileName -> sortedBy { song ->
             song.fileName.ifBlank { song.path.substringAfterLast('/') }.musicSortKey()
         }
+        MetadataDetailSongSortMode.FileNameDesc -> sortedByDescending { song ->
+            song.fileName.ifBlank { song.path.substringAfterLast('/') }.musicSortKey()
+        }
         MetadataDetailSongSortMode.Duration -> sortedByDescending { it.duration }
+        MetadataDetailSongSortMode.DurationAsc -> sortedBy { it.duration }
         MetadataDetailSongSortMode.YearAsc -> sortedByReleaseDate(SortDirection.Ascending)
         MetadataDetailSongSortMode.YearDesc -> sortedByReleaseDate(SortDirection.Descending)
         MetadataDetailSongSortMode.DateAdded -> sortedByDescending { it.dateAdded }
@@ -231,7 +267,8 @@ internal fun MetadataCategoryItem.categoryIndexLetter(type: String): String {
 
 internal fun Song.metadataDetailIndexLetter(mode: MetadataDetailSongSortMode): String {
     val sortText = when (mode) {
-        MetadataDetailSongSortMode.FileName -> fileName.ifBlank { path.substringAfterLast('/') }
+        MetadataDetailSongSortMode.FileName,
+        MetadataDetailSongSortMode.FileNameDesc -> fileName.ifBlank { path.substringAfterLast('/') }
         else -> title
     }
     return sortText.musicSortKey().toFastIndexSection()
@@ -256,7 +293,10 @@ internal enum class MetadataDetailAlbumSortMode {
     YearDesc,
     SongCount,
     Duration,
-    Name
+    Name,
+    SongCountAsc,
+    DurationAsc,
+    NameDesc
 }
 
 @Composable
@@ -265,9 +305,12 @@ internal fun MetadataDetailAlbumSortMode.label(): String {
     return context.getString(when (this) {
         MetadataDetailAlbumSortMode.YearAsc -> R.string.playlist_song_sort_year_asc
         MetadataDetailAlbumSortMode.YearDesc -> R.string.playlist_song_sort_year_desc
-        MetadataDetailAlbumSortMode.SongCount -> R.string.playlist_sort_song_count
-        MetadataDetailAlbumSortMode.Duration -> R.string.playlist_sort_duration
-        MetadataDetailAlbumSortMode.Name -> R.string.category_sort_album_name
+        MetadataDetailAlbumSortMode.SongCount,
+        MetadataDetailAlbumSortMode.SongCountAsc -> R.string.playlist_sort_song_count
+        MetadataDetailAlbumSortMode.Duration,
+        MetadataDetailAlbumSortMode.DurationAsc -> R.string.playlist_sort_duration
+        MetadataDetailAlbumSortMode.Name,
+        MetadataDetailAlbumSortMode.NameDesc -> R.string.category_sort_album_name
     })
 }
 
@@ -279,8 +322,11 @@ internal fun List<Album>.sortedForMetadataAlbumDetail(
         MetadataDetailAlbumSortMode.YearAsc -> sortedWith(compareBy<Album> { it.releaseDateSortKey <= 0 }.thenBy { it.releaseDateSortKey }.thenBy { it.name.lowercase(Locale.ROOT) })
         MetadataDetailAlbumSortMode.YearDesc -> sortedWith(compareBy<Album> { it.releaseDateSortKey <= 0 }.thenByDescending { it.releaseDateSortKey }.thenBy { it.name.lowercase(Locale.ROOT) })
         MetadataDetailAlbumSortMode.SongCount -> sortedByDescending { it.songCount }
+        MetadataDetailAlbumSortMode.SongCountAsc -> sortedBy { it.songCount }
         MetadataDetailAlbumSortMode.Duration -> sortedByDescending { durations[it.id] ?: 0L }
+        MetadataDetailAlbumSortMode.DurationAsc -> sortedBy { durations[it.id] ?: 0L }
         MetadataDetailAlbumSortMode.Name -> sortedBy { it.name.lowercase(Locale.ROOT) }
+        MetadataDetailAlbumSortMode.NameDesc -> sortedByDescending { it.name.lowercase(Locale.ROOT) }
     }
 }
 

@@ -362,6 +362,7 @@ fun FolderPlaylistsScreen(
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_sort_updated_at),
+                                    ascendingMode = FolderPlaylistSortMode.DateUpdatedAsc,
                                     descendingMode = FolderPlaylistSortMode.DateUpdated
                                 ),
                                 DirectionalSortModeField(
@@ -371,18 +372,22 @@ fun FolderPlaylistsScreen(
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_sort_name),
-                                    ascendingMode = FolderPlaylistSortMode.Name
+                                    ascendingMode = FolderPlaylistSortMode.Name,
+                                    descendingMode = FolderPlaylistSortMode.NameDesc
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.folder_playlist_sort_folder_count),
+                                    ascendingMode = FolderPlaylistSortMode.FolderCountAsc,
                                     descendingMode = FolderPlaylistSortMode.FolderCount
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_sort_song_count),
+                                    ascendingMode = FolderPlaylistSortMode.SongCountAsc,
                                     descendingMode = FolderPlaylistSortMode.SongCount
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_sort_duration),
+                                    ascendingMode = FolderPlaylistSortMode.DurationAsc,
                                     descendingMode = FolderPlaylistSortMode.Duration
                                 )
                             ),
@@ -1079,14 +1084,17 @@ fun FolderPlaylistDetailScreen(
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_song_sort_title),
-                                    ascendingMode = FolderPlaylistSongSortMode.Title
+                                    ascendingMode = FolderPlaylistSongSortMode.Title,
+                                    descendingMode = FolderPlaylistSongSortMode.TitleDesc
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_song_sort_file_name),
-                                    ascendingMode = FolderPlaylistSongSortMode.FileName
+                                    ascendingMode = FolderPlaylistSongSortMode.FileName,
+                                    descendingMode = FolderPlaylistSongSortMode.FileNameDesc
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_song_sort_duration),
+                                    ascendingMode = FolderPlaylistSongSortMode.DurationAsc,
                                     descendingMode = FolderPlaylistSongSortMode.Duration
                                 ),
                                 DirectionalSortModeField(
@@ -1119,18 +1127,22 @@ fun FolderPlaylistDetailScreen(
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_sort_name),
-                                    ascendingMode = FolderPlaylistFolderSortMode.Name
+                                    ascendingMode = FolderPlaylistFolderSortMode.Name,
+                                    descendingMode = FolderPlaylistFolderSortMode.NameDesc
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_sort_song_count),
+                                    ascendingMode = FolderPlaylistFolderSortMode.SongCountAsc,
                                     descendingMode = FolderPlaylistFolderSortMode.SongCount
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.folder_sort_album_count),
+                                    ascendingMode = FolderPlaylistFolderSortMode.AlbumCountAsc,
                                     descendingMode = FolderPlaylistFolderSortMode.AlbumCount
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_sort_duration),
+                                    ascendingMode = FolderPlaylistFolderSortMode.DurationAsc,
                                     descendingMode = FolderPlaylistFolderSortMode.Duration
                                 ),
                                 DirectionalSortModeField(
@@ -1537,15 +1549,43 @@ private fun FolderPlaylistEditorSheet(
                 folder.substringAfterLast('/').contains(searchQuery, ignoreCase = true)
         }
     }
+    val editorFolderStats = remember(availableFolders, songs) {
+        availableFolders.associateWith { folder ->
+            val normalizedFolder = folder.normalizeFolderPath()
+            val folderSongs = songs.filter { song ->
+                val songFolder = song.folderPath().normalizeFolderPath()
+                songFolder == normalizedFolder || songFolder.startsWith("${normalizedFolder.trimEnd('/')}/")
+            }
+            EditorFolderStats(
+                songCount = folderSongs.size,
+                dateModified = folderSongs.maxOfOrNull(Song::dateModified) ?: 0L
+            )
+        }
+    }
 
     // Pin folders to the top using the session-persistent pinnedFolders set, which only grows as
     // the user selects new folders and never shrinks on uncheck. This keeps a previously-selected
     // folder pinned even after an accidental mis-tap, until the editor target changes.
-    val sortedFilteredFolders = remember(filteredFolders, editorSort, pinnedFolders) {
+    val sortedFilteredFolders = remember(filteredFolders, editorSort, pinnedFolders, editorFolderStats) {
         val base = when (editorSort) {
             EditorFolderSort.Name -> filteredFolders.sortedBy { it.substringAfterLast('/').lowercase() }
-            EditorFolderSort.ModifiedTime -> filteredFolders.sortedByDescending { it }
-            EditorFolderSort.SongCount -> filteredFolders
+            EditorFolderSort.NameDesc -> filteredFolders.sortedByDescending { it.substringAfterLast('/').lowercase() }
+            EditorFolderSort.ModifiedTime -> filteredFolders.sortedWith(
+                compareByDescending<String> { editorFolderStats[it]?.dateModified ?: 0L }
+                    .thenBy { it.substringAfterLast('/').lowercase() }
+            )
+            EditorFolderSort.ModifiedTimeAsc -> filteredFolders.sortedWith(
+                compareBy<String> { editorFolderStats[it]?.dateModified ?: 0L }
+                    .thenBy { it.substringAfterLast('/').lowercase() }
+            )
+            EditorFolderSort.SongCount -> filteredFolders.sortedWith(
+                compareByDescending<String> { editorFolderStats[it]?.songCount ?: 0 }
+                    .thenBy { it.substringAfterLast('/').lowercase() }
+            )
+            EditorFolderSort.SongCountAsc -> filteredFolders.sortedWith(
+                compareBy<String> { editorFolderStats[it]?.songCount ?: 0 }
+                    .thenBy { it.substringAfterLast('/').lowercase() }
+            )
         }
         base.sortedWith(
             compareByDescending<String> { it in pinnedFolders }
@@ -1633,14 +1673,17 @@ private fun FolderPlaylistEditorSheet(
                             fields = listOf(
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_song_sort_date_modified),
+                                    ascendingMode = EditorFolderSort.ModifiedTimeAsc,
                                     descendingMode = EditorFolderSort.ModifiedTime
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_sort_name),
-                                    ascendingMode = EditorFolderSort.Name
+                                    ascendingMode = EditorFolderSort.Name,
+                                    descendingMode = EditorFolderSort.NameDesc
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_sort_song_count),
+                                    ascendingMode = EditorFolderSort.SongCountAsc,
                                     descendingMode = EditorFolderSort.SongCount
                                 )
                             ),
@@ -1745,4 +1788,9 @@ private fun FolderPlaylistEditorSheet(
         }
     }
 }
+
+private data class EditorFolderStats(
+    val songCount: Int,
+    val dateModified: Long
+)
 

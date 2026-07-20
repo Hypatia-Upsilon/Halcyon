@@ -1499,6 +1499,8 @@
     <string name="lyric_match_write_ttml_tag">TTMLLYRIC タグに書き込む</string>
     <string name="settings_lyric_plugin_config">プラグイン設定</string>
     <string name="settings_player_bg_theme">プレーヤーの背景</string>
+    <string name="settings_apple_music_lyrics_page">Apple Music 風歌詞ページ</string>
+    <string name="settings_apple_music_lyrics_page_summary">内蔵のフォーカス歌詞、スプリング遷移、発光効果を使用します。オフにすると従来の Lyricon 歌詞ページを使用します。</string>
     <string name="settings_wallpaper_opacity">Wallpaper opacity</string>
     <string name="settings_wallpaper_opacity_summary">Adjust the strength of the custom app wallpaper.</string>
     <string name="settings_wallpaper_dim">Wallpaper dim</string>

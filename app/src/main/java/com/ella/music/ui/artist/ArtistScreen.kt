@@ -797,18 +797,22 @@ fun ArtistScreen(
                         fields = listOf(
                             DirectionalSortModeField(
                                 text = stringResource(R.string.artist_sort_title),
-                                ascendingMode = ArtistDetailSongSortMode.Title
+                                ascendingMode = ArtistDetailSongSortMode.Title,
+                                descendingMode = ArtistDetailSongSortMode.TitleDesc
                             ),
                             DirectionalSortModeField(
                                 text = stringResource(R.string.artist_sort_album_track),
-                                ascendingMode = ArtistDetailSongSortMode.AlbumTrack
+                                ascendingMode = ArtistDetailSongSortMode.AlbumTrack,
+                                descendingMode = ArtistDetailSongSortMode.AlbumTrackDesc
                             ),
                             DirectionalSortModeField(
                                 text = stringResource(R.string.artist_sort_file_name),
-                                ascendingMode = ArtistDetailSongSortMode.FileName
+                                ascendingMode = ArtistDetailSongSortMode.FileName,
+                                descendingMode = ArtistDetailSongSortMode.FileNameDesc
                             ),
                             DirectionalSortModeField(
                                 text = stringResource(R.string.artist_sort_duration),
+                                ascendingMode = ArtistDetailSongSortMode.DurationAsc,
                                 descendingMode = ArtistDetailSongSortMode.Duration
                             ),
                             DirectionalSortModeField(
@@ -844,15 +848,18 @@ fun ArtistScreen(
                             ),
                             DirectionalSortModeField(
                                 text = stringResource(R.string.artist_sort_song_count),
+                                ascendingMode = ArtistDetailAlbumSortMode.SongCountAsc,
                                 descendingMode = ArtistDetailAlbumSortMode.SongCount
                             ),
                             DirectionalSortModeField(
                                 text = stringResource(R.string.artist_sort_duration),
+                                ascendingMode = ArtistDetailAlbumSortMode.DurationAsc,
                                 descendingMode = ArtistDetailAlbumSortMode.Duration
                             ),
                             DirectionalSortModeField(
                                 text = stringResource(R.string.artist_sort_album_name),
-                                ascendingMode = ArtistDetailAlbumSortMode.Name
+                                ascendingMode = ArtistDetailAlbumSortMode.Name,
+                                descendingMode = ArtistDetailAlbumSortMode.NameDesc
                             )
                         ),
                         selectedMode = albumSortMode,

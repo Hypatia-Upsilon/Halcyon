@@ -256,10 +256,15 @@ fun ArtistListScreen(
         }
         val sorted = when (sortMode) {
             ArtistSortMode.Name -> filtered.sortedBy { it.name.musicSortKey() }
+            ArtistSortMode.NameDesc -> filtered.sortedByDescending { it.name.musicSortKey() }
             ArtistSortMode.SongCount -> filtered.sortedByDescending { it.songCount }
+            ArtistSortMode.SongCountAsc -> filtered.sortedBy { it.songCount }
             ArtistSortMode.AlbumCount -> filtered.sortedByDescending { it.albumCount }
+            ArtistSortMode.AlbumCountAsc -> filtered.sortedBy { it.albumCount }
             ArtistSortMode.ReleaseAlbumCount -> filtered.sortedByDescending { releaseAlbumCounts[it.name.tagIdentityKey()] ?: 0 }
+            ArtistSortMode.ReleaseAlbumCountAsc -> filtered.sortedBy { releaseAlbumCounts[it.name.tagIdentityKey()] ?: 0 }
             ArtistSortMode.Duration -> filtered.sortedByDescending { artistDurations[it.name.tagIdentityKey()] ?: 0L }
+            ArtistSortMode.DurationAsc -> filtered.sortedBy { artistDurations[it.name.tagIdentityKey()] ?: 0L }
         }
         if (pinnedArtistKeys.isEmpty()) {
             sorted
@@ -464,22 +469,27 @@ fun ArtistListScreen(
                                 fields = listOf(
                                     DirectionalSortModeField(
                                         text = stringResource(R.string.artist_list_sort_name),
-                                        ascendingMode = ArtistSortMode.Name
+                                        ascendingMode = ArtistSortMode.Name,
+                                        descendingMode = ArtistSortMode.NameDesc
                                     ),
                                     DirectionalSortModeField(
                                         text = stringResource(R.string.artist_list_sort_song_count),
+                                        ascendingMode = ArtistSortMode.SongCountAsc,
                                         descendingMode = ArtistSortMode.SongCount
                                     ),
                                     DirectionalSortModeField(
                                         text = stringResource(R.string.artist_list_sort_album_count),
+                                        ascendingMode = ArtistSortMode.AlbumCountAsc,
                                         descendingMode = ArtistSortMode.AlbumCount
                                     ),
                                     DirectionalSortModeField(
                                         text = stringResource(R.string.artist_list_sort_release_album_count),
+                                        ascendingMode = ArtistSortMode.ReleaseAlbumCountAsc,
                                         descendingMode = ArtistSortMode.ReleaseAlbumCount
                                     ),
                                     DirectionalSortModeField(
                                         text = stringResource(R.string.artist_list_sort_duration),
+                                        ascendingMode = ArtistSortMode.DurationAsc,
                                         descendingMode = ArtistSortMode.Duration
                                     )
                                 ),
@@ -609,7 +619,7 @@ fun ArtistListScreen(
                     }
                 }
 
-                if (sortMode == ArtistSortMode.Name && showArtistSideIndex) {
+                if (sortMode in setOf(ArtistSortMode.Name, ArtistSortMode.NameDesc) && showArtistSideIndex) {
                     FastIndexBar(
                         letters = fastIndexLetters,
                         modifier = Modifier

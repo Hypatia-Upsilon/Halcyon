@@ -426,7 +426,7 @@ fun MetadataCategoryScreen(
                                                 MetadataCategorySortField.AlbumCount,
                                                 MetadataCategorySortField.Duration -> SortDirection.Descending
                                             },
-                                            supportsAscending = field == MetadataCategorySortField.Name || field == MetadataCategorySortField.DateModified,
+                                            supportsAscending = true,
                                             supportsDescending = true
                                         )
                                     },

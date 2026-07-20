@@ -20,7 +20,10 @@ internal enum class FolderSongSortMode(val labelRes: Int) {
     DateModified(R.string.playlist_song_sort_date_modified),
     DateModifiedAsc(R.string.playlist_song_sort_date_modified_asc),
     YearAsc(R.string.playlist_song_sort_year_asc),
-    YearDesc(R.string.playlist_song_sort_year_desc)
+    YearDesc(R.string.playlist_song_sort_year_desc),
+    TitleDesc(R.string.playlist_song_sort_title),
+    FileNameDesc(R.string.playlist_song_sort_file_name),
+    DurationAsc(R.string.playlist_song_sort_duration)
 }
 
 internal fun List<Song>.sortedForFolderDetail(mode: FolderSongSortMode): List<Song> =
@@ -40,9 +43,12 @@ internal fun String.musicSortKey(): String {
 private fun FolderSongSortMode.toSongSortSpec(): SortSpec<SongSortField> =
     SortSpec(
         field = when (this) {
-            FolderSongSortMode.Title -> SongSortField.Title
-            FolderSongSortMode.FileName -> SongSortField.FileName
-            FolderSongSortMode.Duration -> SongSortField.Duration
+            FolderSongSortMode.Title,
+            FolderSongSortMode.TitleDesc -> SongSortField.Title
+            FolderSongSortMode.FileName,
+            FolderSongSortMode.FileNameDesc -> SongSortField.FileName
+            FolderSongSortMode.Duration,
+            FolderSongSortMode.DurationAsc -> SongSortField.Duration
             FolderSongSortMode.DateAdded,
             FolderSongSortMode.DateAddedAsc -> SongSortField.DateAdded
             FolderSongSortMode.DateModified,
@@ -51,6 +57,8 @@ private fun FolderSongSortMode.toSongSortSpec(): SortSpec<SongSortField> =
             FolderSongSortMode.YearDesc -> SongSortField.Year
         },
         direction = when (this) {
+            FolderSongSortMode.TitleDesc,
+            FolderSongSortMode.FileNameDesc,
             FolderSongSortMode.Duration,
             FolderSongSortMode.DateAdded,
             FolderSongSortMode.DateModified,

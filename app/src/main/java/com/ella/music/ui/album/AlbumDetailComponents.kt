@@ -47,6 +47,7 @@ import com.ella.music.ui.components.DefaultAlbumCover
 import com.ella.music.ui.components.PlayNextQuickButton
 import com.ella.music.ui.components.SafeCoverImage
 import com.ella.music.ui.components.SelectionCheck
+import com.ella.music.ui.artist.rememberArtistCoverModel
 import com.ella.music.viewmodel.MainViewModel
 import com.ella.music.viewmodel.PlayerViewModel
 import kotlinx.coroutines.Dispatchers
@@ -63,6 +64,8 @@ internal fun AlbumCopyrightFooter(
     artists: List<AlbumMetadataDisplayItem>,
     composers: List<AlbumMetadataDisplayItem>,
     lyricists: List<AlbumMetadataDisplayItem>,
+    mainViewModel: MainViewModel,
+    artistCoverFolderUri: String,
     onGenreClick: (String) -> Unit,
     onArtistClick: (String) -> Unit,
     onComposerClick: (String) -> Unit,
@@ -92,6 +95,8 @@ internal fun AlbumCopyrightFooter(
                 title = stringResource(R.string.category_year),
                 items = listOf(item),
                 circularCover = false,
+                mainViewModel = mainViewModel,
+                artistCoverFolderUri = artistCoverFolderUri,
                 onItemClick = { onYearClick(item.name) }
             )
         }
@@ -99,24 +104,32 @@ internal fun AlbumCopyrightFooter(
             title = stringResource(R.string.category_genre),
             items = genres,
             circularCover = false,
+            mainViewModel = mainViewModel,
+            artistCoverFolderUri = artistCoverFolderUri,
             onItemClick = onGenreClick
         )
         AlbumMetadataSection(
             title = stringResource(R.string.player_detail_artist),
             items = artists,
             circularCover = true,
+            mainViewModel = mainViewModel,
+            artistCoverFolderUri = artistCoverFolderUri,
             onItemClick = onArtistClick
         )
         AlbumMetadataSection(
             title = stringResource(R.string.player_detail_composer),
             items = composers,
             circularCover = true,
+            mainViewModel = mainViewModel,
+            artistCoverFolderUri = artistCoverFolderUri,
             onItemClick = onComposerClick
         )
         AlbumMetadataSection(
             title = stringResource(R.string.player_detail_lyricist),
             items = lyricists,
             circularCover = true,
+            mainViewModel = mainViewModel,
+            artistCoverFolderUri = artistCoverFolderUri,
             onItemClick = onLyricistClick
         )
     }
@@ -127,7 +140,9 @@ internal data class AlbumMetadataDisplayItem(
     val songCount: Int,
     val duration: Long,
     val albumCount: Int,
-    val coverModel: Any?
+    val coverModel: Any?,
+    val artistCoverName: String? = null,
+    val artistCoverSong: Song? = null
 )
 
 @Composable
@@ -162,6 +177,8 @@ private fun AlbumMetadataSection(
     title: String,
     items: List<AlbumMetadataDisplayItem>,
     circularCover: Boolean,
+    mainViewModel: MainViewModel,
+    artistCoverFolderUri: String,
     onItemClick: (String) -> Unit
 ) {
     if (items.isEmpty()) return
@@ -179,6 +196,8 @@ private fun AlbumMetadataSection(
             AlbumMetadataRow(
                 item = item,
                 circularCover = circularCover,
+                mainViewModel = mainViewModel,
+                artistCoverFolderUri = artistCoverFolderUri,
                 onClick = { onItemClick(item.name) }
             )
         }
@@ -189,8 +208,18 @@ private fun AlbumMetadataSection(
 private fun AlbumMetadataRow(
     item: AlbumMetadataDisplayItem,
     circularCover: Boolean,
+    mainViewModel: MainViewModel,
+    artistCoverFolderUri: String,
     onClick: () -> Unit,
 ) {
+    val coverModel = item.artistCoverName?.let { artistName ->
+        rememberArtistCoverModel(
+            artistName = artistName,
+            representativeSong = item.artistCoverSong,
+            folderLocation = artistCoverFolderUri,
+            mainViewModel = mainViewModel
+        )
+    } ?: item.coverModel
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -201,7 +230,7 @@ private fun AlbumMetadataRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         SafeCoverImage(
-            model = item.coverModel,
+            model = coverModel,
             contentDescription = item.name,
             modifier = Modifier
                 .size(52.dp)

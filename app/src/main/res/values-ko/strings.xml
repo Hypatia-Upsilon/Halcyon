@@ -1499,6 +1499,8 @@
     <string name="lyric_match_write_ttml_tag">TTMLLYRIC 태그 기록</string>
     <string name="settings_lyric_plugin_config">플러그인 설정</string>
     <string name="settings_player_bg_theme">플레이어 배경</string>
+    <string name="settings_apple_music_lyrics_page">Apple Music 스타일 가사 페이지</string>
+    <string name="settings_apple_music_lyrics_page_summary">내장 포커스 가사, 스프링 전환 및 발광 효과를 사용합니다. 끄면 기존 Lyricon 가사 페이지를 사용합니다.</string>
     <string name="settings_wallpaper_opacity">Wallpaper opacity</string>
     <string name="settings_wallpaper_opacity_summary">Adjust the strength of the custom app wallpaper.</string>
     <string name="settings_wallpaper_dim">Wallpaper dim</string>

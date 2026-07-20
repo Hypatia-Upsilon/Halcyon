@@ -463,18 +463,22 @@ fun PlaylistDetailScreen(
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_song_sort_added_at),
-                                    ascendingMode = PlaylistSongSortMode.AddedAt
+                                    ascendingMode = PlaylistSongSortMode.AddedAt,
+                                    descendingMode = PlaylistSongSortMode.AddedAtDesc
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_song_sort_title),
-                                    ascendingMode = PlaylistSongSortMode.Title
+                                    ascendingMode = PlaylistSongSortMode.Title,
+                                    descendingMode = PlaylistSongSortMode.TitleDesc
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_song_sort_file_name),
-                                    ascendingMode = PlaylistSongSortMode.FileName
+                                    ascendingMode = PlaylistSongSortMode.FileName,
+                                    descendingMode = PlaylistSongSortMode.FileNameDesc
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_song_sort_duration),
+                                    ascendingMode = PlaylistSongSortMode.DurationAsc,
                                     descendingMode = PlaylistSongSortMode.Duration
                                 ),
                                 DirectionalSortModeField(

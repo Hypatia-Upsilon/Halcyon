@@ -1,6 +1,7 @@
 package com.ella.music.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -29,8 +31,7 @@ import com.ella.music.ui.listmodel.SortDirection
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.ExpandLess
-import top.yukonga.miuix.kmp.icon.extended.ExpandMore
+import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Sort
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -186,7 +187,7 @@ private fun SortBottomSheetItem(
     val containerColor = if (item.selected) {
         MiuixTheme.colorScheme.primary.copy(alpha = 0.12f)
     } else {
-        MiuixTheme.colorScheme.surfaceContainer.copy(alpha = 0.76f)
+        Color.Transparent
     }
     val titleColor = if (item.selected) {
         MiuixTheme.colorScheme.primary
@@ -240,7 +241,7 @@ private fun SortBottomSheetItem(
                         onApplied()
                     }
                 },
-                imageVector = MiuixIcons.Regular.ExpandLess,
+                ascending = true,
                 contentDescription = stringResource(R.string.common_sort_ascending)
             )
             SortDirectionAction(
@@ -251,7 +252,7 @@ private fun SortBottomSheetItem(
                         onApplied()
                     }
                 },
-                imageVector = MiuixIcons.Regular.ExpandMore,
+                ascending = false,
                 contentDescription = stringResource(R.string.common_sort_descending)
             )
         } else {
@@ -269,32 +270,43 @@ private fun SortBottomSheetItem(
 private fun SortDirectionAction(
     selected: Boolean,
     onClick: (() -> Unit)?,
-    imageVector: androidx.compose.ui.graphics.vector.ImageVector,
+    ascending: Boolean,
     contentDescription: String
 ) {
     val enabled = onClick != null
     val background = when {
-        selected -> MiuixTheme.colorScheme.primary.copy(alpha = 0.24f)
-        enabled -> MiuixTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.78f)
+        selected -> MiuixTheme.colorScheme.primary.copy(alpha = 0.18f)
+        enabled -> Color.Transparent
         else -> Color.Transparent
+    }
+    val borderColor = when {
+        selected -> MiuixTheme.colorScheme.primary
+        enabled -> MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.72f)
+        else -> MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.28f)
     }
     Box(
         modifier = Modifier
             .size(36.dp)
             .clip(CircleShape)
+            .border(1.dp, borderColor, CircleShape)
             .background(background)
             .clickable(enabled = enabled) { onClick?.invoke() },
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            imageVector = imageVector,
+            imageVector = MiuixIcons.Regular.Back,
             contentDescription = contentDescription,
             tint = when {
                 selected -> MiuixTheme.colorScheme.primary
                 enabled -> MiuixTheme.colorScheme.onSurfaceVariantSummary
                 else -> MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.30f)
             },
-            modifier = Modifier.size(20.dp)
+            // Miuix's back glyph has the rounded shaft and arrow head used throughout the app.
+            // Rotating it keeps the ascending/descending controls visually native instead of
+            // using the old corner-shaped expand glyphs.
+            modifier = Modifier
+                .size(20.dp)
+                .graphicsLayer { rotationZ = if (ascending) 90f else -90f }
         )
     }
 }

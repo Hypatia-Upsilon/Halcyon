@@ -4,7 +4,11 @@ import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import com.ella.music.data.ArtistCoverAsset
+import com.ella.music.data.model.Song
+import com.ella.music.ui.components.ArtworkUsage
+import com.ella.music.ui.components.rememberSongArtworkState
 import com.ella.music.viewmodel.MainViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -29,6 +33,40 @@ internal fun rememberArtistCoverUri(
         }
     }
     return state
+}
+
+/**
+ * Resolves every artist image through the same chain: a custom artist asset first, then the
+ * caller's policy-selected library song artwork. Keeping the custom-asset check here prevents
+ * search cards, detail metadata and the artist list from drifting apart again.
+ */
+@Composable
+internal fun rememberArtistCoverModel(
+    artistName: String,
+    representativeSong: Song?,
+    folderLocation: String,
+    mainViewModel: MainViewModel,
+    coversEnabled: Boolean = true
+): Any? {
+    val albumArtUri = remember(coversEnabled, representativeSong?.albumId) {
+        representativeSong
+            ?.albumId
+            ?.takeIf { coversEnabled && it > 0L }
+            ?.let(mainViewModel::getAlbumArtUri)
+    }
+    val artworkState = rememberSongArtworkState(
+        song = representativeSong,
+        albumArtUri = albumArtUri,
+        loadCoverArt = mainViewModel::getAlbumCoverArtBitmap,
+        usage = ArtworkUsage.ArtistImage,
+        showDefaultWhenMissing = false
+    )
+    val customArtistCoverUri = rememberArtistCoverUri(
+        artistName = artistName,
+        folderLocation = if (coversEnabled) folderLocation else "",
+        mainViewModel = mainViewModel
+    )
+    return customArtistCoverUri ?: artworkState.model
 }
 
 @Composable

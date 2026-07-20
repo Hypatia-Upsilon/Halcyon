@@ -65,6 +65,7 @@ import com.ella.music.data.model.playlistIdentityKey
 import com.ella.music.data.splitArtistNames
 import com.ella.music.data.splitGenreNames
 import com.ella.music.ui.LibrarySortUiState
+import com.ella.music.ui.artist.selectArtistCoverSong
 import com.ella.music.ui.components.AddToPlaylistSheet
 import com.ella.music.ui.components.AppleStylePlayButton
 import com.ella.music.ui.components.ArtistPickerSheet
@@ -136,6 +137,7 @@ fun AlbumDetailScreen(
     val openPlayerOnPlay by mainViewModel.settingsManager.openPlayerOnPlay.collectAsState(initial = false)
     val sortIndex by mainViewModel.settingsManager.albumDetailSongSortIndex.collectAsState(initial = LibrarySortUiState.albumDetailSongSortIndex)
     val showPlayNextInLists by mainViewModel.settingsManager.showPlayNextInLists.collectAsState(initial = false)
+    val artistCoverFolderUri by mainViewModel.settingsManager.artistCoverFolderUri.collectAsState(initial = "")
     val sortMode = AlbumDetailSongSortMode.entries.getOrElse(sortIndex) { AlbumDetailSongSortMode.Track }
     val scope = rememberCoroutineScope()
     var sortExpanded by remember { mutableStateOf(false) }
@@ -274,11 +276,14 @@ fun AlbumDetailScreen(
     }
     val artistDisplayItems = remember(participatingArtists, albumSongs) {
         participatingArtists.map { artist ->
+            val artistSongs = mainViewModel.getSongsForArtist(artist, includeAlbumArtist = true)
             buildAlbumMetadataDisplayItem(
                 name = artist,
-                songs = mainViewModel.getSongsForArtist(artist),
+                songs = artistSongs,
                 mainViewModel = mainViewModel,
-                fallbackSong = albumSongs.firstOrNull()
+                fallbackSong = albumSongs.firstOrNull(),
+                artistCoverName = artist,
+                artistCoverSong = selectArtistCoverSong(artistSongs, artist)
             )
         }
     }
@@ -570,6 +575,8 @@ fun AlbumDetailScreen(
                         composers = composerDisplayItems,
                         lyricists = lyricistDisplayItems,
                         year = yearDisplayItem,
+                        mainViewModel = mainViewModel,
+                        artistCoverFolderUri = artistCoverFolderUri,
                         onGenreClick = { genre -> onNavigateToMetadataCategory("genre", genre) },
                         onArtistClick = onNavigateToArtist,
                         onComposerClick = { composer -> onNavigateToMetadataCategory("composer", composer) },
@@ -717,18 +724,22 @@ fun AlbumDetailScreen(
                         fields = listOf(
                             DirectionalSortModeField(
                                 text = stringResource(R.string.album_sort_track),
-                                ascendingMode = AlbumDetailSongSortMode.Track
+                                ascendingMode = AlbumDetailSongSortMode.Track,
+                                descendingMode = AlbumDetailSongSortMode.TrackDesc
                             ),
                             DirectionalSortModeField(
                                 text = stringResource(R.string.playlist_song_sort_title),
-                                ascendingMode = AlbumDetailSongSortMode.Title
+                                ascendingMode = AlbumDetailSongSortMode.Title,
+                                descendingMode = AlbumDetailSongSortMode.TitleDesc
                             ),
                             DirectionalSortModeField(
                                 text = stringResource(R.string.playlist_song_sort_file_name),
-                                ascendingMode = AlbumDetailSongSortMode.FileName
+                                ascendingMode = AlbumDetailSongSortMode.FileName,
+                                descendingMode = AlbumDetailSongSortMode.FileNameDesc
                             ),
                             DirectionalSortModeField(
                                 text = stringResource(R.string.playlist_song_sort_duration),
+                                ascendingMode = AlbumDetailSongSortMode.DurationAsc,
                                 descendingMode = AlbumDetailSongSortMode.Duration
                             ),
                             DirectionalSortModeField(
@@ -999,7 +1010,9 @@ private fun buildAlbumMetadataDisplayItem(
     name: String,
     songs: List<Song>,
     mainViewModel: MainViewModel,
-    fallbackSong: Song?
+    fallbackSong: Song?,
+    artistCoverName: String? = null,
+    artistCoverSong: Song? = null
 ): AlbumMetadataDisplayItem {
     val representativeSong = songs.firstOrNull() ?: fallbackSong
     return AlbumMetadataDisplayItem(
@@ -1008,6 +1021,8 @@ private fun buildAlbumMetadataDisplayItem(
         duration = songs.sumOf { it.duration },
         albumCount = songs.map { it.albumIdentityId() }.distinct().size,
         coverModel = representativeSong?.coverUrl?.takeIf(String::isNotBlank)
-            ?: representativeSong?.albumId?.let(mainViewModel::getAlbumArtUri)
+            ?: representativeSong?.albumId?.let(mainViewModel::getAlbumArtUri),
+        artistCoverName = artistCoverName,
+        artistCoverSong = artistCoverSong
     )
 }

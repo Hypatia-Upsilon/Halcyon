@@ -1499,6 +1499,8 @@
     <string name="lyric_match_write_ttml_tag">TTMLLYRIC-Tag schreiben</string>
     <string name="settings_lyric_plugin_config">Plug-in-Einstellungen</string>
     <string name="settings_player_bg_theme">Player-Hintergrund</string>
+    <string name="settings_apple_music_lyrics_page">Apple-Music-Lyricsseite</string>
+    <string name="settings_apple_music_lyrics_page_summary">Verwendet integrierte Fokus-Lyrics, federnde Übergänge und Leuchteffekte; deaktivieren, um die klassische Lyricon-Lyricsseite zu verwenden.</string>
     <string name="settings_wallpaper_opacity">Wallpaper opacity</string>
     <string name="settings_wallpaper_opacity_summary">Adjust the strength of the custom app wallpaper.</string>
     <string name="settings_wallpaper_dim">Wallpaper dim</string>

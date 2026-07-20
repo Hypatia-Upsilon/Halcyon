@@ -62,7 +62,12 @@ internal class DesktopComposeLyricView(context: Context) : FrameLayout(context) 
     private var statusBarSecondaryMode by mutableIntStateOf(SettingsManager.DESKTOP_LYRIC_STATUS_SECONDARY_OFF)
     private var statusBarSecondaryOpacity by mutableIntStateOf(67)
     private var statusBarMergeSecondary by mutableStateOf(false)
-    private var statusBarInlineSecondaryText by mutableStateOf("")
+    // Keep the two possible status-bar secondary sources independently.  The selected source is
+    // resolved during composition, so changing the status-bar preference never leaves the prior
+    // line's secondary text attached to the overlay until the next playback tick arrives.
+    private var statusBarTranslationText by mutableStateOf("")
+    private var statusBarPronunciationText by mutableStateOf("")
+    private var statusBarPronunciationWords by mutableStateOf(emptyList<LyricWord>())
     private var statusBarTextAlign by mutableIntStateOf(SettingsManager.DESKTOP_LYRIC_STATUS_ALIGN_LEFT)
     private var statusBarVerticalAlign by mutableIntStateOf(SettingsManager.DESKTOP_LYRIC_STATUS_VERTICAL_TOP)
     private var lyricFontPath by mutableStateOf("")
@@ -221,29 +226,22 @@ internal class DesktopComposeLyricView(context: Context) : FrameLayout(context) 
             isLikelyRomanizationSecondary(backgroundText.ifBlank { text }, backgroundTranslation)
         ) "" else backgroundTranslation
 
+        statusBarTranslationText = displayTranslation.normalizeDesktopStatusBarSecondaryText()
+        statusBarPronunciationText = inferredPronunciation.normalizeDesktopStatusBarSecondaryText()
+        statusBarPronunciationWords = pronunciationWords
+
         val mainText = text.ifBlank { backgroundText }.ifBlank { "♪" }
-        val statusBarSecondaryText = when (statusBarSecondaryMode) {
-                SettingsManager.DESKTOP_LYRIC_STATUS_SECONDARY_TRANSLATION -> displayTranslation
-                SettingsManager.DESKTOP_LYRIC_STATUS_SECONDARY_PRONUNCIATION -> inferredPronunciation
-                else -> ""
-            }.trim()
         currentLine = if (statusBarMode) {
             LyricLine(
                 timeMs = inferredStart,
                 text = mainText,
                 words = if (text.isBlank() && backgroundText.isNotBlank()) backgroundWords else words,
-                translation = if (
-                    !statusBarMergeSecondary &&
-                    statusBarSecondaryMode == SettingsManager.DESKTOP_LYRIC_STATUS_SECONDARY_TRANSLATION
-                ) displayTranslation else null,
-                pronunciation = if (
-                    !statusBarMergeSecondary &&
-                    statusBarSecondaryMode == SettingsManager.DESKTOP_LYRIC_STATUS_SECONDARY_PRONUNCIATION
-                ) inferredPronunciation else null,
-                pronunciationWords = if (
-                    !statusBarMergeSecondary &&
-                    statusBarSecondaryMode == SettingsManager.DESKTOP_LYRIC_STATUS_SECONDARY_PRONUNCIATION
-                ) pronunciationWords else emptyList(),
+                // The status-bar renderer owns its selected secondary line.  Keeping it out of
+                // LyricLine prevents Compose from rendering it twice when the merge preference
+                // changes while this lyric is still active.
+                translation = null,
+                pronunciation = null,
+                pronunciationWords = emptyList(),
                 isTtml = isTtml,
                 endMs = inferredEnd
             )
@@ -265,16 +263,23 @@ internal class DesktopComposeLyricView(context: Context) : FrameLayout(context) 
                 endMs = inferredEnd
             )
         }
-        statusBarInlineSecondaryText = if (statusBarMode && statusBarMergeSecondary) {
-            statusBarSecondaryText
-        } else {
-            ""
-        }
     }
 
     @Composable
     private fun DesktopLyricContent() {
         val line = currentLine
+        val statusBarSecondaryText = when (statusBarSecondaryMode) {
+            SettingsManager.DESKTOP_LYRIC_STATUS_SECONDARY_TRANSLATION -> statusBarTranslationText
+            SettingsManager.DESKTOP_LYRIC_STATUS_SECONDARY_PRONUNCIATION -> statusBarPronunciationText
+            else -> ""
+        }
+        val statusBarSecondaryWords = if (
+            statusBarSecondaryMode == SettingsManager.DESKTOP_LYRIC_STATUS_SECONDARY_PRONUNCIATION
+        ) {
+            statusBarPronunciationWords
+        } else {
+            emptyList()
+        }
         var smoothPositionMs by remember { mutableLongStateOf(currentPositionMs) }
         LaunchedEffect(currentPositionMs, playbackRunning) {
             val anchorPositionMs = currentPositionMs
@@ -315,8 +320,11 @@ internal class DesktopComposeLyricView(context: Context) : FrameLayout(context) 
             AppleMusicSingleLyricLine(
                 line = line,
                 currentPositionMs = smoothPositionMs,
-                showTranslation = true,
-                showPronunciation = true,
+                // In status-bar mode the selected secondary source is rendered by the dedicated
+                // status-bar path below.  The normal lyric-line secondary slots stay reserved
+                // for the desktop floating-window renderer.
+                showTranslation = !statusBarMode,
+                showPronunciation = !statusBarMode,
                 fontFamily = fontFamily,
                 fontWeight = FontWeight(lyricFontWeight),
                 fontScale = fontScale,
@@ -327,7 +335,9 @@ internal class DesktopComposeLyricView(context: Context) : FrameLayout(context) 
                 contentColor = Color(textColor).copy(alpha = opacityPercent / 100f),
                 wordLiftEnabled = wordLiftEnabled,
                 singleLine = statusBarMode,
-                inlineStaticSecondaryText = statusBarInlineSecondaryText,
+                inlineStaticSecondaryText = if (statusBarMode) statusBarSecondaryText else "",
+                inlineStaticSecondaryWords = if (statusBarMode) statusBarSecondaryWords else emptyList(),
+                mergeInlineSecondary = statusBarMode && statusBarMergeSecondary,
                 statusBarMarquee = statusBarMode,
                 secondaryAlpha = if (statusBarMode) statusBarSecondaryOpacity / 100f else 0.74f,
                 modifier = Modifier.fillMaxWidth()
@@ -420,7 +430,16 @@ internal fun mergeDesktopStatusBarLyric(
     secondaryText: String,
     mergeSecondary: Boolean
 ): String = if (mergeSecondary && secondaryText.isNotBlank()) {
-    "${mainText.trimEnd()} ${secondaryText.trimStart()}"
+    "${mainText.trimEnd()} ${secondaryText.normalizeDesktopStatusBarSecondaryText()}"
 } else {
     mainText
 }
+
+/**
+ * The lyric parsers normally collapse whitespace, but third-party lyrics can still carry line
+ * separators or several secondary fragments.  A status-bar overlay has exactly one visual row,
+ * so normalize every fragment before it reaches the inline marquee rather than letting BasicText
+ * create an accidental second row.
+ */
+internal fun String.normalizeDesktopStatusBarSecondaryText(): String =
+    trim().replace(Regex("\\s+"), " ")

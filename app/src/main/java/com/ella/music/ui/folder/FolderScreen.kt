@@ -203,7 +203,7 @@ fun FolderScreen(
                                         FolderListSortField.AlbumCount,
                                         FolderListSortField.Duration -> SortDirection.Descending
                                     },
-                                    supportsAscending = field == FolderListSortField.Name || field == FolderListSortField.DateModified,
+                                    supportsAscending = true,
                                     supportsDescending = true
                                 )
                             },

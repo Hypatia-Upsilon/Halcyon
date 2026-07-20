@@ -100,7 +100,10 @@ fun AlbumScreen(
     playerViewModel: PlayerViewModel,
     showBackButton: Boolean = true,
     onBack: () -> Unit,
-    onAlbumClick: (Long) -> Unit
+    onAlbumClick: (albumId: Long, anchorAlbumId: Long?, anchorOffset: Int) -> Unit,
+    restoreScrollRequest: Int = 0,
+    restoreAnchorAlbumId: Long? = null,
+    restoreAnchorOffset: Int = 0
 ) {
     val context = LocalContext.current
     val albums by mainViewModel.albums.collectAsState()
@@ -154,13 +157,21 @@ fun AlbumScreen(
     val sortedAlbums = remember(filteredAlbums, sortMode, albumDurations, pinnedAlbumKeys) {
         val sorted = when (sortMode) {
             AlbumSortMode.Name -> filteredAlbums.sortedBy { it.name.musicSortKey() }
+            AlbumSortMode.NameDesc -> filteredAlbums.sortedByDescending { it.name.musicSortKey() }
             AlbumSortMode.Artist -> filteredAlbums.sortedWith(
                 compareBy<Album> { it.albumArtist.isBlank() && it.artist.isBlank() }
                     .thenBy { it.albumArtist.ifBlank { it.artist }.musicSortKey() }
                     .thenBy { it.name.musicSortKey() }
             )
+            AlbumSortMode.ArtistDesc -> filteredAlbums.sortedWith(
+                compareBy<Album> { it.albumArtist.isBlank() && it.artist.isBlank() }
+                    .thenByDescending { it.albumArtist.ifBlank { it.artist }.musicSortKey() }
+                    .thenBy { it.name.musicSortKey() }
+            )
             AlbumSortMode.SongCount -> filteredAlbums.sortedByDescending { it.songCount }
+            AlbumSortMode.SongCountAsc -> filteredAlbums.sortedBy { it.songCount }
             AlbumSortMode.Duration -> filteredAlbums.sortedByDescending { albumDurations[it.id] ?: 0L }
+            AlbumSortMode.DurationAsc -> filteredAlbums.sortedBy { albumDurations[it.id] ?: 0L }
             AlbumSortMode.YearAsc -> filteredAlbums.sortedWith(compareBy<Album> { it.releaseDateSortKey <= 0 }.thenBy { it.releaseDateSortKey }.thenBy { it.name.musicSortKey() })
             AlbumSortMode.YearDesc -> filteredAlbums.sortedWith(compareBy<Album> { it.releaseDateSortKey <= 0 }.thenByDescending { it.releaseDateSortKey }.thenBy { it.name.musicSortKey() })
         }
@@ -362,18 +373,22 @@ fun AlbumScreen(
                             fields = listOf(
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.album_sort_name),
-                                    ascendingMode = AlbumSortMode.Name
+                                    ascendingMode = AlbumSortMode.Name,
+                                    descendingMode = AlbumSortMode.NameDesc
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.album_sort_artist),
-                                    ascendingMode = AlbumSortMode.Artist
+                                    ascendingMode = AlbumSortMode.Artist,
+                                    descendingMode = AlbumSortMode.ArtistDesc
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_sort_song_count),
+                                    ascendingMode = AlbumSortMode.SongCountAsc,
                                     descendingMode = AlbumSortMode.SongCount
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_song_sort_duration),
+                                    ascendingMode = AlbumSortMode.DurationAsc,
                                     descendingMode = AlbumSortMode.Duration
                                 ),
                                 DirectionalSortModeField(
@@ -469,20 +484,35 @@ fun AlbumScreen(
             // the viewport until the user scrolls. On a fresh album-page entry, explicitly
             // anchor the first resolved pinned ordering at index zero.
             var needsInitialPinnedPosition by remember { mutableStateOf(true) }
-            // Returning from a child album-detail route is the same album-page session, so keep
-            // the saved grid position. This deliberately only skips the anchor once: returning
-            // to the parent page and opening Albums again still follows #161 and starts at top.
-            var skipPinnedAnchorOnChildReturn by rememberSaveable { mutableStateOf(false) }
+            // Navigation restores lazy-grid state by index. Once pinned albums are prepended,
+            // that index can point below every pinned row. Track the actual visible album id
+            // before opening a child and resolve it again after returning instead.
+            var lastHandledRestoreRequest by rememberSaveable { mutableStateOf(0) }
             var fastScrollJob by remember { mutableStateOf<Job?>(null) }
             LaunchedEffect(scrollToTopRequest) {
                 if (scrollToTopRequest > 0) gridState.animateScrollToItem(0)
             }
-            LaunchedEffect(pinnedAlbumKeys, sortedAlbums.size) {
-                if (skipPinnedAnchorOnChildReturn) {
-                    skipPinnedAnchorOnChildReturn = false
+            LaunchedEffect(
+                restoreScrollRequest,
+                restoreAnchorAlbumId,
+                restoreAnchorOffset,
+                sortedAlbums
+            ) {
+                if (
+                    restoreScrollRequest > lastHandledRestoreRequest &&
+                    restoreAnchorAlbumId != null &&
+                    sortedAlbums.isNotEmpty()
+                ) {
+                    val restoredIndex = sortedAlbums.indexOfFirst { it.id == restoreAnchorAlbumId }
+                    if (restoredIndex >= 0) {
+                        gridState.scrollToItem(restoredIndex, restoreAnchorOffset.coerceAtLeast(0))
+                    }
+                    lastHandledRestoreRequest = restoreScrollRequest
                     needsInitialPinnedPosition = false
-                    return@LaunchedEffect
                 }
+            }
+            LaunchedEffect(pinnedAlbumKeys, sortedAlbums.size, restoreScrollRequest) {
+                if (restoreScrollRequest > lastHandledRestoreRequest) return@LaunchedEffect
                 if (
                     needsInitialPinnedPosition &&
                     pinnedAlbumKeys.isNotEmpty() &&
@@ -548,8 +578,11 @@ fun AlbumScreen(
                                     if (selectionMode) {
                                         toggleAlbumSelection(album)
                                     } else {
-                                        skipPinnedAnchorOnChildReturn = true
-                                        onAlbumClick(album.id)
+                                        onAlbumClick(
+                                            album.id,
+                                            sortedAlbums.getOrNull(gridState.firstVisibleItemIndex)?.id,
+                                            gridState.firstVisibleItemScrollOffset
+                                        )
                                     }
                                 },
                                 onLongClick = {
@@ -564,7 +597,14 @@ fun AlbumScreen(
                     }
                 }
 
-                if ((sortMode == AlbumSortMode.Name || sortMode == AlbumSortMode.Artist) && showAlbumSideIndex) {
+                if (
+                    sortMode in setOf(
+                        AlbumSortMode.Name,
+                        AlbumSortMode.NameDesc,
+                        AlbumSortMode.Artist,
+                        AlbumSortMode.ArtistDesc
+                    ) && showAlbumSideIndex
+                ) {
                     FastIndexBar(
                         letters = fastIndexLetters,
                         modifier = Modifier

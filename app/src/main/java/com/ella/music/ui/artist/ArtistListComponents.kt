@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,12 +27,10 @@ import com.ella.music.R
 import com.ella.music.data.model.Artist
 import com.ella.music.data.model.Song
 import com.ella.music.data.model.formatPlaybackDuration
-import com.ella.music.ui.components.ArtworkUsage
 import com.ella.music.ui.components.SafeCoverImage
 import com.ella.music.ui.components.SelectionCheck
 import com.ella.music.ui.components.toFastIndexSection
 import com.ella.music.ui.folder.musicSortKey
-import com.ella.music.ui.components.rememberSongArtworkState
 import com.ella.music.viewmodel.MainViewModel
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
@@ -61,25 +58,13 @@ internal fun ArtistRow(
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
-    val albumArtUri = remember(coversEnabled, representativeSong?.albumId) {
-        representativeSong
-            ?.albumId
-            ?.takeIf { coversEnabled && it > 0L }
-            ?.let(mainViewModel::getAlbumArtUri)
-    }
-    val coverState = rememberSongArtworkState(
-        song = representativeSong,
-        albumArtUri = albumArtUri,
-        loadCoverArt = mainViewModel::getAlbumCoverArtBitmap,
-        usage = ArtworkUsage.ArtistImage,
-        showDefaultWhenMissing = false
-    )
-    val customArtistCoverUri = rememberArtistCoverUri(
+    val coverModel = rememberArtistCoverModel(
         artistName = artist.name,
-        folderLocation = if (coversEnabled) artistCoverFolderUri else "",
-        mainViewModel = mainViewModel
+        representativeSong = representativeSong,
+        folderLocation = artistCoverFolderUri,
+        mainViewModel = mainViewModel,
+        coversEnabled = coversEnabled
     )
-    val coverModel: Any? = customArtistCoverUri ?: coverState.model
 
     Row(
         modifier = Modifier
@@ -165,7 +150,12 @@ internal enum class ArtistSortMode(@param:StringRes val labelRes: Int) {
     SongCount(R.string.artist_list_sort_song_count),
     AlbumCount(R.string.artist_list_sort_album_count),
     ReleaseAlbumCount(R.string.artist_list_sort_release_album_count),
-    Duration(R.string.artist_list_sort_duration)
+    Duration(R.string.artist_list_sort_duration),
+    NameDesc(R.string.artist_list_sort_name),
+    SongCountAsc(R.string.artist_list_sort_song_count),
+    AlbumCountAsc(R.string.artist_list_sort_album_count),
+    ReleaseAlbumCountAsc(R.string.artist_list_sort_release_album_count),
+    DurationAsc(R.string.artist_list_sort_duration)
 }
 
 internal fun Artist.summaryForSort(
@@ -175,8 +165,10 @@ internal fun Artist.summaryForSort(
     stringResolver: (Int, Array<Any>) -> String
 ): String {
     return when (sortMode) {
-        ArtistSortMode.Duration -> stringResolver(R.string.artist_list_summary_duration, arrayOf(duration.formatArtistDuration(), albumCount))
-        ArtistSortMode.ReleaseAlbumCount -> stringResolver(R.string.artist_list_summary_release_album, arrayOf(songCount, releaseAlbumCount))
+        ArtistSortMode.Duration,
+        ArtistSortMode.DurationAsc -> stringResolver(R.string.artist_list_summary_duration, arrayOf(duration.formatArtistDuration(), albumCount))
+        ArtistSortMode.ReleaseAlbumCount,
+        ArtistSortMode.ReleaseAlbumCountAsc -> stringResolver(R.string.artist_list_summary_release_album, arrayOf(songCount, releaseAlbumCount))
         else -> stringResolver(R.string.artist_list_summary_default, arrayOf(songCount, albumCount))
     }
 }

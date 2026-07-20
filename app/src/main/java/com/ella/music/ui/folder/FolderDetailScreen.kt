@@ -473,14 +473,17 @@ fun FolderDetailScreen(
                             fields = listOf(
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_song_sort_title),
-                                    ascendingMode = FolderSongSortMode.Title
+                                    ascendingMode = FolderSongSortMode.Title,
+                                    descendingMode = FolderSongSortMode.TitleDesc
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_song_sort_file_name),
-                                    ascendingMode = FolderSongSortMode.FileName
+                                    ascendingMode = FolderSongSortMode.FileName,
+                                    descendingMode = FolderSongSortMode.FileNameDesc
                                 ),
                                 DirectionalSortModeField(
                                     text = stringResource(R.string.playlist_song_sort_duration),
+                                    ascendingMode = FolderSongSortMode.DurationAsc,
                                     descendingMode = FolderSongSortMode.Duration
                                 ),
                                 DirectionalSortModeField(

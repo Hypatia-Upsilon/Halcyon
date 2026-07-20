@@ -14,7 +14,10 @@ internal enum class FolderListSortMode(val labelRes: Int) {
     AlbumCount(R.string.folder_sort_album_count),
     Duration(R.string.playlist_song_sort_duration),
     DateModified(R.string.playlist_song_sort_date_modified),
-    DateModifiedAsc(R.string.playlist_song_sort_date_modified_asc)
+    DateModifiedAsc(R.string.playlist_song_sort_date_modified_asc),
+    SongCountAsc(R.string.playlist_sort_song_count),
+    AlbumCountAsc(R.string.folder_sort_album_count),
+    DurationAsc(R.string.playlist_song_sort_duration)
 }
 
 internal enum class FolderListSortField(val labelRes: Int) {
@@ -33,8 +36,11 @@ internal fun List<FolderTreeEntry>.sortedForFolderList(
         FolderListSortMode.Name -> sortedBy { it.name.musicSortKey() }
         FolderListSortMode.NameDesc -> sortedByDescending { it.name.musicSortKey() }
         FolderListSortMode.SongCount -> sortedWith(compareByDescending<FolderTreeEntry> { it.songCount }.thenBy { it.name.musicSortKey() })
+        FolderListSortMode.SongCountAsc -> sortedWith(compareBy<FolderTreeEntry> { it.songCount }.thenBy { it.name.musicSortKey() })
         FolderListSortMode.Duration -> sortedWith(compareByDescending<FolderTreeEntry> { it.duration }.thenBy { it.name.musicSortKey() })
+        FolderListSortMode.DurationAsc -> sortedWith(compareBy<FolderTreeEntry> { it.duration }.thenBy { it.name.musicSortKey() })
         FolderListSortMode.AlbumCount -> sortedWith(compareByDescending<FolderTreeEntry> { it.albumCount }.thenBy { it.name.musicSortKey() })
+        FolderListSortMode.AlbumCountAsc -> sortedWith(compareBy<FolderTreeEntry> { it.albumCount }.thenBy { it.name.musicSortKey() })
         FolderListSortMode.DateModified -> sortedWith(compareByDescending<FolderTreeEntry> { it.dateModified }.thenBy { it.name.musicSortKey() })
         FolderListSortMode.DateModifiedAsc -> sortedWith(compareBy<FolderTreeEntry> { it.dateModified }.thenBy { it.name.musicSortKey() })
     }
@@ -52,8 +58,10 @@ internal fun List<FolderTreeEntry>.sortedForFolderList(
 
 internal fun FolderTreeEntry.summaryFor(context: android.content.Context, mode: FolderListSortMode): String {
     return when (mode) {
-        FolderListSortMode.Duration -> duration.formatFolderDuration(context)
-        FolderListSortMode.AlbumCount -> context.getString(R.string.album_count, albumCount)
+        FolderListSortMode.Duration,
+        FolderListSortMode.DurationAsc -> duration.formatFolderDuration(context)
+        FolderListSortMode.AlbumCount,
+        FolderListSortMode.AlbumCountAsc -> context.getString(R.string.album_count, albumCount)
         FolderListSortMode.DateModified,
         FolderListSortMode.DateModifiedAsc -> dateModified.formatFolderDateTime(context)
         else -> context.getString(R.string.song_count, songCount)
@@ -63,9 +71,12 @@ internal fun FolderTreeEntry.summaryFor(context: android.content.Context, mode: 
 internal fun FolderListSortMode.sortField(): FolderListSortField = when (this) {
     FolderListSortMode.Name,
     FolderListSortMode.NameDesc -> FolderListSortField.Name
-    FolderListSortMode.SongCount -> FolderListSortField.SongCount
-    FolderListSortMode.AlbumCount -> FolderListSortField.AlbumCount
-    FolderListSortMode.Duration -> FolderListSortField.Duration
+    FolderListSortMode.SongCount,
+    FolderListSortMode.SongCountAsc -> FolderListSortField.SongCount
+    FolderListSortMode.AlbumCount,
+    FolderListSortMode.AlbumCountAsc -> FolderListSortField.AlbumCount
+    FolderListSortMode.Duration,
+    FolderListSortMode.DurationAsc -> FolderListSortField.Duration
     FolderListSortMode.DateModified,
     FolderListSortMode.DateModifiedAsc -> FolderListSortField.DateModified
 }
@@ -81,9 +92,9 @@ internal fun FolderListSortMode.isDescending(): Boolean = when (this) {
 
 internal fun FolderListSortField.toMode(directionDescending: Boolean): FolderListSortMode = when (this) {
     FolderListSortField.Name -> if (directionDescending) FolderListSortMode.NameDesc else FolderListSortMode.Name
-    FolderListSortField.SongCount -> FolderListSortMode.SongCount
-    FolderListSortField.AlbumCount -> FolderListSortMode.AlbumCount
-    FolderListSortField.Duration -> FolderListSortMode.Duration
+    FolderListSortField.SongCount -> if (directionDescending) FolderListSortMode.SongCount else FolderListSortMode.SongCountAsc
+    FolderListSortField.AlbumCount -> if (directionDescending) FolderListSortMode.AlbumCount else FolderListSortMode.AlbumCountAsc
+    FolderListSortField.Duration -> if (directionDescending) FolderListSortMode.Duration else FolderListSortMode.DurationAsc
     FolderListSortField.DateModified -> if (directionDescending) FolderListSortMode.DateModified else FolderListSortMode.DateModifiedAsc
 }
 

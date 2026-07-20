@@ -12,7 +12,12 @@ internal enum class FolderPlaylistSortMode(val labelRes: Int) {
     FolderCount(R.string.folder_playlist_sort_folder_count),
     SongCount(R.string.playlist_sort_song_count),
     Duration(R.string.playlist_sort_duration),
-    CustomDesc(R.string.playlist_sort_custom_desc)
+    CustomDesc(R.string.playlist_sort_custom_desc),
+    DateUpdatedAsc(R.string.playlist_sort_updated_at),
+    NameDesc(R.string.playlist_sort_name),
+    FolderCountAsc(R.string.folder_playlist_sort_folder_count),
+    SongCountAsc(R.string.playlist_sort_song_count),
+    DurationAsc(R.string.playlist_sort_duration)
 }
 
 internal fun List<FolderPlaylist>.sortedForFolderPlaylists(
@@ -26,12 +31,17 @@ internal fun List<FolderPlaylist>.sortedForFolderPlaylists(
         // user manually reorders, this is the natural default. CustomDesc is the reverse of that.
         FolderPlaylistSortMode.Custom -> sortedWith(compareByDescending<FolderPlaylist> { it.createdAt }.thenBy { it.name.musicSortKey() })
         FolderPlaylistSortMode.DateUpdated -> sortedWith(compareByDescending<FolderPlaylist> { it.updatedAt }.thenBy { it.name.musicSortKey() })
+        FolderPlaylistSortMode.DateUpdatedAsc -> sortedWith(compareBy<FolderPlaylist> { it.updatedAt }.thenBy { it.name.musicSortKey() })
         FolderPlaylistSortMode.DateCreatedDesc -> sortedWith(compareByDescending<FolderPlaylist> { it.createdAt }.thenBy { it.name.musicSortKey() })
         FolderPlaylistSortMode.DateCreated -> sortedWith(compareBy<FolderPlaylist> { it.createdAt }.thenBy { it.name.musicSortKey() })
         FolderPlaylistSortMode.Name -> sortedBy { it.name.musicSortKey() }
+        FolderPlaylistSortMode.NameDesc -> sortedByDescending { it.name.musicSortKey() }
         FolderPlaylistSortMode.FolderCount -> sortedWith(compareByDescending<FolderPlaylist> { it.folders.size }.thenBy { it.name.musicSortKey() })
+        FolderPlaylistSortMode.FolderCountAsc -> sortedWith(compareBy<FolderPlaylist> { it.folders.size }.thenBy { it.name.musicSortKey() })
         FolderPlaylistSortMode.SongCount -> sortedWith(compareByDescending<FolderPlaylist> { songCountProvider(it) }.thenBy { it.name.musicSortKey() })
+        FolderPlaylistSortMode.SongCountAsc -> sortedWith(compareBy<FolderPlaylist> { songCountProvider(it) }.thenBy { it.name.musicSortKey() })
         FolderPlaylistSortMode.Duration -> sortedWith(compareByDescending<FolderPlaylist> { durationProvider(it) }.thenBy { it.name.musicSortKey() })
+        FolderPlaylistSortMode.DurationAsc -> sortedWith(compareBy<FolderPlaylist> { durationProvider(it) }.thenBy { it.name.musicSortKey() })
         FolderPlaylistSortMode.CustomDesc -> sortedWith(compareBy<FolderPlaylist> { it.createdAt }.thenBy { it.name.musicSortKey() })
     }
     if (pinnedIds.isEmpty()) return sorted

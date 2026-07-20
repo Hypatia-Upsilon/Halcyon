@@ -12,18 +12,22 @@ internal enum class AlbumSortMode(val labelRes: Int) {
     SongCount(R.string.playlist_sort_song_count),
     Duration(R.string.playlist_song_sort_duration),
     YearAsc(R.string.playlist_song_sort_year_asc),
-    YearDesc(R.string.playlist_song_sort_year_desc)
+    YearDesc(R.string.playlist_song_sort_year_desc),
+    NameDesc(R.string.album_sort_name),
+    ArtistDesc(R.string.album_sort_artist),
+    SongCountAsc(R.string.playlist_sort_song_count),
+    DurationAsc(R.string.playlist_song_sort_duration)
 }
 
 internal fun Album.summaryForSort(context: android.content.Context, sortMode: AlbumSortMode, duration: Long): String {
-    if (sortMode == AlbumSortMode.Artist) {
+    if (sortMode == AlbumSortMode.Artist || sortMode == AlbumSortMode.ArtistDesc) {
         return buildList {
             albumArtist.ifBlank { artist }.trim().takeIf { it.isNotBlank() }?.let(::add)
             if (year.isNotBlank()) add(year)
             add(context.getString(R.string.song_count, songCount))
         }.joinToString(" · ")
     }
-    val first = if (sortMode == AlbumSortMode.Duration) {
+    val first = if (sortMode == AlbumSortMode.Duration || sortMode == AlbumSortMode.DurationAsc) {
         duration.formatAlbumDuration()
     } else {
         context.getString(R.string.song_count, songCount)
@@ -41,7 +45,7 @@ private fun Long.formatAlbumDuration(): String {
 }
 
 internal fun Album.indexLetter(sortMode: AlbumSortMode): String {
-    val source = if (sortMode == AlbumSortMode.Artist) albumArtist.ifBlank { artist } else name
+    val source = if (sortMode == AlbumSortMode.Artist || sortMode == AlbumSortMode.ArtistDesc) albumArtist.ifBlank { artist } else name
     return source.musicSortKey().toFastIndexSection()
 }
 

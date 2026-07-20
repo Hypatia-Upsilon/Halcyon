@@ -65,6 +65,7 @@ fun LibrarySearchScreen(
     val showPlayNextInLists by settingsManager.showPlayNextInLists.collectAsState(initial = false)
     val excludeSearchResultsFromPlaylist by settingsManager.excludeSearchResultsFromPlaylist.collectAsState(initial = false)
     val showAlbumArtists by settingsManager.showAlbumArtists.collectAsState(initial = true)
+    val artistCoverFolderUri by settingsManager.artistCoverFolderUri.collectAsState(initial = "")
     val fullTagSearchEnabled by settingsManager.fullTagSearchEnabled.collectAsState(initial = true)
     val scanExcludeFolders by settingsManager.scanExcludeFolders.collectAsState(initial = "")
     val blockedFolders = remember(scanExcludeFolders) { scanExcludeFolders.toFolderSettingList() }
@@ -593,6 +594,7 @@ fun LibrarySearchScreen(
             artistResults = artistResults,
             playlistResults = playlistResults,
             categoryResultsByType = categoryResultsByType,
+            artistCoverFolderUri = artistCoverFolderUri,
             visibleResultCount = visibleResultCount,
             onSelectHistory = { item ->
                 query = item

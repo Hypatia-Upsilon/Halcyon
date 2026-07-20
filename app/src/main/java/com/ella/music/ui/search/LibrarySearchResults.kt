@@ -17,6 +17,8 @@ import com.ella.music.data.model.Album
 import com.ella.music.data.model.Song
 import com.ella.music.data.model.UserPlaylist
 import com.ella.music.ui.components.SongItem
+import com.ella.music.ui.artist.rememberArtistCoverModel
+import com.ella.music.ui.artist.selectArtistCoverSong
 import com.ella.music.viewmodel.MainViewModel
 import com.ella.music.viewmodel.MetadataCategoryItem
 import com.ella.music.viewmodel.PlayerViewModel
@@ -43,6 +45,7 @@ internal fun LibrarySearchResultsPane(
     artistResults: List<ArtistSearchResult>,
     playlistResults: List<UserPlaylist>,
     categoryResultsByType: Map<String, List<MetadataCategoryItem>>,
+    artistCoverFolderUri: String,
     visibleResultCount: Int,
     onSelectHistory: (String) -> Unit,
     onDeleteHistory: (String) -> Unit,
@@ -173,10 +176,17 @@ internal fun LibrarySearchResultsPane(
         if (artistResults.isNotEmpty() && filter in listOf(SearchFilter.All, SearchFilter.Artists)) {
             item { SearchSectionHeader(stringResource(R.string.library_search_artists) + " (${artistResults.size})") }
             items(artistResults, key = { it.artist.name }) { result ->
+                val coverModel = rememberArtistCoverModel(
+                    artistName = result.artist.name,
+                    representativeSong = remember(songs, result.artist.name) {
+                        selectArtistCoverSong(songs, result.artist.name)
+                    },
+                    folderLocation = artistCoverFolderUri,
+                    mainViewModel = mainViewModel
+                )
                 ArtistResultRow(
                     result = result,
-                    coverModel = result.representativeSong?.coverUrl?.takeIf { it.isNotBlank() }
-                        ?: result.representativeSong?.let { mainViewModel.getAlbumArtUri(it.albumId) },
+                    coverModel = coverModel,
                     query = trimmedQuery,
                     onClick = {
                         onCommitSearch()

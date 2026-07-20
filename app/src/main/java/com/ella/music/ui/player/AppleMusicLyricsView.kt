@@ -19,6 +19,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -27,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicText
@@ -35,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -51,6 +54,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
@@ -59,6 +63,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
@@ -120,6 +125,7 @@ internal fun AppleMusicLyricsView(
     val listState = rememberLazyListState()
     val userDragging by listState.interactionSource.collectIsDraggedAsState()
     val scrollSpring = remember { Animatable(0f) }
+    var trailingLineHeightPx by remember(lyrics) { mutableIntStateOf(0) }
     var hasPositionedScroll by remember(lyrics) { mutableStateOf(false) }
     var deferAutoScroll by remember { mutableStateOf(false) }
     LaunchedEffect(userDragging) {
@@ -159,7 +165,7 @@ internal fun AppleMusicLyricsView(
     val scrollTargetIndex = activeInterlude?.let { interlude ->
         interlude.nextLineIndex + interludes.count { it.nextLineIndex < interlude.nextLineIndex }
     } ?: activeIndex + interludes.count { it.nextLineIndex <= activeIndex }
-    LaunchedEffect(scrollTargetIndex, userDragging, deferAutoScroll) {
+    LaunchedEffect(scrollTargetIndex, userDragging, deferAutoScroll, trailingLineHeightPx) {
         if (userDragging || deferAutoScroll) return@LaunchedEffect
         // Do not issue the first scroll before LazyColumn has a viewport; that was making the
         // focus line land under the page header until the user manually scrolled.
@@ -220,56 +226,92 @@ internal fun AppleMusicLyricsView(
         else -> TextAlign.Start
     }
 
-    LazyColumn(
-        state = listState,
-        contentPadding = PaddingValues(top = topContentPadding, bottom = bottomContentPadding),
-        verticalArrangement = Arrangement.spacedBy(lineSpacing),
-        userScrollEnabled = userScrollEnabled,
-        modifier = modifier.fillMaxSize()
-    ) {
-        lyrics.forEachIndexed { index, line ->
-            interludes.firstOrNull { it.nextLineIndex == index }?.let { interlude ->
-                item(key = "interlude-${interlude.startMs}-${interlude.endMs}") {
-                    AppleMusicInterlude(
-                        interlude = interlude,
-                        positionMs = smoothPositionMs,
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val trailingLineHeight = with(LocalDensity.current) { trailingLineHeightPx.toDp() }
+        // The regular fixed bottom inset is too short for the final line to reach the same
+        // focus offset as every other line. Reserve the remaining viewport after that line so
+        // the final lyric can still scroll to the focus position rather than pinning to the bottom.
+        val trailingFocusPadding = resolveAppleMusicLyricsTrailingPadding(
+            viewportHeight = maxHeight,
+            focusOffsetRatio = focusOffsetRatio,
+            trailingLineHeight = trailingLineHeight,
+            minimumBottomPadding = bottomContentPadding
+        )
+        LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(top = topContentPadding, bottom = trailingFocusPadding),
+            verticalArrangement = Arrangement.spacedBy(lineSpacing),
+            userScrollEnabled = userScrollEnabled,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            lyrics.forEachIndexed { index, line ->
+                interludes.firstOrNull { it.nextLineIndex == index }?.let { interlude ->
+                    item(key = "interlude-${interlude.startMs}-${interlude.endMs}") {
+                        AppleMusicInterlude(
+                            interlude = interlude,
+                            positionMs = smoothPositionMs,
+                            contentColor = contentColor,
+                            textAlign = lyrics[if (interlude.nextLineIndex == 0) 0 else interlude.nextLineIndex - 1]
+                                .duetTextAlign(defaultTextAlign)
+                        )
+                    }
+                }
+                item(key = "${line.timeMs}-$index") {
+                    val duetActive = line.isDuetLine() && line.isActiveAt(smoothPositionMs)
+                    val lineIsActive = activeInterlude == null && (index == activeIndex || duetActive)
+                    AppleMusicLyricLine(
+                        line = line,
+                        active = lineIsActive,
+                        distance = (index - activeIndex).coerceIn(-4, 4),
+                        userScrolling = userDragging || keepLinesSharp,
+                        nonCurrentLineBlurEnabled = nonCurrentLineBlurEnabled,
+                        // Do not invalidate every retained LazyColumn row for every playback tick.
+                        // Only the active (or simultaneous duet) line needs a changing karaoke position.
+                        currentPositionMs = if (lineIsActive) smoothPositionMs else Long.MIN_VALUE,
+                        showTranslation = showTranslation,
+                        showPronunciation = showPronunciation,
+                        pronunciationBelow = pronunciationBelow,
+                        fontFamily = fontFamily,
+                        fontWeight = fontWeight,
+                        fontScale = fontScale,
+                        secondaryFontScale = secondaryFontScale,
+                        primaryTextSizeSp = primaryTextSizeSp,
+                        secondaryTextSizeSp = secondaryTextSizeSp,
+                        defaultTextAlign = defaultTextAlign,
                         contentColor = contentColor,
-                        textAlign = lyrics[if (interlude.nextLineIndex == 0) 0 else interlude.nextLineIndex - 1]
-                            .duetTextAlign(defaultTextAlign)
+                        wordLiftEnabled = wordLiftEnabled,
+                        onClick = { onLineClick(line) },
+                        onDoubleClick = onLineDoubleClick,
+                        onLongClick = { onLineLongClick(line) },
+                        modifier = if (index == lyrics.lastIndex) {
+                            Modifier.onSizeChanged { trailingLineHeightPx = it.height }
+                        } else {
+                            Modifier
+                        }
                     )
                 }
             }
-            item(key = "${line.timeMs}-$index") {
-            val duetActive = line.isDuetLine() && line.isActiveAt(smoothPositionMs)
-            val lineIsActive = activeInterlude == null && (index == activeIndex || duetActive)
-            AppleMusicLyricLine(
-                line = line,
-                active = lineIsActive,
-                distance = (index - activeIndex).coerceIn(-4, 4),
-                userScrolling = userDragging || keepLinesSharp,
-                nonCurrentLineBlurEnabled = nonCurrentLineBlurEnabled,
-                // Do not invalidate every retained LazyColumn row for every playback tick.
-                // Only the active (or simultaneous duet) line needs a changing karaoke position.
-                currentPositionMs = if (lineIsActive) smoothPositionMs else Long.MIN_VALUE,
-                showTranslation = showTranslation,
-                showPronunciation = showPronunciation,
-                pronunciationBelow = pronunciationBelow,
-                fontFamily = fontFamily,
-                fontWeight = fontWeight,
-                fontScale = fontScale,
-                secondaryFontScale = secondaryFontScale,
-                primaryTextSizeSp = primaryTextSizeSp,
-                secondaryTextSizeSp = secondaryTextSizeSp,
-                defaultTextAlign = defaultTextAlign,
-                contentColor = contentColor,
-                wordLiftEnabled = wordLiftEnabled,
-                onClick = { onLineClick(line) },
-                onDoubleClick = onLineDoubleClick,
-                onLongClick = { onLineLongClick(line) }
-            )
-            }
         }
     }
+}
+
+/**
+ * Leaves enough scrollable space after the final lyric for its top edge to reach the same
+ * focus offset used by the rest of the list.  A fixed bottom inset only works for short
+ * viewports or short final rows; translated and wrapped final rows otherwise stop at the
+ * system navigation area.
+ */
+internal fun resolveAppleMusicLyricsTrailingPadding(
+    viewportHeight: Dp,
+    focusOffsetRatio: Float,
+    trailingLineHeight: Dp,
+    minimumBottomPadding: Dp
+): Dp {
+    val clampedFocusRatio = focusOffsetRatio.coerceIn(0f, 1f)
+    val requiredPadding = (
+        viewportHeight * (1f - clampedFocusRatio) - trailingLineHeight
+    ).coerceAtLeast(0.dp)
+    return maxOf(minimumBottomPadding, requiredPadding)
 }
 
 /** Shared single-line surface used by the system desktop-lyrics overlay. */
@@ -290,6 +332,8 @@ internal fun AppleMusicSingleLyricLine(
     wordLiftEnabled: Boolean,
     singleLine: Boolean,
     inlineStaticSecondaryText: String = "",
+    inlineStaticSecondaryWords: List<LyricWord> = emptyList(),
+    mergeInlineSecondary: Boolean = false,
     statusBarMarquee: Boolean = false,
     secondaryAlpha: Float = 0.74f,
     modifier: Modifier = Modifier
@@ -323,6 +367,8 @@ internal fun AppleMusicSingleLyricLine(
         wordLiftEnabled = wordLiftEnabled,
         singleLine = singleLine,
         inlineStaticSecondaryText = inlineStaticSecondaryText,
+        inlineStaticSecondaryWords = inlineStaticSecondaryWords,
+        mergeInlineSecondary = mergeInlineSecondary,
         statusBarMarquee = statusBarMarquee,
         secondaryAlpha = secondaryAlpha,
         onClick = {},
@@ -411,6 +457,8 @@ private fun AppleMusicLyricLine(
     wordLiftEnabled: Boolean,
     singleLine: Boolean = false,
     inlineStaticSecondaryText: String = "",
+    inlineStaticSecondaryWords: List<LyricWord> = emptyList(),
+    mergeInlineSecondary: Boolean = false,
     statusBarMarquee: Boolean = false,
     secondaryAlpha: Float = 0.74f,
     onClick: () -> Unit,
@@ -490,32 +538,40 @@ private fun AppleMusicLyricLine(
         if (showPronunciationAbove) {
             BasicText(text = pronunciation, style = secondaryStyle, modifier = Modifier.fillMaxWidth())
         }
-        if (singleLine && inlineStaticSecondaryText.isNotBlank()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(if (statusBarMarquee) Modifier.basicMarquee() else Modifier),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TimedLyricText(
-                    text = line.text.ifBlank { line.backgroundText.orEmpty().ifBlank { "♪" } },
-                    words = line.words,
-                    positionMs = currentPositionMs,
-                    active = active,
-                    style = primaryStyle,
-                    contentColor = contentColor,
-                    wordLiftEnabled = wordLiftEnabled,
-                    singleLine = true,
-                    modifier = Modifier
-                )
-                BasicText(
-                    text = " ${inlineStaticSecondaryText.trim()}",
-                    style = primaryStyle.copy(color = contentColor.copy(alpha = primaryStyle.color.alpha))
-                )
-            }
+        val primaryText = line.text.ifBlank { line.backgroundText.orEmpty().ifBlank { "♪" } }
+        val hasInlineSecondary = singleLine && inlineStaticSecondaryText.isNotBlank()
+        if (hasInlineSecondary && mergeInlineSecondary) {
+            // "Merge secondary into primary" is a presentation mode, not an end-of-line effect:
+            // it must stay inline from the first word for both word-timed and line-timed lyrics.
+            StatusBarMergedTimedLyricRow(
+                primaryText = primaryText,
+                primaryWords = line.words,
+                secondaryText = inlineStaticSecondaryText,
+                positionMs = currentPositionMs,
+                active = active,
+                primaryStyle = primaryStyle,
+                contentColor = contentColor,
+                secondaryAlpha = secondaryAlpha,
+                wordLiftEnabled = wordLiftEnabled,
+                textAlign = textAlign
+            )
+        } else if (hasInlineSecondary) {
+            StatusBarSeparatedTimedLyricLines(
+                primaryText = primaryText,
+                primaryWords = line.words,
+                secondaryText = inlineStaticSecondaryText,
+                secondaryWords = inlineStaticSecondaryWords,
+                positionMs = currentPositionMs,
+                active = active,
+                primaryStyle = primaryStyle,
+                secondaryStyle = secondaryStyle,
+                contentColor = contentColor,
+                wordLiftEnabled = wordLiftEnabled,
+                statusBarMarquee = statusBarMarquee
+            )
         } else {
             TimedLyricText(
-                text = line.text.ifBlank { line.backgroundText.orEmpty().ifBlank { "♪" } },
+                text = primaryText,
                 words = line.words,
                 positionMs = currentPositionMs,
                 active = active,
@@ -590,6 +646,108 @@ private fun AppleMusicLyricLine(
 }
 
 @Composable
+private fun StatusBarSeparatedTimedLyricLines(
+    primaryText: String,
+    primaryWords: List<LyricWord>,
+    secondaryText: String,
+    secondaryWords: List<LyricWord>,
+    positionMs: Long,
+    active: Boolean,
+    primaryStyle: TextStyle,
+    secondaryStyle: TextStyle,
+    contentColor: Color,
+    wordLiftEnabled: Boolean,
+    statusBarMarquee: Boolean
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        TimedLyricText(
+            text = primaryText,
+            words = primaryWords,
+            positionMs = positionMs,
+            active = active,
+            style = primaryStyle,
+            contentColor = contentColor,
+            wordLiftEnabled = wordLiftEnabled,
+            singleLine = true,
+            statusBarMarquee = statusBarMarquee,
+            modifier = Modifier.fillMaxWidth()
+        )
+        TimedLyricText(
+            text = secondaryText,
+            words = secondaryWords,
+            positionMs = positionMs,
+            active = active,
+            style = secondaryStyle,
+            contentColor = contentColor,
+            wordLiftEnabled = wordLiftEnabled,
+            singleLine = true,
+            statusBarMarquee = statusBarMarquee,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 2.dp)
+        )
+    }
+}
+
+@Composable
+private fun StatusBarMergedTimedLyricRow(
+    primaryText: String,
+    primaryWords: List<LyricWord>,
+    secondaryText: String,
+    positionMs: Long,
+    active: Boolean,
+    primaryStyle: TextStyle,
+    contentColor: Color,
+    secondaryAlpha: Float,
+    wordLiftEnabled: Boolean,
+    textAlign: TextAlign
+) {
+    val contentAlignment = when (textAlign) {
+        TextAlign.End -> Alignment.CenterEnd
+        TextAlign.Center -> Alignment.Center
+        else -> Alignment.CenterStart
+    }
+    // A single marquee owns both runs.  Measuring two independent fill-width Text nodes is what
+    // previously made a long or multi-fragment secondary line wrap beneath the primary instead
+    // of remaining part of the same status-bar row.
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .basicMarquee(),
+        contentAlignment = contentAlignment
+    ) {
+        Row(
+            modifier = Modifier.wrapContentWidth(unbounded = true),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TimedLyricText(
+                text = primaryText,
+                words = primaryWords,
+                positionMs = positionMs,
+                active = active,
+                style = primaryStyle,
+                contentColor = contentColor,
+                wordLiftEnabled = wordLiftEnabled,
+                singleLine = true,
+                modifier = Modifier.wrapContentWidth(unbounded = true)
+            )
+            BasicText(
+                text = " ${secondaryText.trim()}",
+                style = primaryStyle.copy(
+                    color = contentColor.copy(
+                        alpha = primaryStyle.color.alpha * secondaryAlpha.coerceIn(0f, 1f)
+                    ),
+                    textAlign = TextAlign.Start
+                ),
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Clip
+            )
+        }
+    }
+}
+
+@Composable
 private fun TimedLyricText(
     text: String,
     words: List<LyricWord>,
@@ -612,6 +770,9 @@ private fun TimedLyricText(
         BasicText(
             text = text,
             style = style,
+            maxLines = if (singleLine) 1 else Int.MAX_VALUE,
+            softWrap = !singleLine,
+            overflow = TextOverflow.Clip,
             modifier = modifier.then(if (singleLine && statusBarMarquee) Modifier.basicMarquee() else Modifier)
         )
         return

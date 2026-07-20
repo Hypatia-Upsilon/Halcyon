@@ -19,4 +19,24 @@ class DesktopStatusBarLyricPolicyTest {
             mergeDesktopStatusBarLyric("Original ", " Translation", mergeSecondary = false)
         )
     }
+
+    @Test
+    fun multiFragmentSecondaryIsFlattenedBeforeMerging() {
+        assertEquals(
+            "Main translation one pronunciation two",
+            mergeDesktopStatusBarLyric(
+                mainText = "Main",
+                secondaryText = " translation one\n  pronunciation\ttwo ",
+                mergeSecondary = true
+            )
+        )
+    }
+
+    @Test
+    fun secondaryWhitespaceNormalizationKeepsOneVisualRun() {
+        assertEquals(
+            "wa ta shi ni ai sare tai",
+            "  wa   ta shi\nni\t ai sare tai  ".normalizeDesktopStatusBarSecondaryText()
+        )
+    }
 }

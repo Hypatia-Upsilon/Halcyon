@@ -546,15 +546,18 @@ fun MetadataCategoryDetailScreen(
                                     ),
                                     DirectionalSortModeField(
                                         text = stringResource(R.string.playlist_sort_song_count),
+                                        ascendingMode = MetadataDetailAlbumSortMode.SongCountAsc,
                                         descendingMode = MetadataDetailAlbumSortMode.SongCount
                                     ),
                                     DirectionalSortModeField(
                                         text = stringResource(R.string.playlist_sort_duration),
+                                        ascendingMode = MetadataDetailAlbumSortMode.DurationAsc,
                                         descendingMode = MetadataDetailAlbumSortMode.Duration
                                     ),
                                     DirectionalSortModeField(
                                         text = stringResource(R.string.category_sort_album_name),
-                                        ascendingMode = MetadataDetailAlbumSortMode.Name
+                                        ascendingMode = MetadataDetailAlbumSortMode.Name,
+                                        descendingMode = MetadataDetailAlbumSortMode.NameDesc
                                     )
                                 ),
                                 selectedMode = albumSortMode,
@@ -570,7 +573,8 @@ fun MetadataCategoryDetailScreen(
                                         add(
                                             DirectionalSortModeField(
                                                 text = stringResource(R.string.category_sort_album_track),
-                                                ascendingMode = MetadataDetailSongSortMode.AlbumTrack
+                                                ascendingMode = MetadataDetailSongSortMode.AlbumTrack,
+                                                descendingMode = MetadataDetailSongSortMode.AlbumTrackDesc
                                             )
                                         )
                                     }
@@ -578,14 +582,17 @@ fun MetadataCategoryDetailScreen(
                                         listOf(
                                             DirectionalSortModeField(
                                                 text = stringResource(R.string.playlist_song_sort_title),
-                                                ascendingMode = MetadataDetailSongSortMode.Title
+                                                ascendingMode = MetadataDetailSongSortMode.Title,
+                                                descendingMode = MetadataDetailSongSortMode.TitleDesc
                                             ),
                                             DirectionalSortModeField(
                                                 text = stringResource(R.string.playlist_song_sort_file_name),
-                                                ascendingMode = MetadataDetailSongSortMode.FileName
+                                                ascendingMode = MetadataDetailSongSortMode.FileName,
+                                                descendingMode = MetadataDetailSongSortMode.FileNameDesc
                                             ),
                                             DirectionalSortModeField(
                                                 text = stringResource(R.string.playlist_sort_duration),
+                                                ascendingMode = MetadataDetailSongSortMode.DurationAsc,
                                                 descendingMode = MetadataDetailSongSortMode.Duration
                                             ),
                                             DirectionalSortModeField(
