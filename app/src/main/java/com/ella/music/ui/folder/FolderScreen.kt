@@ -57,6 +57,7 @@ import com.ella.music.ui.components.EllaSearchBar
 import com.ella.music.ui.components.EllaCenteredLoadingIndicator
 import com.ella.music.ui.components.EllaMiuixBottomSheet
 import com.ella.music.ui.components.LazyListScrollIndicator
+import com.ella.music.ui.components.RestoreListScrollAfterSearch
 import com.ella.music.ui.components.SortDropdownMenu
 import com.ella.music.ui.components.createPlaylistOrShowDuplicateToast
 import com.ella.music.ui.components.directionalSortDropdownItems
@@ -444,6 +445,11 @@ fun FolderScreen(
                     }
             }
             val listState = rememberLazyListState()
+            RestoreListScrollAfterSearch(
+                searchExpanded = searchExpanded,
+                query = searchQuery,
+                listState = listState
+            )
             LaunchedEffect(scrollToTopRequest) {
                 if (scrollToTopRequest > 0) listState.animateScrollToItem(0)
             }

@@ -44,7 +44,9 @@ import com.ella.music.data.model.Song
 import com.ella.music.data.model.formatPlaybackDuration
 import com.ella.music.ui.components.AppleStylePlayButton
 import com.ella.music.ui.components.DefaultAlbumCover
+import com.ella.music.ui.components.ExplicitSongTitle
 import com.ella.music.ui.components.PlayNextQuickButton
+import com.ella.music.ui.components.RatingStarIcon
 import com.ella.music.ui.components.SafeCoverImage
 import com.ella.music.ui.components.SelectionCheck
 import com.ella.music.ui.artist.rememberArtistCoverModel
@@ -63,12 +65,14 @@ internal fun AlbumCopyrightFooter(
     genres: List<AlbumMetadataDisplayItem>,
     artists: List<AlbumMetadataDisplayItem>,
     composers: List<AlbumMetadataDisplayItem>,
+    arrangers: List<AlbumMetadataDisplayItem>,
     lyricists: List<AlbumMetadataDisplayItem>,
     mainViewModel: MainViewModel,
     artistCoverFolderUri: String,
     onGenreClick: (String) -> Unit,
     onArtistClick: (String) -> Unit,
     onComposerClick: (String) -> Unit,
+    onArrangerClick: (String) -> Unit,
     onLyricistClick: (String) -> Unit,
     onYearClick: (String) -> Unit
 ) {
@@ -123,6 +127,14 @@ internal fun AlbumCopyrightFooter(
             mainViewModel = mainViewModel,
             artistCoverFolderUri = artistCoverFolderUri,
             onItemClick = onComposerClick
+        )
+        AlbumMetadataSection(
+            title = stringResource(R.string.player_detail_arranger),
+            items = arrangers,
+            circularCover = true,
+            mainViewModel = mainViewModel,
+            artistCoverFolderUri = artistCoverFolderUri,
+            onItemClick = onArrangerClick
         )
         AlbumMetadataSection(
             title = stringResource(R.string.player_detail_lyricist),
@@ -374,8 +386,8 @@ private fun AlbumTrackRow(
         )
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = song.title,
+                ExplicitSongTitle(
+                    title = song.title,
                     fontSize = 15.sp,
                     fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
                     color = if (isCurrent) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface,
@@ -389,7 +401,13 @@ private fun AlbumTrackRow(
                 }
                 if (rating > 0) {
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "★$rating", fontSize = 11.sp, color = Color(0xFFFFB703))
+                    RatingStarIcon(
+                        filled = true,
+                        tint = Color(0xFFFFB703),
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text(text = rating.toString(), fontSize = 11.sp, color = Color(0xFFFFB703))
                 }
             }
             Spacer(modifier = Modifier.height(4.dp))
@@ -483,7 +501,8 @@ internal fun AlbumHeader(
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
-                        sizePx = 512
+                        sizePx = 512,
+                        loadOriginal = true
                     )
                 } else {
                     DefaultAlbumCover(modifier = Modifier.fillMaxSize())

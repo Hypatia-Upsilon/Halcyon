@@ -22,6 +22,7 @@ data class SongTagInfo(
     val genre: String = "",
     val year: String = "",
     val composer: String = "",
+    val arranger: String = "",
     val lyricist: String = "",
     val track: String = "",
     val comment: String = "",
@@ -56,6 +57,7 @@ fun Song.searchableTagValues(tagInfo: SongTagInfo = SongTagInfo()): Sequence<Str
     yieldNonBlank(genre)
     yieldNonBlank(year)
     yieldNonBlank(composer)
+    yieldNonBlank(arranger)
     yieldNonBlank(lyricist)
     yieldNonBlank(fileName)
     yieldNonBlank(onlineSource)
@@ -70,6 +72,7 @@ fun Song.searchableTagValues(tagInfo: SongTagInfo = SongTagInfo()): Sequence<Str
     yieldNonBlank(tagInfo.genre)
     yieldNonBlank(tagInfo.year)
     yieldNonBlank(tagInfo.composer)
+    yieldNonBlank(tagInfo.arranger)
     yieldNonBlank(tagInfo.lyricist)
     yieldNonBlank(tagInfo.track)
     yieldNonBlank(tagInfo.displayComment)

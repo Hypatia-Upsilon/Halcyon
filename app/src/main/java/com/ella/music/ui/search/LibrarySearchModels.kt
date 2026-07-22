@@ -24,6 +24,7 @@ internal enum class SearchFilter {
     Playlists,
     Folders,
     Composers,
+    Arrangers,
     Lyricists,
     Lyrics,
     Genres,
@@ -39,6 +40,7 @@ internal enum class SearchFilter {
                 "playlist", "playlists" -> Playlists
                 "folder", "folders" -> Folders
                 "composer", "composers" -> Composers
+                "arranger", "arrangers" -> Arrangers
                 "lyricist", "lyricists" -> Lyricists
                 "lyric", "lyrics" -> Lyrics
                 "genre", "genres" -> Genres
@@ -146,6 +148,7 @@ internal fun Song.directSearchMatches(
         addMatch(R.string.library_search_match_genre, genre, target)
         addMatch(R.string.library_search_match_year, year, target)
         addMatch(R.string.library_search_match_composer, composer, target)
+        addMatch(R.string.library_search_match_arranger, arranger, target)
         addMatch(R.string.library_search_match_lyricist, lyricist, target)
         addMatch(R.string.library_search_match_file_name, fileName, target)
         tagInfo?.displayComment?.let { addMatch(R.string.library_search_match_comment, it, target) }

@@ -38,6 +38,7 @@ internal fun PluginSearchHit.toAudioTagInfo(
         album = firstNotBlank(search.album, "album", "al", "albumName"),
         albumArtist = value("albumArtist", "album_artist", "album artist", "albumartist"),
         composer = value("composer", "composers"),
+        arranger = value("arranger", "arrangers", "arrangedBy", "arranged_by", "arrangement"),
         lyricist = value("lyricist", "lyricsBy", "lyrics_by", "writer"),
         genre = value("genre", "style"),
         year = firstNotBlank(search.date, "year", "date", "releaseDate", "release_date"),

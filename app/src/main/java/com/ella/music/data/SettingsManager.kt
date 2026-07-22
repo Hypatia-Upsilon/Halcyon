@@ -321,6 +321,8 @@ class SettingsManager(private val context: Context) {
         val KEY_SORT_PLAYLIST_LIST = intPreferencesKey("sort_playlist_list")
         val KEY_SORT_PLAYLIST_DETAIL_SONG = intPreferencesKey("sort_playlist_detail_song")
         val KEY_CATEGORY_GRID_COLUMNS = intPreferencesKey("category_grid_columns")
+        // 0 = only the on-device log, 1 = only Last.fm, 2 = merge both timelines.
+        val KEY_LISTENING_HISTORY_SOURCE = intPreferencesKey("listening_history_source")
         val KEY_HOME_DAILY_MIX_VISIBLE = booleanPreferencesKey("home_daily_mix_visible")
         val KEY_HOME_AI_MIX_VISIBLE = booleanPreferencesKey("home_ai_mix_visible")
         val KEY_HOME_SECTION_ORDER = stringPreferencesKey("home_section_order")
@@ -376,6 +378,10 @@ class SettingsManager(private val context: Context) {
 
         const val PLAY_NEXT_MODE_REVERSE_STACK = 0
         const val PLAY_NEXT_MODE_FORWARD_STACK = 1
+
+        const val LISTENING_HISTORY_SOURCE_LOCAL = 0
+        const val LISTENING_HISTORY_SOURCE_LAST_FM = 1
+        const val LISTENING_HISTORY_SOURCE_COMBINED = 2
 
         const val OPLUS_LYRIC_MODE_SYSTEM = 0
         const val OPLUS_LYRIC_MODE_MODULE = 1
@@ -471,6 +477,7 @@ class SettingsManager(private val context: Context) {
         const val BOTTOM_DOCK_ITEM_YEAR = "year"
         const val BOTTOM_DOCK_ITEM_GENRE = "genre"
         const val BOTTOM_DOCK_ITEM_COMPOSER = "composer"
+        const val BOTTOM_DOCK_ITEM_ARRANGER = "arranger"
         const val BOTTOM_DOCK_ITEM_LYRICIST = "lyricist"
         const val BOTTOM_DOCK_ITEM_ANALYTICS = "analytics"
         const val MAX_BOTTOM_DOCK_ITEMS = 4
@@ -517,6 +524,7 @@ class SettingsManager(private val context: Context) {
         const val APP_SHORTCUT_GENRES = "genres"
         const val APP_SHORTCUT_YEARS = "years"
         const val APP_SHORTCUT_COMPOSERS = "composers"
+        const val APP_SHORTCUT_ARRANGERS = "arrangers"
         const val APP_SHORTCUT_LYRICISTS = "lyricists"
         const val APP_SHORTCUT_ANALYTICS = "analytics"
         const val APP_SHORTCUT_SCAN_SETTINGS = "scan_settings"
@@ -536,6 +544,7 @@ class SettingsManager(private val context: Context) {
             APP_SHORTCUT_GENRES,
             APP_SHORTCUT_YEARS,
             APP_SHORTCUT_COMPOSERS,
+            APP_SHORTCUT_ARRANGERS,
             APP_SHORTCUT_LYRICISTS,
             APP_SHORTCUT_ANALYTICS,
             APP_SHORTCUT_SCAN_SETTINGS,
@@ -564,7 +573,7 @@ class SettingsManager(private val context: Context) {
         fun defaultShortcutFolderLabel(context: Context): String =
             context.getString(DEFAULT_SHORTCUT_FOLDER_LABEL_RES)
         const val DEFAULT_HOME_SECTION_ORDER = "library,online,recent"
-        const val DEFAULT_HOME_LIBRARY_TILE_ORDER = "artist,album,folder,folder_tree,folder_playlist,playlist,analytics,genre,year,composer,lyricist"
+        const val DEFAULT_HOME_LIBRARY_TILE_ORDER = "artist,album,folder,folder_tree,folder_playlist,playlist,analytics,genre,year,composer,arranger,lyricist"
         const val DEFAULT_HOME_ONLINE_TILE_ORDER = "lx,webdav"
 
         val LYRIC_SOURCE_PRIORITY_IDS = listOf(
@@ -586,6 +595,7 @@ class SettingsManager(private val context: Context) {
             BOTTOM_DOCK_ITEM_YEAR,
             BOTTOM_DOCK_ITEM_GENRE,
             BOTTOM_DOCK_ITEM_COMPOSER,
+            BOTTOM_DOCK_ITEM_ARRANGER,
             BOTTOM_DOCK_ITEM_LYRICIST,
             BOTTOM_DOCK_ITEM_ANALYTICS
         )
@@ -1206,6 +1216,10 @@ class SettingsManager(private val context: Context) {
         context.dataStore.data.map { it[KEY_USE_ANDROID_MEDIA_LIBRARY] ?: true }
     val fullTagSearchEnabled: Flow<Boolean> =
         context.dataStore.data.map { it[KEY_FULL_TAG_SEARCH_ENABLED] ?: true }
+    val listeningHistorySource: Flow<Int> = context.dataStore.data.map {
+        (it[KEY_LISTENING_HISTORY_SOURCE] ?: LISTENING_HISTORY_SOURCE_LOCAL)
+            .coerceIn(LISTENING_HISTORY_SOURCE_LOCAL, LISTENING_HISTORY_SOURCE_COMBINED)
+    }
     val initialScanPromptHandled: Flow<Boolean> =
         context.dataStore.data.map { it[KEY_INITIAL_SCAN_PROMPT_HANDLED] ?: false }
     val localPlaylistScanPromptHandled: Flow<Boolean> =
@@ -2502,6 +2516,15 @@ class SettingsManager(private val context: Context) {
         context.dataStore.edit { it[KEY_FULL_TAG_SEARCH_ENABLED] = enabled }
     }
 
+    suspend fun setListeningHistorySource(source: Int) {
+        context.dataStore.edit {
+            it[KEY_LISTENING_HISTORY_SOURCE] = source.coerceIn(
+                LISTENING_HISTORY_SOURCE_LOCAL,
+                LISTENING_HISTORY_SOURCE_COMBINED
+            )
+        }
+    }
+
     suspend fun setInitialScanPromptHandled(handled: Boolean) {
         context.dataStore.edit { it[KEY_INITIAL_SCAN_PROMPT_HANDLED] = handled }
     }
@@ -2736,6 +2759,7 @@ class SettingsManager(private val context: Context) {
             setInt(KEY_PLAYER_BEAUTIFUL_LYRICS_BLUR)
             setInt(KEY_PLAYER_BEAUTIFUL_LYRICS_BRIGHTNESS)
             setInt(KEY_WEBDAV_AUTO_BACKUP_INTERVAL_HOURS)
+            setInt(KEY_LISTENING_HISTORY_SOURCE)
 
             val dynamicSortKeyPrefixes = listOf(
                 "sort_metadata_category_",

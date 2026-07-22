@@ -735,6 +735,8 @@
     <string name="settings_library_tile_year_summary">按年份归档</string>
     <string name="settings_library_tile_composer">作曲家</string>
     <string name="settings_library_tile_composer_summary">按作曲家浏览</string>
+    <string name="settings_library_tile_arranger">编曲家</string>
+    <string name="settings_library_tile_arranger_summary">按编曲家浏览</string>
     <string name="settings_library_tile_lyricist">作词家</string>
     <string name="settings_library_tile_lyricist_summary">按作词家浏览</string>
     <string name="settings_home_tile_pin_buttons">显示首页快捷方式按钮</string>
@@ -847,7 +849,7 @@
     <string name="settings_color_warm_yellow">暖黄色</string>
     <string name="settings_color_orange">橙色</string>
     <string name="settings_home_sections_order_summary">用英文逗号分隔：library,online,recent</string>
-    <string name="settings_home_library_grid_order_summary">artist,album,folder,folder_tree,folder_playlist,playlist,analytics,genre,year,composer,lyricist</string>
+    <string name="settings_home_library_grid_order_summary">artist,album,folder,folder_tree,folder_playlist,playlist,analytics,genre,year,composer,arranger,lyricist</string>
     <string name="common_select_all">全选</string>
     <string name="common_invert_selection">反选</string>
     <string name="player_choose_metadata_editor">选择元数据编辑器</string>
@@ -903,6 +905,7 @@
     <string name="song_more_metadata_year">年份</string>
     <string name="song_more_metadata_track_number">音轨号</string>
     <string name="song_more_metadata_composer">作曲家</string>
+    <string name="song_more_metadata_arranger">编曲家</string>
     <string name="song_more_metadata_lyricist">作词家</string>
     <string name="song_more_metadata_copyright">版权</string>
     <string name="song_more_metadata_comment">备注</string>
@@ -911,6 +914,7 @@
     <string name="category_genre">流派</string>
     <string name="category_year">年份</string>
     <string name="category_composer">作曲家</string>
+    <string name="category_arranger">编曲家</string>
     <string name="category_lyricist">作词家</string>
     <string name="home_count_artists">%1$d 位</string>
     <string name="home_count_albums">%1$d 张</string>
@@ -935,6 +939,7 @@
     <string name="library_search_playlists">歌单</string>
     <string name="library_search_folders">文件夹</string>
     <string name="library_search_composers">作曲家</string>
+    <string name="library_search_arrangers">编曲家</string>
     <string name="library_search_lyricists">作词家</string>
     <string name="library_search_lyrics">歌词</string>
     <string name="library_search_genres">流派</string>
@@ -957,6 +962,7 @@
     <string name="library_search_match_genre">流派</string>
     <string name="library_search_match_year">年份</string>
     <string name="library_search_match_composer">作曲</string>
+    <string name="library_search_match_arranger">编曲</string>
     <string name="library_search_match_lyricist">作词</string>
     <string name="library_search_match_file_name">文件名</string>
     <string name="library_search_match_comment">注释</string>
@@ -1320,6 +1326,7 @@
     <string name="player_detail_album_section">专辑</string>
     <string name="player_no_album_info">无专辑信息</string>
     <string name="player_detail_composer">作曲家</string>
+    <string name="player_detail_arranger">编曲家</string>
     <string name="player_detail_lyricist">作词家</string>
     <string name="player_detail_year">年份</string>
     <string name="player_detail_genre">流派</string>
@@ -1505,6 +1512,7 @@
     <string name="artist_release_album_count_sorted">%1$d 个发行专辑 · %2$s</string>
     <string name="artist_no_albums">暂无专辑</string>
     <string name="artist_composer_page">作曲家页</string>
+    <string name="artist_arranger_page">编曲家页</string>
     <string name="artist_lyricist_page">作词家页</string>
     <string name="artist_netease_artist_page">网易云歌手页</string>
     <string name="artist_sort_title">歌曲名称</string>
@@ -1545,12 +1553,14 @@
     <string name="category_song_summary">%1$d 首歌曲 · %2$s · %3$s</string>
     <string name="category_artist_page">艺术家页</string>
     <string name="category_composer_page">作曲家页</string>
+    <string name="category_arranger_page">编曲家页</string>
     <string name="category_lyricist_page">作词家页</string>
     <string name="category_selected_songs">已选择 %1$d 首歌曲</string>
     <string name="category_song_count_card">%1$d 首歌曲</string>
     <string name="category_general">分类</string>
     <string name="category_count_genres">%1$d 种流派</string>
     <string name="category_count_composers">%1$d 位作曲家</string>
+    <string name="category_count_arrangers">%1$d 位编曲家</string>
     <string name="category_count_lyricists">%1$d 位作词家</string>
     <string name="category_count_folders">%1$d 个文件夹</string>
     <string name="category_count_years">%1$d 个年份</string>
@@ -1759,4 +1769,42 @@
     <string name="settings_apple_music_lyrics_word_lift_summary">演唱时让当前单词轻微上浮；关闭后仍保留逐字羽化与长音发光</string>
     <string name="player_enable_lyrics_word_lift">开启歌词逐词上浮</string>
     <string name="player_disable_lyrics_word_lift">关闭歌词逐词上浮</string>
+
+    <!-- Last.fm listening history -->
+    <string name="settings_lastfm">Last.fm 听歌历史</string>
+    <string name="settings_lastfm_summary">授权后同步完整历史，并在播放达到条件时自动 Scrobble</string>
+    <string name="lastfm_history_source">听歌历史来源</string>
+    <string name="lastfm_history_source_summary">可仅查看本地记录、完整 Last.fm 历史，或将两者合并显示</string>
+    <string name="lastfm_history_source_local">仅本地历史</string>
+    <string name="lastfm_history_source_lastfm">仅 Last.fm 历史</string>
+    <string name="lastfm_history_source_combined">本地与 Last.fm 合并</string>
+    <string name="lastfm_connection">Last.fm 连接</string>
+    <string name="lastfm_api_key">Last.fm API Key</string>
+    <string name="lastfm_api_key_summary">在你的 Last.fm API 应用页面获取；仅用于公开请求</string>
+    <string name="lastfm_shared_secret">Last.fm Shared Secret</string>
+    <string name="lastfm_shared_secret_summary">仅用于签名授权和 Scrobble；使用 Android Keystore 加密保存，不会写入备份</string>
+    <string name="lastfm_connected_as">已连接：%1$s</string>
+    <string name="lastfm_not_connected">尚未连接 Last.fm</string>
+    <string name="lastfm_open_authorization">在浏览器中授权</string>
+    <string name="lastfm_open_authorization_summary">生成一次性 token，并打开 Last.fm 的授权页面</string>
+    <string name="lastfm_complete_authorization">我已在浏览器授权，完成连接</string>
+    <string name="lastfm_complete_authorization_summary">交换 session 并立即同步完整历史</string>
+    <string name="lastfm_sync_all_history">同步全部 Last.fm 历史</string>
+    <string name="lastfm_sync_all_history_summary">按 Last.fm 分页读取并缓存全部历史，离线也可浏览</string>
+    <string name="lastfm_retry_scrobbles">重新发送待上报记录</string>
+    <string name="lastfm_retry_scrobbles_summary">当前有 %1$d 条待上报记录</string>
+    <string name="lastfm_disconnect">断开 Last.fm</string>
+    <string name="lastfm_disconnect_summary">移除账号 session；已缓存的历史不会被删除</string>
+    <string name="lastfm_disconnected">已断开 Last.fm</string>
+    <string name="lastfm_action_success">操作完成</string>
+    <string name="lastfm_action_failed">操作失败：%1$s</string>
+    <string name="lastfm_sync_idle">尚未同步；待上报 %1$d 条</string>
+    <string name="lastfm_syncing">正在同步第 %1$d / %2$d 页，已获取 %3$d 条</string>
+    <string name="lastfm_sync_complete">已缓存 %1$d 条历史；待上报 %2$d 条</string>
+    <string name="lastfm_sync_failed">同步失败：%1$s</string>
+    <string name="lastfm_source_badge">Last.fm</string>
+
+    <!-- Shown by MIUI/HyperOS in the uninstall confirmation dialog. -->
+    <string name="miui_uninstall_title">就要说再见了吗？</string>
+    <string name="miui_uninstall_content">谢谢你陪 Halcyon 走过这一程，愿旋律仍在你心里回响。</string>
 </resources>

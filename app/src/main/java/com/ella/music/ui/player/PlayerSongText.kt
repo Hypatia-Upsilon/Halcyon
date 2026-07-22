@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ella.music.R
 import com.ella.music.data.model.Song
+import com.ella.music.ui.components.ExplicitSongTitle
 import kotlinx.coroutines.isActive
 import top.yukonga.miuix.kmp.basic.Text
 
@@ -168,8 +169,8 @@ internal fun PlayerSongTitleText(
     fontFamily: FontFamily? = null,
     modifier: Modifier = Modifier
 ) {
-    Text(
-        text = text,
+    ExplicitSongTitle(
+        title = text,
         fontSize = fontSize,
         fontWeight = fontWeight,
         color = color,
@@ -178,7 +179,8 @@ internal fun PlayerSongTitleText(
         softWrap = false,
         overflow = TextOverflow.Clip,
         textAlign = textAlign,
-        modifier = modifier.basicMarquee(iterations = Int.MAX_VALUE)
+        modifier = modifier,
+        titleModifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
     )
 }
 

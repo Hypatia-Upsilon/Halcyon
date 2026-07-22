@@ -48,6 +48,7 @@ import com.ella.music.ui.settings.BackupSettingsScreen
 import com.ella.music.ui.settings.LyricFontScreen
 import com.ella.music.ui.settings.LyricPluginSourceSettingsScreen
 import com.ella.music.ui.settings.LogScreen
+import com.ella.music.ui.settings.LastFmSettingsScreen
 import com.ella.music.ui.settings.SettingsDetailScreen
 import com.ella.music.ui.settings.SettingsDetailMode
 import com.ella.music.ui.settings.SettingsScreen
@@ -142,8 +143,12 @@ sealed class Screen(val route: String) {
         fun createRoute(highlight: String = "") = "library_settings?highlight=${java.net.URLEncoder.encode(highlight, "UTF-8")}"
     }
     data object IntegrationSettings : Screen("integration_settings?highlight={highlight}") {
-        fun createRoute(highlight: String = "") = "integration_settings?highlight=${java.net.URLEncoder.encode(highlight, "UTF-8")}"
+        fun createRoute(highlight: String = ""): String {
+            val encodedHighlight = java.net.URLEncoder.encode(highlight, "UTF-8")
+            return "integration_settings?highlight=$encodedHighlight"
+        }
     }
+    data object LastFmSettings : Screen("lastfm_settings")
     data object LyricSettings : Screen("lyric_settings?highlight={highlight}") {
         fun createRoute(highlight: String = "") = "lyric_settings?highlight=${java.net.URLEncoder.encode(highlight, "UTF-8")}"
     }
@@ -726,8 +731,13 @@ fun AppNavigation(
                 onBack = { navController.popBackStack() },
                 onNavigateToLyricFont = { navController.navigate(Screen.LyricFont.route) },
                 mode = SettingsDetailMode.Integrations,
-                highlightKey = backStackEntry.arguments?.getString("highlight").orEmpty()
+                highlightKey = backStackEntry.arguments?.getString("highlight").orEmpty(),
+                onNavigateToLastFmSettings = { navController.navigate(Screen.LastFmSettings.route) }
             )
+        }
+
+        composable(Screen.LastFmSettings.route) {
+            LastFmSettingsScreen(onBack = { navController.popBackStack() })
         }
 
         composable(
@@ -855,6 +865,7 @@ private fun String.bottomDockItemIdForMetadataCategory(): String? = when (this) 
     "year" -> SettingsManager.BOTTOM_DOCK_ITEM_YEAR
     "genre" -> SettingsManager.BOTTOM_DOCK_ITEM_GENRE
     "composer" -> SettingsManager.BOTTOM_DOCK_ITEM_COMPOSER
+    "arranger" -> SettingsManager.BOTTOM_DOCK_ITEM_ARRANGER
     "lyricist" -> SettingsManager.BOTTOM_DOCK_ITEM_LYRICIST
     else -> null
 }

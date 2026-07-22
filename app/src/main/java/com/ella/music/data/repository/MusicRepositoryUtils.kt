@@ -295,6 +295,7 @@ internal fun AudioTagInfo.toSongTagInfo(): com.ella.music.data.model.SongTagInfo
         genre = genre.orEmpty(),
         year = year.orEmpty(),
         composer = composer.orEmpty(),
+        arranger = arranger.orEmpty(),
         lyricist = lyricist.orEmpty(),
         track = trackNumber?.toString().orEmpty(),
         comment = comment.orEmpty(),

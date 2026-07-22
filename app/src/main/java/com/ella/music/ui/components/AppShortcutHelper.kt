@@ -147,6 +147,9 @@ private fun Context.appShortcutTarget(
     SettingsManager.APP_SHORTCUT_COMPOSERS -> appRouteShortcut(
         shortcutId, R.string.category_composer, Screen.MetadataCategory.createRoute("composer"), R.drawable.ic_shortcut_composer
     )
+    SettingsManager.APP_SHORTCUT_ARRANGERS -> appRouteShortcut(
+        shortcutId, R.string.category_arranger, Screen.MetadataCategory.createRoute("arranger"), R.drawable.ic_shortcut_arranger
+    )
     SettingsManager.APP_SHORTCUT_LYRICISTS -> appRouteShortcut(
         shortcutId, R.string.category_lyricist, Screen.MetadataCategory.createRoute("lyricist"), R.drawable.ic_shortcut_lyricist
     )
@@ -261,6 +264,7 @@ private fun shortcutIconForRoute(route: String): Int = when (route) {
     "category/genre" -> R.drawable.ic_shortcut_tag
     "category/year" -> R.drawable.ic_shortcut_calendar
     "category/composer" -> R.drawable.ic_shortcut_composer
+    "category/arranger" -> R.drawable.ic_shortcut_arranger
     "category/lyricist" -> R.drawable.ic_shortcut_lyricist
     else -> shortcutIconForRoutePrefix(route)
 }
@@ -278,6 +282,7 @@ private fun shortcutIconForRoutePrefix(route: String): Int = when {
     route.startsWith("category/genre/") -> R.drawable.ic_shortcut_tag
     route.startsWith("category/year/") -> R.drawable.ic_shortcut_calendar
     route.startsWith("category/composer/") -> R.drawable.ic_shortcut_composer
+    route.startsWith("category/arranger/") -> R.drawable.ic_shortcut_arranger
     route.startsWith("category/lyricist/") -> R.drawable.ic_shortcut_lyricist
     else -> R.drawable.ic_music_note
 }

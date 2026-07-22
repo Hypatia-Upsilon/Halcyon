@@ -1557,6 +1557,7 @@ class MusicRepository(private val context: Context) {
             genre = tagInfo?.genre.takeIf { it.isUsableTagText() } ?: wavMetadata?.genre.takeIf { it.isUsableTagText() } ?: genre,
             year = tagInfo?.year.takeIf { it.isUsableTagText() } ?: wavMetadata?.year.takeIf { it.isUsableTagText() } ?: year,
             composer = tagInfo?.composer.takeIf { it.isUsableTagText() } ?: wavMetadata?.composer.takeIf { it.isUsableTagText() } ?: composer,
+            arranger = tagInfo?.arranger.takeIf { it.isUsableTagText() } ?: wavMetadata?.arranger.takeIf { it.isUsableTagText() } ?: arranger,
             lyricist = tagInfo?.lyricist.takeIf { it.isUsableTagText() } ?: wavMetadata?.lyricist.takeIf { it.isUsableTagText() } ?: lyricist,
             trackNumber = tagInfo?.trackNumber ?: wavMetadata?.trackNumber ?: trackNumber,
             discNumber = tagInfo?.discNumber ?: wavMetadata?.discNumber ?: discNumber
@@ -1670,6 +1671,7 @@ class MusicRepository(private val context: Context) {
                 genre = tagInfo.genre.ifBlank { wavInfo?.genre.orEmpty().ifBlank { song.genre } },
                 year = tagInfo.year.ifBlank { wavInfo?.year.orEmpty().ifBlank { song.year } },
                 composer = tagInfo.composer.ifBlank { wavInfo?.composer.orEmpty().ifBlank { song.composer } },
+                arranger = tagInfo.arranger.ifBlank { wavInfo?.arranger.orEmpty().ifBlank { song.arranger } },
                 lyricist = tagInfo.lyricist.ifBlank { wavInfo?.lyricist.orEmpty().ifBlank { song.lyricist } },
                 coverUrl = song.coverUrl,
                 onlineSource = song.onlineSource,
@@ -1854,6 +1856,7 @@ class MusicRepository(private val context: Context) {
             genre = genre.orEmpty(),
             year = year.orEmpty(),
             composer = composer.orEmpty(),
+            arranger = arranger.orEmpty(),
             lyricist = lyricist.orEmpty(),
             track = trackNumber?.toString().orEmpty(),
             comment = comment.orEmpty(),

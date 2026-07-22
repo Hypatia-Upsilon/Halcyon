@@ -13,8 +13,11 @@ import com.ella.music.data.PlaylistImportMode
 import com.ella.music.data.PlaylistStore
 import com.ella.music.data.SettingsManager
 import com.ella.music.data.PlaybackHistoryEntry
+import com.ella.music.data.PlaybackHistorySource
 import com.ella.music.data.PlaybackStatsStore
 import com.ella.music.data.SongPlaybackStats
+import com.ella.music.data.lastfm.LastFmHistoryStore
+import com.ella.music.data.lastfm.ListeningHistorySource
 import com.ella.music.data.ArtistCoverRepository
 import com.ella.music.data.ArtistCoverAsset
 import com.ella.music.data.matchesArtistName
@@ -39,6 +42,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
@@ -55,6 +59,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val playlistStore = PlaylistStore.getInstance(application)
     private val openSubsonicCollectionsStore = OpenSubsonicCollectionsStore.getInstance(application)
     private val playbackStatsStore = PlaybackStatsStore.getInstance(application)
+    private val lastFmHistoryStore = LastFmHistoryStore.getInstance(application)
     private val aiCoordinator = MainViewModelAiCoordinator(getApplication(), settingsManager, repository)
     private val neteaseLinkResolver = MainNeteaseLinkResolver(
         repository = repository,
@@ -79,11 +84,58 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val scanProgress: StateFlow<Int> = repository.scanProgress
     val scanSummaryEvents = repository.scanSummaryEvents
     val playbackStats: StateFlow<List<SongPlaybackStats>> = playbackStatsStore.stats
-    val playbackHistory: StateFlow<List<PlaybackHistoryEntry>> = playbackStatsStore.history
-    val dailyListenMs: StateFlow<Map<String, Long>> = playbackStatsStore.dailyListenMs
+    val listeningHistorySource: StateFlow<ListeningHistorySource> = settingsManager.listeningHistorySource
+        .map(ListeningHistorySource::fromPreference)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, ListeningHistorySource.Local)
+    private val lastFmDailyListenMs: StateFlow<Map<String, Long>> = combine(
+        lastFmHistoryStore.history,
+        songs
+    ) { history, librarySongs ->
+        estimateLastFmDailyListenMs(history, librarySongs)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+    private val combinedDailyListenMs: StateFlow<Map<String, Long>> = combine(
+        playbackStatsStore.dailyListenMs,
+        playbackStatsStore.history,
+        lastFmHistoryStore.history,
+        songs
+    ) { localDaily, localHistory, lastFmHistory, librarySongs ->
+        mergeDailyListenMs(
+            localDaily,
+            estimateLastFmDailyListenMs(
+                history = lastFmHistory,
+                librarySongs = librarySongs,
+                existingHistory = localHistory
+            )
+        )
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+    val playbackHistory: StateFlow<List<PlaybackHistoryEntry>> = combine(
+        playbackStatsStore.history,
+        lastFmHistoryStore.history,
+        listeningHistorySource
+    ) { local, lastFm, source ->
+        when (source) {
+            ListeningHistorySource.Local -> local
+            ListeningHistorySource.LastFm -> lastFm.map { it.toPlaybackHistoryEntry() }
+            ListeningHistorySource.Combined -> mergePlaybackHistorySources(local, lastFm.map { it.toPlaybackHistoryEntry() })
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val dailyListenMs: StateFlow<Map<String, Long>> = combine(
+        playbackStatsStore.dailyListenMs,
+        lastFmDailyListenMs,
+        combinedDailyListenMs,
+        listeningHistorySource
+    ) { local, lastFm, combined, source ->
+        when (source) {
+            ListeningHistorySource.Local -> local
+            ListeningHistorySource.LastFm -> lastFm
+            ListeningHistorySource.Combined -> combined
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     suspend fun removePlaybackHistoryEntry(entry: PlaybackHistoryEntry) {
-        playbackStatsStore.removeHistoryEntry(entry)
+        if (entry.source == PlaybackHistorySource.LOCAL) {
+            playbackStatsStore.removeHistoryEntry(entry)
+        }
     }
     val playlists: StateFlow<List<UserPlaylist>> = combine(
         playlistStore.playlists,
@@ -271,7 +323,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val excludeFolders = settingsManager.scanExcludeFolders.first().toFolderFilterList()
             val useAndroidMediaLibrary = settingsManager.useAndroidMediaLibrary.first()
             val fullTagSearchEnabled = settingsManager.fullTagSearchEnabled.first()
-            val effectiveUseAndroidMediaLibrary = useAndroidMediaLibrary || !fullTagSearchEnabled
+            // The media-store source and deep-tag indexing are independent preferences.  In
+            // particular, disabling full tag search must not silently turn the media-store
+            // source back on, otherwise the UI cannot honour an explicit "off" choice.
+            val effectiveUseAndroidMediaLibrary = useAndroidMediaLibrary
             // A long-press full scan is intentionally stronger than the normal full-tag-search
             // preference: it re-reads tags and also checks configured folders that MediaStore may
             // not have indexed yet.
@@ -295,7 +350,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 deepMetadataEnabled = fullRescan || fullTagSearchEnabled,
                 filesystemFallbackFolders = filesystemFallbackFolders
             )
-            if (!preferExplicitFolders && summary.total == 0 && includeFolders.isNotEmpty() && (fullRescan || (useAndroidMediaLibrary && fullTagSearchEnabled))) {
+            if (!preferExplicitFolders && summary.total == 0 && includeFolders.isNotEmpty() && (fullRescan || useAndroidMediaLibrary)) {
                 summary = repository.scanMusic(
                     minDuration,
                     includeFolders,

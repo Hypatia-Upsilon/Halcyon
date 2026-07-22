@@ -114,6 +114,9 @@ class ExoPlayerManager(private val context: Context) {
     private val missingNotificationArtworkKeys = mutableSetOf<String>()
     private var notificationArtworkJob: Job? = null
     private var currentSongRefreshJob: Job? = null
+    private var deferredSeekStateSaveJob: Job? = null
+    @Volatile
+    private var playbackStateSaveGeneration = 0L
     private var decoderRecoveryJob: Job? = null
     private var autoDecoderRetrySongKey: String? = null
     private var artworkAppliedSongKey: String? = null
@@ -853,7 +856,7 @@ class ExoPlayerManager(private val context: Context) {
         val target = playbackSeekTarget(positionMs, controller.duration)
         controller.seekTo(target)
         _currentPosition.value = target
-        savePlaybackState(force = true)
+        scheduleSeekStateSave()
         return target
     }
 
@@ -867,7 +870,7 @@ class ExoPlayerManager(private val context: Context) {
         controller.seekTo(target)
         _currentPosition.value = target
         if (controller.duration > 0L) _duration.value = controller.duration
-        savePlaybackState(force = true)
+        scheduleSeekStateSave()
         return target
     }
 
@@ -1801,12 +1804,39 @@ class ExoPlayerManager(private val context: Context) {
         lastStateSaveMs = now
 
         val snapshot = capturePlaybackState()
+        // An immediate state transition (pause, next, reconnect, etc.) must supersede a
+        // deferred seek snapshot so an old position cannot be written after it.
+        deferredSeekStateSaveJob?.cancel()
+        deferredSeekStateSaveJob = null
+        playbackStateSaveGeneration++
         persistenceScope.launch {
-            context.getSharedPreferences(PLAYBACK_PREFS, Context.MODE_PRIVATE)
-                .edit()
-                .putString(KEY_STATE, snapshot.toJson().toString())
-                .apply()
+            persistPlaybackState(snapshot)
         }
+    }
+
+    /**
+     * Seeking can produce a burst of controller discontinuities.  Persisting every intermediate
+     * position used to enqueue a SharedPreferences write for each tap; on slower storage those
+     * writes accumulated and made the next pause visibly late.  Keep the latest target only.
+     */
+    private fun scheduleSeekStateSave() {
+        if (playlist.isEmpty()) return
+        lastStateSaveMs = System.currentTimeMillis()
+        val snapshot = capturePlaybackState()
+        val generation = ++playbackStateSaveGeneration
+        deferredSeekStateSaveJob?.cancel()
+        deferredSeekStateSaveJob = persistenceScope.launch {
+            delay(SEEK_STATE_SAVE_DEBOUNCE_MS)
+            if (generation != playbackStateSaveGeneration) return@launch
+            persistPlaybackState(snapshot)
+        }
+    }
+
+    private fun persistPlaybackState(snapshot: PlaybackStateSnapshot) {
+        context.getSharedPreferences(PLAYBACK_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_STATE, snapshot.toJson().toString())
+            .apply()
     }
 
     private fun capturePlaybackState(): PlaybackStateSnapshot {
@@ -1888,6 +1918,7 @@ class ExoPlayerManager(private val context: Context) {
         const val TIMING_TAG = "EllaPlaybackTiming"
         // Guard so a seek never lands on the last frame and trips end-of-stream auto-advance.
         const val SEEK_END_GUARD_MS = 600L
+        const val SEEK_STATE_SAVE_DEBOUNCE_MS = 220L
         const val RESUME_POSITION_MIN_MS = 5_000L
         const val RESUME_POSITION_END_GUARD_MS = 8_000L
         const val MAX_RESUME_POSITION_ENTRIES = 256

@@ -1758,4 +1758,52 @@
     <string name="settings_full_tag_search_summary_on">掃描時讀取完整音訊標籤；搜尋包含作曲者、作詞者、註解、別名與自訂標籤</string>
     <string name="settings_player_dynamic_flow">Apple Music 背景動態效果</string>
     <string name="settings_player_dynamic_flow_summary">關閉後保留 Apple Music 背景樣式，但不再持續流動；僅對 Apple Music 背景生效</string>
+    <!-- 編曲家中繼資料 -->
+    <string name="settings_library_tile_arranger">編曲家</string>
+    <string name="settings_library_tile_arranger_summary">按編曲家瀏覽</string>
+    <string name="song_more_metadata_arranger">編曲家</string>
+    <string name="category_arranger">編曲家</string>
+    <string name="library_search_arrangers">編曲家</string>
+    <string name="library_search_match_arranger">編曲</string>
+    <string name="player_detail_arranger">編曲家</string>
+    <string name="artist_arranger_page">編曲家頁</string>
+    <string name="category_arranger_page">編曲家頁</string>
+    <string name="category_count_arrangers">%1$d 位編曲家</string>
+
+    <!-- Last.fm 聆聽歷史 -->
+    <string name="settings_lastfm">Last.fm 聆聽歷史</string>
+    <string name="settings_lastfm_summary">授權後同步完整歷史，並在播放達到條件時自動 Scrobble</string>
+    <string name="lastfm_history_source">聆聽歷史來源</string>
+    <string name="lastfm_history_source_summary">可僅查看本機記錄、完整 Last.fm 歷史，或將兩者合併顯示</string>
+    <string name="lastfm_history_source_local">僅本機歷史</string>
+    <string name="lastfm_history_source_lastfm">僅 Last.fm 歷史</string>
+    <string name="lastfm_history_source_combined">本機與 Last.fm 合併</string>
+    <string name="lastfm_connection">Last.fm 連線</string>
+    <string name="lastfm_api_key">Last.fm API Key</string>
+    <string name="lastfm_api_key_summary">在你的 Last.fm API 應用頁面取得；僅用於公開請求</string>
+    <string name="lastfm_shared_secret">Last.fm Shared Secret</string>
+    <string name="lastfm_shared_secret_summary">僅用於簽名授權和 Scrobble；以 Android Keystore 加密保存，不會寫入備份</string>
+    <string name="lastfm_connected_as">已連線：%1$s</string>
+    <string name="lastfm_not_connected">尚未連線 Last.fm</string>
+    <string name="lastfm_open_authorization">在瀏覽器中授權</string>
+    <string name="lastfm_open_authorization_summary">產生一次性 token，並開啟 Last.fm 授權頁面</string>
+    <string name="lastfm_complete_authorization">我已在瀏覽器授權，完成連線</string>
+    <string name="lastfm_complete_authorization_summary">交換 session 並立即同步完整歷史</string>
+    <string name="lastfm_sync_all_history">同步全部 Last.fm 歷史</string>
+    <string name="lastfm_sync_all_history_summary">按 Last.fm 分頁讀取並快取全部歷史，離線也可瀏覽</string>
+    <string name="lastfm_retry_scrobbles">重新傳送待上報記錄</string>
+    <string name="lastfm_retry_scrobbles_summary">目前有 %1$d 條待上報記錄</string>
+    <string name="lastfm_disconnect">中斷 Last.fm 連線</string>
+    <string name="lastfm_disconnect_summary">移除帳號 session；已快取的歷史不會被刪除</string>
+    <string name="lastfm_disconnected">已中斷 Last.fm 連線</string>
+    <string name="lastfm_action_success">操作完成</string>
+    <string name="lastfm_action_failed">操作失敗：%1$s</string>
+    <string name="lastfm_sync_idle">尚未同步；待上報 %1$d 條</string>
+    <string name="lastfm_syncing">正在同步第 %1$d / %2$d 頁，已取得 %3$d 條</string>
+    <string name="lastfm_sync_complete">已快取 %1$d 條歷史；待上報 %2$d 條</string>
+    <string name="lastfm_sync_failed">同步失敗：%1$s</string>
+    <string name="lastfm_source_badge">Last.fm</string>
+
+    <string name="miui_uninstall_title">就要說再見了嗎？</string>
+    <string name="miui_uninstall_content">謝謝你陪 Halcyon 走過這一程，願旋律仍在你心裡迴響。</string>
 </resources>

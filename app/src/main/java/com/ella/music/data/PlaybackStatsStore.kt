@@ -28,8 +28,21 @@ data class PlaybackHistoryEntry(
     val title: String,
     val artist: String,
     val album: String,
-    val playedAt: Long
+    val playedAt: Long,
+    /** Cached duration keeps remote history useful even when the song is not in this library. */
+    val durationMs: Long = 0L,
+    /**
+     * The record origin is intentionally persisted with the entry.  A Last.fm cache entry is
+     * read-only from the calendar, whereas a local entry can still be removed by long press.
+     * Keeping this as a stable string makes older JSON snapshots forward compatible.
+     */
+    val source: String = PlaybackHistorySource.LOCAL
 )
+
+object PlaybackHistorySource {
+    const val LOCAL = "local"
+    const val LAST_FM = "lastfm"
+}
 
 class PlaybackStatsStore private constructor(context: Context) {
     private val statsFile = File(context.applicationContext.filesDir, "playback_stats.json")
@@ -130,7 +143,8 @@ class PlaybackStatsStore private constructor(context: Context) {
                 title = song.title,
                 artist = song.artist,
                 album = song.album,
-                playedAt = playedAt
+                playedAt = playedAt,
+                durationMs = song.duration.coerceAtLeast(0L)
             )
         ) + _history.value)
             .distinctBy { "${it.songId}:${it.playedAt}" }
@@ -238,6 +252,8 @@ class PlaybackStatsStore private constructor(context: Context) {
                     .put("artist", entry.artist)
                     .put("album", entry.album)
                     .put("playedAt", entry.playedAt)
+                    .put("durationMs", entry.durationMs)
+                    .put("source", entry.source)
             )
         }
         return array
@@ -266,7 +282,7 @@ class PlaybackStatsStore private constructor(context: Context) {
             val averagePlayedMs = stat?.let {
                 if (it.playCount > 0) it.listenedMs / it.playCount else it.listenedMs
             } ?: 0L
-            val durationMs = song?.duration ?: 0L
+            val durationMs = song?.duration ?: entry.durationMs
             val playedMs = averagePlayedMs
                 .takeIf { it > 0L }
                 ?: durationMs.takeIf { it > 0L }
@@ -314,7 +330,9 @@ class PlaybackStatsStore private constructor(context: Context) {
                 title = item.optString("title"),
                 artist = item.optString("artist"),
                 album = item.optString("album"),
-                playedAt = item.optLong("playedAt")
+                playedAt = item.optLong("playedAt"),
+                durationMs = item.optLong("durationMs").coerceAtLeast(0L),
+                source = item.optString("source", PlaybackHistorySource.LOCAL)
             )
         }.filter { it.playedAt > 0L }
             .sortedByDescending { it.playedAt }
@@ -349,7 +367,8 @@ class PlaybackStatsStore private constructor(context: Context) {
                     title = title,
                     artist = artist,
                     album = album,
-                    playedAt = endedAt
+                    playedAt = endedAt,
+                    durationMs = item.optLong("durationMs").coerceAtLeast(0L)
                 )
             }
 

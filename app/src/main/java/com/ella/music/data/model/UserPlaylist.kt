@@ -42,6 +42,7 @@ data class PlaylistSong(
     val genre: String = "",
     val year: String = "",
     val composer: String = "",
+    val arranger: String = "",
     val lyricist: String = "",
     val coverUrl: String,
     val onlineSource: String,
@@ -80,6 +81,7 @@ fun Song.toPlaylistSong(addedAt: Long = System.currentTimeMillis()): PlaylistSon
         genre = genre,
         year = year,
         composer = composer,
+        arranger = arranger,
         lyricist = lyricist,
         coverUrl = coverUrl,
         onlineSource = onlineSource,
@@ -109,6 +111,7 @@ fun PlaylistSong.toSong(): Song =
         genre = genre,
         year = year,
         composer = composer,
+        arranger = arranger,
         lyricist = lyricist,
         coverUrl = coverUrl,
         onlineSource = onlineSource,
@@ -165,6 +168,7 @@ fun PlaylistSong.toJson(): JSONObject =
         .put("genre", genre)
         .put("year", year)
         .put("composer", composer)
+        .put("arranger", arranger)
         .put("lyricist", lyricist)
         .put("coverUrl", coverUrl)
         .put("onlineSource", onlineSource)
@@ -194,6 +198,7 @@ fun JSONObject.toPlaylistSong(): PlaylistSong =
         genre = optString("genre"),
         year = optString("year"),
         composer = optString("composer"),
+        arranger = optString("arranger"),
         lyricist = optString("lyricist"),
         coverUrl = optString("coverUrl"),
         onlineSource = optString("onlineSource"),

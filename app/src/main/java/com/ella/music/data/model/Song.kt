@@ -22,6 +22,7 @@ data class Song(
     val genre: String = "",
     val year: String = "",
     val composer: String = "",
+    val arranger: String = "",
     val lyricist: String = "",
     val coverUrl: String = "",
     val onlineSource: String = "",

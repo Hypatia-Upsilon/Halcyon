@@ -94,6 +94,7 @@ internal fun LibrarySearchFilterBar(
                 SearchFilter.Playlists -> playlistResultsCount
                 SearchFilter.Folders -> categoryResultsByType["folder"].orEmpty().size
                 SearchFilter.Composers -> categoryResultsByType["composer"].orEmpty().size
+                SearchFilter.Arrangers -> categoryResultsByType["arranger"].orEmpty().size
                 SearchFilter.Lyricists -> categoryResultsByType["lyricist"].orEmpty().size
                 SearchFilter.Genres -> categoryResultsByType["genre"].orEmpty().size
                 SearchFilter.Years -> categoryResultsByType["year"].orEmpty().size

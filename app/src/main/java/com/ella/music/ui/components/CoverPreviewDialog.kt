@@ -106,17 +106,11 @@ internal fun CoverPreviewDialog(
             viewportSize = viewportSize
         )
         scale = nextScale
-        // Do not hard-stop the image on every pointer sample. The previous immediate clamp
-        // made a two-finger zoom followed by a drag feel as though it was moving through heavy
-        // damping. Leave a small, direct overscroll allowance while the gesture is active and
-        // spring it back to the real image bounds after the fingers are lifted.
-        offset = (scaledOffset + panChange).coerceWithin(
-            coverPreviewGesturePanBounds(
-                resolution = resolution,
-                viewportSize = viewportSize,
-                scale = nextScale
-            )
-        )
+        // Keep panning in the same coordinate space as the finger while a gesture is active.
+        // Clamping each sampled delta made large artwork feel as though it had friction even
+        // in the middle of the image.  The settle animation below is the only place that puts
+        // the image back inside its real edge bounds.
+        offset = scaledOffset + panChange
     }
 
     LaunchedEffect(transformState) {
@@ -146,13 +140,7 @@ internal fun CoverPreviewDialog(
                             targetOffset = settledOffset
                         ) { animatedScale, animatedOffset ->
                             scale = animatedScale
-                            offset = animatedOffset.coerceWithin(
-                                coverPreviewGesturePanBounds(
-                                    resolution = resolution,
-                                    viewportSize = viewportSize,
-                                    scale = animatedScale
-                                )
-                            )
+                            offset = animatedOffset
                         }
                         scale = settledScale
                         offset = settledOffset
@@ -483,22 +471,6 @@ private fun coverPreviewPanBounds(
     )
 }
 
-private fun coverPreviewGesturePanBounds(
-    resolution: CoverResolution?,
-    viewportSize: ComposeIntSize,
-    scale: Float
-): Offset {
-    val bounds = coverPreviewPanBounds(
-        resolution = resolution,
-        viewportSize = viewportSize,
-        scale = scale
-    )
-    return Offset(
-        x = bounds.x * COVER_GESTURE_PAN_OVERSCROLL_FACTOR,
-        y = bounds.y * COVER_GESTURE_PAN_OVERSCROLL_FACTOR
-    )
-}
-
 private fun Offset.coerceWithin(bounds: Offset): Offset = Offset(
     x = x.coerceIn(-bounds.x, bounds.x),
     y = y.coerceIn(-bounds.y, bounds.y)
@@ -558,5 +530,4 @@ private const val COVER_MIN_SCALE = 0.82f
 private const val COVER_MAX_SCALE = 5f
 private const val COVER_GESTURE_MAX_SCALE = 5.5f
 private const val COVER_DOUBLE_TAP_SCALE = COVER_MAX_SCALE
-private const val COVER_GESTURE_PAN_OVERSCROLL_FACTOR = 1.18f
 private const val COVER_SHARE_CACHE_MAX_AGE_MS = 24L * 60L * 60L * 1000L

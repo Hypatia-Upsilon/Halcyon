@@ -60,6 +60,7 @@ fun SettingsDetailScreen(
     onNavigateToEmbyConfig: (() -> Unit)? = null,
     onNavigateToWebDavConfig: (() -> Unit)? = null,
     onNavigateToLyricPluginSources: () -> Unit = {},
+    onNavigateToLastFmSettings: () -> Unit = {},
     mainViewModel: com.ella.music.viewmodel.MainViewModel? = null
 ) {
     val context = LocalContext.current
@@ -98,6 +99,7 @@ fun SettingsDetailScreen(
         HomePreferenceItem("genre", stringResource(R.string.settings_library_tile_genre), stringResource(R.string.settings_library_tile_genre_summary)),
         HomePreferenceItem("year", stringResource(R.string.settings_library_tile_year), stringResource(R.string.settings_library_tile_year_summary)),
         HomePreferenceItem("composer", stringResource(R.string.settings_library_tile_composer), stringResource(R.string.settings_library_tile_composer_summary)),
+        HomePreferenceItem("arranger", stringResource(R.string.settings_library_tile_arranger), stringResource(R.string.settings_library_tile_arranger_summary)),
         HomePreferenceItem("lyricist", stringResource(R.string.settings_library_tile_lyricist), stringResource(R.string.settings_library_tile_lyricist_summary))
     )
     val homeOnlineTileItems = listOf(
@@ -240,6 +242,10 @@ fun SettingsDetailScreen(
                 SettingsDetailMode.Integrations -> {
                     SettingsAiInterpretationSection(highlightKey = highlightKey)
                     SettingsMcpSection(highlightKey = highlightKey)
+                    SettingsLastFmSection(
+                        highlightKey = highlightKey,
+                        onOpenLastFmSettings = onNavigateToLastFmSettings
+                    )
                 }
                 SettingsDetailMode.Lyrics -> {
                     SettingsLyricsSection(

@@ -208,6 +208,21 @@ internal fun SettingsMcpSection(
 }
 
 @Composable
+internal fun SettingsLastFmSection(
+    highlightKey: String? = null,
+    onOpenLastFmSettings: () -> Unit
+) {
+    SmallTitle(text = stringResource(R.string.settings_lastfm))
+    SettingsCardGroup(highlight = highlightKey == "lastfm") {
+        ArrowPreference(
+            title = stringResource(R.string.settings_lastfm),
+            summary = stringResource(R.string.settings_lastfm_summary),
+            onClick = onOpenLastFmSettings
+        )
+    }
+}
+
+@Composable
 internal fun SettingsLyricShareSection(
     highlightKey: String? = null
 ) {

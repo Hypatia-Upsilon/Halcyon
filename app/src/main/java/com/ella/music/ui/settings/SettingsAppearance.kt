@@ -187,6 +187,7 @@ internal fun SettingsAppearanceSection(
         SettingsManager.BOTTOM_DOCK_ITEM_YEAR to stringResource(R.string.category_year),
         SettingsManager.BOTTOM_DOCK_ITEM_GENRE to stringResource(R.string.category_genre),
         SettingsManager.BOTTOM_DOCK_ITEM_COMPOSER to stringResource(R.string.category_composer),
+        SettingsManager.BOTTOM_DOCK_ITEM_ARRANGER to stringResource(R.string.category_arranger),
         SettingsManager.BOTTOM_DOCK_ITEM_LYRICIST to stringResource(R.string.category_lyricist),
         SettingsManager.BOTTOM_DOCK_ITEM_ANALYTICS to stringResource(R.string.analytics_title)
     )

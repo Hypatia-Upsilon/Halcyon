@@ -1758,4 +1758,52 @@
     <string name="settings_full_tag_search_summary_on">Read full audio tags while scanning; search includes composers, lyricists, comments, aliases, and custom tags</string>
     <string name="settings_player_dynamic_flow">Apple Music animated background</string>
     <string name="settings_player_dynamic_flow_summary">Keep the Apple Music background style but stop its continuous motion when disabled; only affects the Apple Music background</string>
+    <!-- Arranger metadata -->
+    <string name="settings_library_tile_arranger">Arrangers</string>
+    <string name="settings_library_tile_arranger_summary">Browse by arranger</string>
+    <string name="song_more_metadata_arranger">Arranger</string>
+    <string name="category_arranger">Arrangers</string>
+    <string name="library_search_arrangers">Arrangers</string>
+    <string name="library_search_match_arranger">Arranger</string>
+    <string name="player_detail_arranger">Arranger</string>
+    <string name="artist_arranger_page">Arranger page</string>
+    <string name="category_arranger_page">Arranger page</string>
+    <string name="category_count_arrangers">%1$d arrangers</string>
+
+    <!-- Last.fm listening history -->
+    <string name="settings_lastfm">Last.fm listening history</string>
+    <string name="settings_lastfm_summary">Synchronize full history after authorization and automatically scrobble eligible plays</string>
+    <string name="lastfm_history_source">Listening history source</string>
+    <string name="lastfm_history_source_summary">View only local records, full Last.fm history, or merge both</string>
+    <string name="lastfm_history_source_local">Local history only</string>
+    <string name="lastfm_history_source_lastfm">Last.fm history only</string>
+    <string name="lastfm_history_source_combined">Local and Last.fm combined</string>
+    <string name="lastfm_connection">Last.fm connection</string>
+    <string name="lastfm_api_key">Last.fm API Key</string>
+    <string name="lastfm_api_key_summary">Get it from your Last.fm API application page; used only for public requests</string>
+    <string name="lastfm_shared_secret">Last.fm Shared Secret</string>
+    <string name="lastfm_shared_secret_summary">Used only for signed authorization and scrobbles; encrypted with Android Keystore and excluded from backups</string>
+    <string name="lastfm_connected_as">Connected as: %1$s</string>
+    <string name="lastfm_not_connected">Not connected to Last.fm</string>
+    <string name="lastfm_open_authorization">Authorize in browser</string>
+    <string name="lastfm_open_authorization_summary">Create a one-time token and open the Last.fm authorization page</string>
+    <string name="lastfm_complete_authorization">I authorized in browser, complete connection</string>
+    <string name="lastfm_complete_authorization_summary">Exchange the session and synchronize the full history immediately</string>
+    <string name="lastfm_sync_all_history">Synchronize all Last.fm history</string>
+    <string name="lastfm_sync_all_history_summary">Read and cache history page by page from Last.fm so it remains browsable offline</string>
+    <string name="lastfm_retry_scrobbles">Retry queued scrobbles</string>
+    <string name="lastfm_retry_scrobbles_summary">%1$d plays are waiting to be submitted</string>
+    <string name="lastfm_disconnect">Disconnect Last.fm</string>
+    <string name="lastfm_disconnect_summary">Remove the account session; cached history is kept</string>
+    <string name="lastfm_disconnected">Last.fm disconnected</string>
+    <string name="lastfm_action_success">Completed</string>
+    <string name="lastfm_action_failed">Failed: %1$s</string>
+    <string name="lastfm_sync_idle">Not synchronized yet; %1$d scrobbles are queued</string>
+    <string name="lastfm_syncing">Synchronizing page %1$d / %2$d, received %3$d plays</string>
+    <string name="lastfm_sync_complete">Cached %1$d plays; %2$d scrobbles are queued</string>
+    <string name="lastfm_sync_failed">Synchronization failed: %1$s</string>
+    <string name="lastfm_source_badge">Last.fm</string>
+
+    <string name="miui_uninstall_title">Deja un au revoir ?</string>
+    <string name="miui_uninstall_content">Merci d\'avoir fait ce bout de chemin avec Halcyon.</string>
 </resources>

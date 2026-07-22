@@ -35,6 +35,7 @@ import com.ella.music.data.model.Song
 import com.ella.music.ui.components.ArtworkUsage
 import com.ella.music.ui.components.CloverShape
 import com.ella.music.ui.components.CookieShape
+import com.ella.music.ui.components.ExplicitSongTitle
 import com.ella.music.ui.components.SafeCoverImage
 import com.ella.music.ui.components.rememberSongArtworkState
 import com.ella.music.ui.components.requestPinnedEllaShortcut
@@ -293,12 +294,13 @@ internal fun CompactRecentSongRow(
             sizePx = 128
         )
         Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
-            Text(
-                text = song.title,
+            ExplicitSongTitle(
+                title = song.title,
                 color = cardText,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
-                maxLines = 1
+                maxLines = 1,
+                modifier = Modifier.fillMaxWidth()
             )
             Text(
                 text = song.artist,

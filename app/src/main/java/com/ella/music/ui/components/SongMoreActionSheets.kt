@@ -87,8 +87,8 @@ internal fun SongTagEditorSheet(
     onOptionClick: (TagEditorOption) -> Unit
 ) {
     SongSheetColumn {
-        Text(
-            text = song.title,
+        ExplicitSongTitle(
+            title = song.title,
             fontSize = 13.sp,
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             maxLines = 1,

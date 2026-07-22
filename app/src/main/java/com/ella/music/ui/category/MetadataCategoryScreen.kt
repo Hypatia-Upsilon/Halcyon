@@ -93,6 +93,7 @@ import com.ella.music.ui.components.EllaMiuixTextField
 import com.ella.music.ui.components.FastIndexBar
 import com.ella.music.ui.components.FloatingSelectionControls
 import com.ella.music.ui.components.LazyGridScrollIndicator
+import com.ella.music.ui.components.RestoreGridScrollAfterSearch
 import com.ella.music.ui.components.LibraryFloatingControlsBottomPadding
 import com.ella.music.ui.components.LibraryFloatingControlsEndPadding
 import com.ella.music.ui.components.LocateCurrentSongFloatingButton
@@ -202,6 +203,11 @@ fun MetadataCategoryScreen(
     }
     val pageBackground = ellaPageBackground()
     val gridState = rememberSaveable(saver = LazyGridState.Saver) { LazyGridState() }
+    RestoreGridScrollAfterSearch(
+        searchExpanded = searchExpanded,
+        query = searchQuery,
+        gridState = gridState
+    )
     val scope = rememberCoroutineScope()
     val saveScope = context.findComponentActivity()?.lifecycleScope ?: scope
     val currentSelectionKeys = remember(displayedItems) { displayedItems.map { it.name } }
@@ -510,9 +516,9 @@ fun MetadataCategoryScreen(
                 )
             }
         } else {
-            // A-Z index bar for the single-column person categories (composer/lyricist) when
+            // A-Z index bar for the single-column person categories when
             // sorted by name, mirroring the artists list.
-            val showCategoryIndexBar = (type == "composer" || type == "lyricist" || type == "folder") &&
+            val showCategoryIndexBar = (type in PERSON_METADATA_CATEGORY_TYPES || type == "folder") &&
                 sortMode == MetadataCategorySortMode.Name &&
                 displayedItems.size > 30
             val categoryIndexLetters = remember(displayedItems, showCategoryIndexBar) {

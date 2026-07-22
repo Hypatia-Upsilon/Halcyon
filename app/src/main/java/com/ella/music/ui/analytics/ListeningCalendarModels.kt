@@ -52,7 +52,7 @@ internal fun buildListeningDayAggregates(
             ListeningTimelineEntry(entry, libraryById[entry.songId] ?: libraryByStatsKey[entry.calendarStatsKey()])
         }
         val totalDuration = dailyListenMs[dateKey]
-            ?: entries.sumOf { it.song?.duration ?: 0L }
+            ?: entries.sumOf { it.song?.duration ?: it.entry.durationMs }
         val dayOfMonth = dateKey.substringAfterLast('-').toIntOrNull() ?: 1
         val representativeSong = entries
             .groupBy { it.song?.id ?: -1L }

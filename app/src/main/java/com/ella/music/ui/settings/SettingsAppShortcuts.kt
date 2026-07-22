@@ -116,6 +116,11 @@ internal fun SettingsAppShortcutsPreference(
             stringResource(R.string.settings_library_tile_composer_summary)
         ),
         AppShortcutPreferenceItem(
+            SettingsManager.APP_SHORTCUT_ARRANGERS,
+            stringResource(R.string.category_arranger),
+            stringResource(R.string.settings_library_tile_arranger_summary)
+        ),
+        AppShortcutPreferenceItem(
             SettingsManager.APP_SHORTCUT_LYRICISTS,
             stringResource(R.string.category_lyricist),
             stringResource(R.string.settings_library_tile_lyricist_summary)

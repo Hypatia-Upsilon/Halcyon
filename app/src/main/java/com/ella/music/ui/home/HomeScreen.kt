@@ -96,6 +96,7 @@ import com.ella.music.ui.components.DirectionalSortField
 import com.ella.music.ui.components.EllaSmallTopAppBar
 import com.ella.music.ui.components.FastIndexBar
 import com.ella.music.ui.components.LazyListScrollIndicator
+import com.ella.music.ui.components.RestoreListScrollAfterSearch
 import com.ella.music.ui.components.SideIndexListEndPadding
 import com.ella.music.ui.components.SongItem
 import com.ella.music.ui.components.SongMoreActionHost
@@ -421,15 +422,15 @@ fun LibraryScreen(
                             )
                             if (songs.isNotEmpty()) {
                                 IconButton(onClick = { ratingFilterExpanded = !ratingFilterExpanded }) {
-                                    Text(
-                                        text = "★",
-                                        fontSize = 24.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (ratingFilter.isNotEmpty() || ratingFilterExpanded) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_rating_star_fill),
+                                        contentDescription = stringResource(R.string.song_more_set_rating),
+                                        tint = if (ratingFilter.isNotEmpty() || ratingFilterExpanded) {
                                             MiuixTheme.colorScheme.primary
                                         } else {
                                             MiuixTheme.colorScheme.onSurface
-                                        }
+                                        },
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 }
                                 IconButton(onClick = { favoriteFilter = !favoriteFilter }) {
@@ -634,6 +635,11 @@ fun LibraryScreen(
             }
         } else {
             val listState = rememberLazyListState()
+            RestoreListScrollAfterSearch(
+                searchExpanded = searchExpanded,
+                query = searchQuery,
+                listState = listState
+            )
             var fastScrollJob by remember { mutableStateOf<Job?>(null) }
             var handledLocateRequest by remember { mutableStateOf(locateCurrentSongRequest) }
             val currentSongKey = remember(currentSong) { currentSong?.playlistIdentityKey() }

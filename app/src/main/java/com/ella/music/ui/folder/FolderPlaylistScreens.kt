@@ -71,6 +71,7 @@ import com.ella.music.ui.components.LibraryFloatingControlsBottomPadding
 import com.ella.music.ui.components.LibraryFloatingControlsEndPadding
 import com.ella.music.ui.components.LibrarySecondaryFloatingControlsBottomPadding
 import com.ella.music.ui.components.LocateCurrentSongFloatingButton
+import com.ella.music.ui.components.RestoreListScrollAfterSearch
 import com.ella.music.ui.components.rememberSongDeleteRequester
 import com.ella.music.ui.components.SafeCoverImage
 import com.ella.music.ui.components.ScanRefreshIconButton
@@ -148,6 +149,12 @@ fun FolderPlaylistsScreen(
     var pendingDelete by remember { mutableStateOf<FolderPlaylist?>(null) }
     var searchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    val listState = rememberLazyListState()
+    RestoreListScrollAfterSearch(
+        searchExpanded = searchExpanded,
+        query = searchQuery,
+        listState = listState
+    )
     var moreMenuTarget by remember { mutableStateOf<FolderPlaylist?>(null) }
     var selectionMode by remember { mutableStateOf(false) }
     var selectedPlaylistIds by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -454,6 +461,7 @@ fun FolderPlaylistsScreen(
             }
             Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 130.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -824,6 +832,16 @@ fun FolderPlaylistDetailScreen(
     }
     val songsListState = rememberLazyListState()
     val foldersListState = rememberLazyListState()
+    RestoreListScrollAfterSearch(
+        searchExpanded = searchExpanded,
+        query = searchQuery,
+        listState = songsListState
+    )
+    RestoreListScrollAfterSearch(
+        searchExpanded = searchExpanded,
+        query = searchQuery,
+        listState = foldersListState
+    )
     val displayedSongIndexByKey = remember(displayedSongs) {
         buildMap {
             displayedSongs.forEachIndexed { index, song ->

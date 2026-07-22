@@ -36,6 +36,7 @@ internal fun Song.metadataCategoryNames(type: String): List<String> {
         "genre" -> splitGenreNames(genre)
         "year" -> listOfNotNull(year.extractYear())
         "composer" -> splitArtistNames(composer)
+        "arranger" -> splitArtistNames(arranger)
         "lyricist" -> splitArtistNames(lyricist)
         "folder" -> listOfNotNull(parentFolderPath())
         else -> emptyList()

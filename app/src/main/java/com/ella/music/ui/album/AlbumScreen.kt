@@ -69,6 +69,7 @@ import com.ella.music.ui.components.FloatingSelectionControls
 import com.ella.music.ui.components.LibraryFloatingControlsBottomPadding
 import com.ella.music.ui.components.LibraryFloatingControlsEndPadding
 import com.ella.music.ui.components.LazyGridScrollIndicator
+import com.ella.music.ui.components.RestoreGridScrollAfterSearch
 import com.ella.music.ui.components.SideIndexListEndPadding
 import com.ella.music.ui.components.DirectionalSortModeField
 import com.ella.music.ui.components.SortDropdownMenu
@@ -479,6 +480,11 @@ fun AlbumScreen(
             // reset to the top every time the user leaves and returns to the album grid, which
             // reads as "the page refreshed".
             val gridState = rememberSaveable(saver = LazyGridState.Saver) { LazyGridState() }
+            RestoreGridScrollAfterSearch(
+                searchExpanded = searchExpanded,
+                query = searchQuery,
+                gridState = gridState
+            )
             // The pin list is restored asynchronously from DataStore. Lazy grids preserve the
             // old first-item key while the list is reordered, leaving newly restored pins above
             // the viewport until the user scrolls. On a fresh album-page entry, explicitly

@@ -79,6 +79,7 @@ import com.ella.music.ui.components.DoubleTapScrollOverlay
 import com.ella.music.ui.components.EllaCenteredLoadingIndicator
 import com.ella.music.ui.components.FastIndexBar
 import com.ella.music.ui.components.LazyListScrollIndicator
+import com.ella.music.ui.components.RestoreListScrollAfterSearch
 import com.ella.music.ui.components.LibraryFloatingControlsBottomPadding
 import com.ella.music.ui.components.LibraryFloatingControlsEndPadding
 import com.ella.music.ui.components.LibrarySecondaryFloatingControlsBottomPadding
@@ -249,6 +250,9 @@ fun ArtistScreen(
     val hasComposerCategory = remember(songs, artistName) {
         mainViewModel.hasMetadataCategory("composer", artistName)
     }
+    val hasArrangerCategory = remember(songs, artistName) {
+        mainViewModel.hasMetadataCategory("arranger", artistName)
+    }
     val hasLyricistCategory = remember(songs, artistName) {
         mainViewModel.hasMetadataCategory("lyricist", artistName)
     }
@@ -264,7 +268,12 @@ fun ArtistScreen(
     }
     val selectedArtistTab = selectedTabTarget.takeIf { it in tabs } ?: ArtistTab.Songs
     val listState = rememberLazyListState()
-    val hasArtistJumpActions = hasComposerCategory || hasLyricistCategory || !neteaseArtistUrl.isNullOrBlank()
+    RestoreListScrollAfterSearch(
+        searchExpanded = searchExpanded,
+        query = searchQuery,
+        listState = listState
+    )
+    val hasArtistJumpActions = hasComposerCategory || hasArrangerCategory || hasLyricistCategory || !neteaseArtistUrl.isNullOrBlank()
     val artistDetailListBodyStartIndex = 3 + if (hasArtistJumpActions) 1 else 0
     val activeArtistListSize = when (selectedArtistTab) {
         ArtistTab.Songs -> sortedArtistSongs.size
@@ -491,9 +500,11 @@ fun ArtistScreen(
                 item {
                     ArtistJumpActions(
                         hasComposerCategory = hasComposerCategory,
+                        hasArrangerCategory = hasArrangerCategory,
                         hasLyricistCategory = hasLyricistCategory,
                         hasNeteaseArtist = !neteaseArtistUrl.isNullOrBlank(),
                         onComposerClick = { onMetadataCategoryClick("composer", artistName) },
+                        onArrangerClick = { onMetadataCategoryClick("arranger", artistName) },
                         onLyricistClick = { onMetadataCategoryClick("lyricist", artistName) },
                         onNeteaseClick = { openUrl(context, neteaseArtistUrl.orEmpty()) }
                     )

@@ -154,8 +154,8 @@ fun SongItem(
 
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = song.title,
+                ExplicitSongTitle(
+                    title = song.title,
                     fontSize = 15.sp,
                     fontWeight = if (isCurrent) androidx.compose.ui.text.font.FontWeight.Bold else null,
                     color = if (isCurrent) MiuixTheme.colorScheme.primary
@@ -175,8 +175,14 @@ fun SongItem(
                 }
                 if (rating > 0) {
                     Spacer(modifier = Modifier.width(5.dp))
+                    RatingStarIcon(
+                        filled = true,
+                        tint = Color(0xFFFFB703),
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Spacer(modifier = Modifier.width(2.dp))
                     Text(
-                        text = "★$rating",
+                        text = rating.toString(),
                         fontSize = 11.sp,
                         color = Color(0xFFFFB703),
                         maxLines = 1

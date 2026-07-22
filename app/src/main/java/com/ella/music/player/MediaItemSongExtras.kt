@@ -22,6 +22,7 @@ private const val EXTRA_ALBUM_ARTIST = "ella_song_album_artist"
 private const val EXTRA_GENRE = "ella_song_genre"
 private const val EXTRA_YEAR = "ella_song_year"
 private const val EXTRA_COMPOSER = "ella_song_composer"
+private const val EXTRA_ARRANGER = "ella_song_arranger"
 private const val EXTRA_LYRICIST = "ella_song_lyricist"
 private const val EXTRA_COVER_URL = "ella_song_cover_url"
 private const val EXTRA_ONLINE_SOURCE = "ella_song_online_source"
@@ -64,6 +65,7 @@ internal fun Song.toMediaItemExtras(): Bundle = Bundle().apply {
     putString(EXTRA_GENRE, genre)
     putString(EXTRA_YEAR, year)
     putString(EXTRA_COMPOSER, composer)
+    putString(EXTRA_ARRANGER, arranger)
     putString(EXTRA_LYRICIST, lyricist)
     putString(EXTRA_COVER_URL, coverUrl)
     putString(EXTRA_ONLINE_SOURCE, onlineSource)
@@ -99,6 +101,7 @@ internal fun MediaItem.toSongFromMediaItemExtras(): Song? {
         genre = extras.getString(EXTRA_GENRE).orEmpty(),
         year = extras.getString(EXTRA_YEAR).orEmpty(),
         composer = extras.getString(EXTRA_COMPOSER).orEmpty(),
+        arranger = extras.getString(EXTRA_ARRANGER).orEmpty(),
         lyricist = extras.getString(EXTRA_LYRICIST).orEmpty(),
         coverUrl = extras.getString(EXTRA_COVER_URL).orEmpty(),
         onlineSource = extras.getString(EXTRA_ONLINE_SOURCE).orEmpty(),

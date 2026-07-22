@@ -87,7 +87,6 @@ internal fun MediaSourceModeCard(
     onUseAndroidMediaLibraryChange: (Boolean) -> Unit,
     onFullTagSearchEnabledChange: (Boolean) -> Unit
 ) {
-    val effectiveUseAndroidMediaLibrary = useAndroidMediaLibrary || !fullTagSearchEnabled
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -98,12 +97,12 @@ internal fun MediaSourceModeCard(
         Column(modifier = Modifier.padding(vertical = 4.dp)) {
             SwitchPreference(
                 title = stringResource(R.string.folder_use_android_media_library),
-                summary = if (effectiveUseAndroidMediaLibrary) {
+                summary = if (useAndroidMediaLibrary) {
                     stringResource(R.string.folder_scan_android_media_summary)
                 } else {
                     stringResource(R.string.folder_scan_custom_folders_summary, customFolderCount)
                 },
-                checked = effectiveUseAndroidMediaLibrary,
+                checked = useAndroidMediaLibrary,
                 onCheckedChange = onUseAndroidMediaLibraryChange
             )
             SwitchPreference(

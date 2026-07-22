@@ -53,6 +53,7 @@ import com.ella.music.ui.components.EllaMiuixMenuItem
 import com.ella.music.ui.components.FastIndexBar
 import com.ella.music.ui.components.FloatingSelectionControls
 import com.ella.music.ui.components.LazyListScrollIndicator
+import com.ella.music.ui.components.RestoreListScrollAfterSearch
 import com.ella.music.ui.components.SideIndexListEndPadding
 import com.ella.music.ui.components.DirectionalSortModeField
 import com.ella.music.ui.components.directionalSortModeDropdownItems
@@ -124,6 +125,11 @@ fun PlaylistScreen(
     var rangeAnchorPlaylistId by remember { mutableStateOf<String?>(null) }
     var rangeTargetPlaylistId by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
+    RestoreListScrollAfterSearch(
+        searchExpanded = searchExpanded,
+        query = searchQuery,
+        listState = listState
+    )
     val scope = rememberCoroutineScope()
     val saveScope = context.findComponentActivity()?.lifecycleScope ?: scope
     val favorites = playlists.firstOrNull { it.id == FAVORITES_PLAYLIST_ID }

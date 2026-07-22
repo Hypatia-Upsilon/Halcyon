@@ -251,6 +251,7 @@ internal fun LandscapeStackCoverImage(
             modifier = modifier,
             contentScale = ContentScale.Fit,
             sizePx = 512,
+            loadOriginal = true,
             showDefaultPlaceholder = false
         )
     } else {

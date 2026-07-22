@@ -117,6 +117,7 @@ import com.ella.music.ui.components.GlassPill
 import com.ella.music.ui.components.LiquidGlassBottomBar
 import com.ella.music.ui.components.LiquidGlassBottomBarItem
 import com.ella.music.ui.components.MiniPlayer
+import com.ella.music.ui.components.MiniPlayerLyricTiming
 import com.ella.music.ui.components.SafeCoverImage
 import com.ella.music.ui.components.TagEditorEditTracker
 import com.ella.music.ui.components.simpleLuminance
@@ -689,35 +690,20 @@ fun EllaApp(
     }
 
     val nextLyricLine = lyrics.getOrNull(currentLyricIndex + 1)
-
-    val miniPlayerLyricProgress = if (isPlaying && currentLyricLine != null) {
-        val start = currentLyricLine.timeMs
-        val end = currentLyricLine.endMs
-            ?: nextLyricLine?.timeMs
-            ?: (start + 5_000L)
-        val words = currentLyricLine.words
-        if (words.isNotEmpty()) {
-            val wordCount = words.size
-            val activeIndex = words.indexOfLast { currentPosition >= it.startMs }
-            if (activeIndex >= 0) {
-                val word = words[activeIndex]
-                val wordProgress = if (word.endMs > word.startMs) {
-                    ((currentPosition - word.startMs).toFloat() /
-                        (word.endMs - word.startMs).toFloat()).coerceIn(0f, 1f)
-                } else 1f
-                ((activeIndex + wordProgress) / wordCount.toFloat()).coerceIn(0f, 1f)
-            } else if (currentPosition < start) {
-                0f
-            } else {
-                0f
-            }
-        } else {
-            ((currentPosition - start).toFloat() / (end - start).coerceAtLeast(1L).toFloat())
-                .coerceIn(0f, 1f)
-        }
+    val miniPlayerLyricTiming = if (isPlaying && miniPlayerLyricsVisible && currentLyricLine != null) {
+        val lineStartMs = currentLyricLine.timeMs
+        MiniPlayerLyricTiming(
+            lineStartMs = lineStartMs,
+            lineEndMs = currentLyricLine.endMs
+                ?: nextLyricLine?.timeMs
+                ?: (lineStartMs + 5_000L),
+            words = currentLyricLine.words
+        )
     } else {
-        0f
+        null
     }
+
+    val miniPlayerLyricProgress = miniPlayerLyricTiming?.progressAt(currentPosition) ?: 0f
 
     val showMiniPlayer = currentSong != null &&
         currentRoute != Screen.Player.route &&
@@ -801,6 +787,11 @@ fun EllaApp(
         SettingsManager.BOTTOM_DOCK_ITEM_COMPOSER to BottomDockTab(
             route = Screen.MetadataCategory.createRoute("composer", fromDock = true),
             label = stringResource(R.string.category_composer),
+            icon = MiuixIcons.Regular.ContactsCircle
+        ),
+        SettingsManager.BOTTOM_DOCK_ITEM_ARRANGER to BottomDockTab(
+            route = Screen.MetadataCategory.createRoute("arranger", fromDock = true),
+            label = stringResource(R.string.category_arranger),
             icon = MiuixIcons.Regular.ContactsCircle
         ),
         SettingsManager.BOTTOM_DOCK_ITEM_LYRICIST to BottomDockTab(
@@ -926,6 +917,8 @@ fun EllaApp(
                     lyricText = miniPlayerLyricText,
                     lyricTranslation = miniPlayerLyricSecondaryText,
                     lyricProgress = miniPlayerLyricProgress,
+                    lyricPositionMs = currentPosition,
+                    lyricTiming = miniPlayerLyricTiming,
                     miniPlayerRightButton = miniPlayerRightButton,
                     tabs = tabs,
                     currentTabRoute = currentTabRoute,

@@ -85,7 +85,7 @@ internal fun MetadataCategoryCard(
             )
             return
         }
-        "composer", "lyricist" -> {
+        "composer", "arranger", "lyricist" -> {
             PersonCategoryRow(
                 item = item,
                 sortMode = sortMode,
@@ -455,7 +455,7 @@ private fun String.categoryCardColor(): Color {
 }
 
 internal fun String.prefersEmbeddedCategoryCardCover(): Boolean =
-    this == "folder" || this == "composer" || this == "lyricist"
+    this == "folder" || this in PERSON_METADATA_CATEGORY_TYPES
 
 private fun Color.darkenCategoryColor(factor: Float): Color {
     return Color(

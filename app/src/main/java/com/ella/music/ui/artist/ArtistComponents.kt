@@ -67,9 +67,11 @@ internal enum class ArtistTab(@param:StringRes val labelRes: Int) {
 @Composable
 internal fun ArtistJumpActions(
     hasComposerCategory: Boolean,
+    hasArrangerCategory: Boolean,
     hasLyricistCategory: Boolean,
     hasNeteaseArtist: Boolean,
     onComposerClick: () -> Unit,
+    onArrangerClick: () -> Unit,
     onLyricistClick: () -> Unit,
     onNeteaseClick: () -> Unit
 ) {
@@ -81,6 +83,9 @@ internal fun ArtistJumpActions(
     ) {
         if (hasComposerCategory) {
             ArtistJumpChip(stringResource(R.string.artist_composer_page), onComposerClick)
+        }
+        if (hasArrangerCategory) {
+            ArtistJumpChip(stringResource(R.string.artist_arranger_page), onArrangerClick)
         }
         if (hasLyricistCategory) {
             ArtistJumpChip(stringResource(R.string.artist_lyricist_page), onLyricistClick)
@@ -201,7 +206,8 @@ internal fun ArtistHeader(
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
-                sizePx = 3000
+                sizePx = 3000,
+                loadOriginal = true
             )
         } else {
             Box(
@@ -279,7 +285,8 @@ private fun ArtistHeaderImageCover(
             contentDescription = null,
             modifier = modifier,
             contentScale = ContentScale.Crop,
-            sizePx = 3000
+            sizePx = 3000,
+            loadOriginal = true
         )
         return
     }
@@ -291,7 +298,8 @@ private fun ArtistHeaderImageCover(
             contentDescription = null,
             modifier = modifier,
             contentScale = ContentScale.Crop,
-            sizePx = 3000
+            sizePx = 3000,
+            loadOriginal = true
         )
         return
     }
@@ -314,7 +322,8 @@ private fun ArtistHeaderImageCover(
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
-            sizePx = 3000
+            sizePx = 3000,
+            loadOriginal = true
         )
     }
 }

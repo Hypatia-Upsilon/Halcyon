@@ -10,6 +10,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import coil3.size.Size
 
 @Composable
 fun SafeCoverImage(
@@ -18,14 +19,21 @@ fun SafeCoverImage(
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
     sizePx: Int = 1200,
+    loadOriginal: Boolean = false,
     showDefaultPlaceholder: Boolean = true
 ) {
     val context = LocalContext.current
-    val request = remember(context, model, sizePx) {
+    val request = remember(context, model, sizePx, loadOriginal) {
         if (model is Uri || model is String) {
             ImageRequest.Builder(context)
                 .data(model)
-                .size(sizePx)
+                .apply {
+                    if (loadOriginal) {
+                        size(Size.ORIGINAL)
+                    } else {
+                        size(sizePx)
+                    }
+                }
                 .build()
         } else {
             model

@@ -99,6 +99,7 @@ internal fun SongInfoMenu(
         SongInfoRow(stringResource(R.string.song_more_detail_genre), tagInfo?.genre?.ifBlank { song.genre }.orEmpty())
         SongInfoRow(stringResource(R.string.song_more_detail_year), tagInfo?.year?.ifBlank { song.year }.orEmpty())
         SongInfoRow(stringResource(R.string.player_detail_composer), tagInfo?.composer?.ifBlank { song.composer }.orEmpty())
+        SongInfoRow(stringResource(R.string.player_detail_arranger), tagInfo?.arranger?.ifBlank { song.arranger }.orEmpty())
         SongInfoRow(stringResource(R.string.player_detail_lyricist), tagInfo?.lyricist?.ifBlank { song.lyricist }.orEmpty())
         SongInfoRow(stringResource(R.string.player_detail_comment), tagInfo?.displayComment.orEmpty())
         if (!tagInfo?.neteaseKey.isNullOrBlank()) {

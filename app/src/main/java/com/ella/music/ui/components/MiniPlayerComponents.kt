@@ -16,14 +16,19 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -41,6 +46,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.TextStyle
@@ -48,6 +54,7 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ella.music.data.model.LyricWord
 import com.ella.music.data.model.Song
 import kotlinx.coroutines.isActive
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -57,11 +64,22 @@ internal fun MiniPlayerAnimatedText(
     textState: MiniPlayerTextState,
     transitionDirection: Int,
     lyricProgress: Float,
+    lyricPositionMs: Long,
+    lyricTiming: MiniPlayerLyricTiming?,
+    isPlaying: Boolean,
     modifier: Modifier = Modifier,
     primaryFontSize: Int = 14,
     primaryFontWeight: FontWeight = FontWeight.Medium,
     secondaryFontSize: Int = 12
 ) {
+    // PlayerViewModel deliberately samples the controller at a modest cadence.  Keep the
+    // high-frequency interpolation local to this tiny canvas instead of invalidating the
+    // whole main screen for every animation frame.
+    val smoothedPositionMs = rememberSmoothedMiniPlayerLyricPosition(
+        sampledPositionMs = lyricPositionMs,
+        isPlaying = isPlaying,
+        timing = lyricTiming
+    )
     AnimatedContent(
         targetState = textState,
         transitionSpec = {
@@ -88,29 +106,70 @@ internal fun MiniPlayerAnimatedText(
         modifier = modifier
     ) { state ->
         Column(modifier = Modifier.fillMaxWidth()) {
-            AutoScrollingMiniText(
+            MiniPlayerTextRow(
                 text = state.primary,
+                explicit = state.primaryIsExplicit,
                 fontSize = primaryFontSize,
                 fontWeight = primaryFontWeight,
-                color = if (state.showingLyric) {
-                    MiuixTheme.colorScheme.primary
-                } else {
-                    MiuixTheme.colorScheme.onSurface
-                },
+                color = if (state.showingLyric) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface,
                 enabled = state.showingLyric,
                 highlightWithProgress = state.showingLyric,
-                progress = lyricProgress
+                fallbackProgress = lyricProgress,
+                smoothedPositionMs = smoothedPositionMs,
+                lyricTiming = lyricTiming,
+                wordTiming = if (state.showingLyric) lyricTiming?.words.orEmpty() else emptyList<LyricWord>()
             )
-
-            AutoScrollingMiniText(
+            MiniPlayerTextRow(
                 text = state.secondary,
+                explicit = state.secondaryIsExplicit,
                 fontSize = secondaryFontSize,
                 fontWeight = FontWeight.Normal,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 enabled = state.scrollSecondary,
                 highlightWithProgress = state.highlightSecondaryWithProgress,
-                progress = lyricProgress
+                fallbackProgress = lyricProgress,
+                smoothedPositionMs = smoothedPositionMs,
+                lyricTiming = lyricTiming,
+                wordTiming = emptyList<LyricWord>()
             )
+        }
+    }
+}
+
+@Composable
+private fun MiniPlayerTextRow(
+    text: String,
+    explicit: Boolean,
+    fontSize: Int,
+    fontWeight: FontWeight,
+    color: Color,
+    enabled: Boolean,
+    highlightWithProgress: Boolean,
+    fallbackProgress: Float,
+    smoothedPositionMs: State<Long>,
+    lyricTiming: MiniPlayerLyricTiming?,
+    wordTiming: List<LyricWord>
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AutoScrollingMiniText(
+            text = text,
+            fontSize = fontSize,
+            fontWeight = fontWeight,
+            color = color,
+            enabled = enabled,
+            highlightWithProgress = highlightWithProgress,
+            fallbackProgress = fallbackProgress,
+            smoothedPositionMs = smoothedPositionMs,
+            lyricTiming = lyricTiming,
+            wordTiming = wordTiming,
+            modifier = Modifier.weight(1f)
+        )
+        if (explicit) {
+            Spacer(modifier = Modifier.width(4.dp))
+            ExplicitBadge(contentColor = color, height = 12.dp)
         }
     }
 }
@@ -242,18 +301,21 @@ internal fun rememberMiniPlayerTextState(
     lyricText: String?,
     lyricTranslation: String?
 ): MiniPlayerTextState {
+    val songTitle = song.title.toSongTitlePresentation()
     val hasTranslation = !lyricTranslation.isNullOrBlank()
     return MiniPlayerTextState(
         songId = song.id,
-        primary = lyricText ?: song.title,
+        primary = lyricText ?: songTitle.text,
         secondary = when {
             lyricText != null && hasTranslation -> lyricTranslation.orEmpty()
-            lyricText != null -> "${song.title} - ${song.artist}"
+            lyricText != null -> "${songTitle.text} - ${song.artist}"
             else -> song.artist
         },
         showingLyric = lyricText != null,
         scrollSecondary = lyricText != null && hasTranslation,
-        highlightSecondaryWithProgress = false
+        highlightSecondaryWithProgress = false,
+        primaryIsExplicit = lyricText == null && songTitle.isExplicit,
+        secondaryIsExplicit = lyricText != null && !hasTranslation && songTitle.isExplicit
     )
 }
 
@@ -265,10 +327,12 @@ private fun AutoScrollingMiniText(
     color: Color,
     enabled: Boolean,
     highlightWithProgress: Boolean,
-    progress: Float,
+    fallbackProgress: Float,
+    smoothedPositionMs: State<Long>,
+    lyricTiming: MiniPlayerLyricTiming?,
+    wordTiming: List<LyricWord>,
     modifier: Modifier = Modifier
 ) {
-    val safeProgress = progress.coerceIn(0f, 1f)
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
     val highlightedColor = MiuixTheme.colorScheme.onSurface
@@ -310,6 +374,19 @@ private fun AutoScrollingMiniText(
     ) {
         val viewportPx = size.width.toInt().coerceAtLeast(1)
         val textWidth = textLayout.size.width.toFloat()
+        val smoothPositionMs = smoothedPositionMs.value
+        val timingProgress = lyricTiming?.progressAt(smoothPositionMs)
+        val safeProgress = if (highlightWithProgress && wordTiming.isNotEmpty() && lyricTiming != null) {
+            miniPlayerWordProgress(
+                text = text,
+                textLayout = textLayout,
+                words = wordTiming,
+                positionMs = smoothPositionMs,
+                fallback = timingProgress
+            )
+        } else {
+            timingProgress ?: fallbackProgress
+        }.coerceIn(0f, 1f)
         val overflowPx = (textWidth - size.width).coerceAtLeast(0f)
         val scrollProgress = if (enabled && overflowPx > 0f) {
             miniMarqueeProgress(
@@ -377,6 +454,95 @@ private fun AutoScrollingMiniText(
     }
 }
 
+/** Timing data for a displayed mini-player lyric line. */
+data class MiniPlayerLyricTiming(
+    val lineStartMs: Long,
+    val lineEndMs: Long,
+    val words: List<LyricWord>
+) {
+    fun progressAt(positionMs: Long): Float {
+        val effectiveEnd = maxOf(lineEndMs, words.maxOfOrNull { it.endMs } ?: lineEndMs)
+        return ((positionMs - lineStartMs).toFloat() /
+            (effectiveEnd - lineStartMs).coerceAtLeast(1L).toFloat()).coerceIn(0f, 1f)
+    }
+}
+
+@Composable
+private fun rememberSmoothedMiniPlayerLyricPosition(
+    sampledPositionMs: Long,
+    isPlaying: Boolean,
+    timing: MiniPlayerLyricTiming?
+): State<Long> {
+    val smoothPositionMs = remember(timing?.lineStartMs, timing?.lineEndMs) {
+        mutableLongStateOf(sampledPositionMs)
+    }
+
+    LaunchedEffect(sampledPositionMs, isPlaying, timing?.lineStartMs, timing?.lineEndMs) {
+        if (!isPlaying || timing == null) {
+            smoothPositionMs.longValue = sampledPositionMs
+            return@LaunchedEffect
+        }
+
+        val anchorPositionMs = sampledPositionMs
+        val terminalPositionMs = maxOf(timing.lineEndMs, timing.words.maxOfOrNull { it.endMs } ?: timing.lineEndMs)
+        var anchorFrameNanos = 0L
+        while (isActive) {
+            withFrameNanos { frameNanos ->
+                if (anchorFrameNanos == 0L) anchorFrameNanos = frameNanos
+                smoothPositionMs.longValue = (anchorPositionMs +
+                    (frameNanos - anchorFrameNanos) / 1_000_000L)
+                    .coerceAtMost(terminalPositionMs)
+            }
+        }
+    }
+    return smoothPositionMs
+}
+
+/**
+ * Converts word timing to the same horizontal extent that the mini player draws.  This avoids
+ * treating a short word and a long word as equal-width chunks, which was the visible source of
+ * the old step-like karaoke sweep.
+ */
+private fun miniPlayerWordProgress(
+    text: String,
+    textLayout: TextLayoutResult,
+    words: List<LyricWord>,
+    positionMs: Long,
+    fallback: Float?
+): Float {
+    if (text.isBlank() || words.isEmpty()) return fallback ?: 0f
+    val lastWordEndMs = words.maxOfOrNull { it.endMs } ?: return fallback ?: 0f
+    if (positionMs >= lastWordEndMs) return 1f
+
+    var cursor = 0
+    var highlightedRight = 0f
+    words.forEach { word ->
+        val wordText = word.text
+        if (wordText.isEmpty()) return@forEach
+        val start = text.indexOf(wordText, startIndex = cursor)
+        if (start < 0) return fallback ?: 0f
+        val endExclusive = (start + wordText.length).coerceAtMost(text.length)
+        if (endExclusive <= start) return@forEach
+
+        val wordLeft = textLayout.getBoundingBox(start).left
+        val wordRight = textLayout.getBoundingBox(endExclusive - 1).right
+        when {
+            positionMs >= word.endMs -> highlightedRight = maxOf(highlightedRight, wordRight)
+            positionMs > word.startMs -> {
+                val fraction = ((positionMs - word.startMs).toFloat() /
+                    (word.endMs - word.startMs).coerceAtLeast(1L).toFloat()).coerceIn(0f, 1f)
+                highlightedRight = maxOf(
+                    highlightedRight,
+                    wordLeft + (wordRight - wordLeft) * fraction
+                )
+            }
+        }
+        cursor = endExclusive
+    }
+
+    return (highlightedRight / textLayout.size.width.coerceAtLeast(1)).coerceIn(0f, 1f)
+}
+
 private fun miniMarqueeProgress(
     progress: Float,
     overflowPx: Float,
@@ -407,7 +573,9 @@ internal data class MiniPlayerTextState(
     val secondary: String,
     val showingLyric: Boolean,
     val scrollSecondary: Boolean,
-    val highlightSecondaryWithProgress: Boolean
+    val highlightSecondaryWithProgress: Boolean,
+    val primaryIsExplicit: Boolean,
+    val secondaryIsExplicit: Boolean
 )
 
 @Composable

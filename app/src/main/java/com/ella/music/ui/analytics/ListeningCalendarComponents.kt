@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ella.music.R
 import com.ella.music.data.PlaybackHistoryEntry
+import com.ella.music.data.PlaybackHistorySource
 import com.ella.music.data.audioQualitySummary
 import com.ella.music.data.model.AudioInfo
 import com.ella.music.data.model.Song
@@ -376,7 +377,13 @@ private fun ListeningTimelineRow(
                         onClick = {
                             song?.takeIf { canPlaySong }?.let { playerViewModel.playSong(it) }
                         },
-                        onLongClick = { onRemoveHistoryEntry(entry.entry) }
+                        // Last.fm is a read-only cache of the account history. Removing it here
+                        // would make the next full sync appear to "restore" it unexpectedly.
+                        onLongClick = if (entry.entry.source == PlaybackHistorySource.LOCAL) {
+                            { onRemoveHistoryEntry(entry.entry) }
+                        } else {
+                            null
+                        }
                     )
             ) {
                 Row(
@@ -404,6 +411,21 @@ private fun ListeningTimelineRow(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
+                            if (entry.entry.source == PlaybackHistorySource.LAST_FM) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(MiuixTheme.colorScheme.primary.copy(alpha = 0.18f))
+                                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.lastfm_source_badge),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MiuixTheme.colorScheme.primary
+                                    )
+                                }
+                            }
                             audioInfo?.let {
                                 audioQualitySummary(it).listTag?.let { tag ->
                                     Box(
@@ -436,7 +458,7 @@ private fun ListeningTimelineRow(
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = formatTrackDuration(song?.duration ?: 0L),
+                        text = formatTrackDuration(song?.duration ?: entry.entry.durationMs),
                             fontSize = 12.sp,
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary
                         )

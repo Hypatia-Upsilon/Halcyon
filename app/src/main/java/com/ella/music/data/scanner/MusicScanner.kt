@@ -145,6 +145,7 @@ class MusicScanner(private val context: Context) {
         var genre = ""
         var year = ""
         var composer = ""
+        var arranger = ""
         var lyricist = ""
         var duration = item.duration
         var trackNumber = item.trackNumber
@@ -174,6 +175,10 @@ class MusicScanner(private val context: Context) {
             genre = tagInfo.genre.orEmpty()
             year = tagInfo.year.orEmpty().normalizeReleaseDate()
             composer = tagInfo.composer.orEmpty()
+            arranger = firstNonBlank(
+                tagInfo.arranger,
+                tagInfo.customTagValue("ARRANGER", "ARRANGED BY", "ARRANGEDBY", "ARRANGEMENT", "ARRANGE")
+            ).orEmpty()
             lyricist = firstNonBlank(
                 tagInfo.lyricist,
                 tagInfo.customTagValue("TEXT"),
@@ -201,6 +206,7 @@ class MusicScanner(private val context: Context) {
                 if (genre.isBlank()) genre = wavInfo.genre.orEmpty()
                 if (year.isBlank()) year = wavInfo.year.orEmpty().normalizeReleaseDate()
                 if (composer.isBlank()) composer = wavInfo.composer.orEmpty()
+                if (arranger.isBlank()) arranger = wavInfo.arranger.orEmpty()
                 if (lyricist.isBlank()) lyricist = wavInfo.lyricist.orEmpty()
                 trackNumber = trackNumber.takeIf { it > 0 } ?: wavInfo.trackNumber ?: 0
                 discNumber = discNumber.takeIf { it > 0 } ?: wavInfo.discNumber ?: 0
@@ -214,6 +220,7 @@ class MusicScanner(private val context: Context) {
                 if (genre.isBlank()) genre = wavInfo.genre.orEmpty()
                 if (year.isBlank()) year = wavInfo.year.orEmpty().normalizeReleaseDate()
                 if (composer.isBlank()) composer = wavInfo.composer.orEmpty()
+                if (arranger.isBlank()) arranger = wavInfo.arranger.orEmpty()
                 if (lyricist.isBlank()) lyricist = wavInfo.lyricist.orEmpty()
                 trackNumber = trackNumber.takeIf { it > 0 } ?: wavInfo.trackNumber ?: 0
                 discNumber = discNumber.takeIf { it > 0 } ?: wavInfo.discNumber ?: 0
@@ -259,6 +266,7 @@ class MusicScanner(private val context: Context) {
             genre = genre,
             year = year,
             composer = composer,
+            arranger = arranger,
             lyricist = lyricist
         )
     }
@@ -512,6 +520,7 @@ class MusicScanner(private val context: Context) {
                     var genre = ""
                     var year = ""
                     var composer = ""
+                    var arranger = ""
                     var lyricist = ""
                     var duration = 0L
                     var trackNumber = 0
@@ -567,6 +576,7 @@ class MusicScanner(private val context: Context) {
                                 genre = genre,
                                 year = year,
                                 composer = composer,
+                                arranger = arranger,
                                 lyricist = lyricist
                             )
                         )
@@ -687,6 +697,10 @@ class MusicScanner(private val context: Context) {
             genre = tagInfo.genre.orEmpty().cleanTagText(),
             year = tagInfo.year.orEmpty().cleanTagText(),
             composer = tagInfo.composer.orEmpty().cleanTagText(),
+            arranger = firstNonBlank(
+                tagInfo.arranger,
+                tagInfo.customTagValue("ARRANGER", "ARRANGED BY", "ARRANGEDBY", "ARRANGEMENT", "ARRANGE")
+            ).orEmpty().cleanTagText(),
             lyricist = firstNonBlank(
                 tagInfo.lyricist,
                 tagInfo.customTagValue("TEXT"),

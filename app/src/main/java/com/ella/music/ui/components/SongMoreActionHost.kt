@@ -126,7 +126,7 @@ fun SongMoreActionHost(
         EllaMiuixBottomSheet(
             show = true,
             enableNestedScroll = false,
-            title = song.title.ifBlank { actionSheetTitle },
+            title = song.title.toSongTitlePresentation().text.ifBlank { actionSheetTitle },
             onDismissRequest = ::closeAction
         ) {
             SongMoreActionSheet(

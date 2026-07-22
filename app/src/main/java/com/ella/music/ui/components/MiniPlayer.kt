@@ -81,6 +81,8 @@ fun MiniPlayer(
     lyricText: String? = null,
     lyricTranslation: String? = null,
     lyricProgress: Float = 0f,
+    lyricPositionMs: Long = 0L,
+    lyricTiming: MiniPlayerLyricTiming? = null,
     coverRotationEnabled: Boolean = true,
     albumArtUri: Uri? = null,
     loadCoverArt: ((Song) -> Bitmap?)? = null,
@@ -230,6 +232,9 @@ fun MiniPlayer(
             textState = textState,
             transitionDirection = transitionDirection,
             lyricProgress = lyricProgress,
+            lyricPositionMs = lyricPositionMs,
+            lyricTiming = lyricTiming,
+            isPlaying = isPlaying,
             modifier = Modifier.weight(1f)
         )
 
@@ -298,6 +303,8 @@ fun CompactMiniPlayer(
     lyricText: String? = null,
     lyricTranslation: String? = null,
     lyricProgress: Float = 0f,
+    lyricPositionMs: Long = 0L,
+    lyricTiming: MiniPlayerLyricTiming? = null,
     coverRotationEnabled: Boolean = true,
     albumArtUri: Uri? = null,
     loadCoverArt: ((Song) -> Bitmap?)? = null,
@@ -364,6 +371,9 @@ fun CompactMiniPlayer(
                     textState = textState,
                     transitionDirection = transitionDirection,
                     lyricProgress = lyricProgress,
+                    lyricPositionMs = lyricPositionMs,
+                    lyricTiming = lyricTiming,
+                    isPlaying = isPlaying,
                     modifier = Modifier.weight(1f),
                     primaryFontSize = 14,
                     primaryFontWeight = FontWeight.SemiBold,

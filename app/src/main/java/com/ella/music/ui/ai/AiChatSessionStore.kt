@@ -116,6 +116,7 @@ private fun Song.toJson(): JSONObject =
         .put("genre", genre)
         .put("year", year)
         .put("composer", composer)
+        .put("arranger", arranger)
         .put("lyricist", lyricist)
         .put("coverUrl", coverUrl)
         .put("onlineSource", onlineSource)
@@ -143,6 +144,7 @@ private fun JSONObject.toSong(): Song =
         genre = optString("genre"),
         year = optString("year"),
         composer = optString("composer"),
+        arranger = optString("arranger"),
         lyricist = optString("lyricist"),
         coverUrl = optString("coverUrl"),
         onlineSource = optString("onlineSource"),

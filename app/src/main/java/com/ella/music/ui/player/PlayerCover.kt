@@ -44,6 +44,7 @@ import androidx.media3.common.Player as Media3Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil3.compose.AsyncImage
+import coil3.size.Size
 import com.ella.music.data.model.Song
 import com.ella.music.ui.components.DefaultAlbumCover
 import java.io.File
@@ -66,6 +67,7 @@ internal fun FullBleedCover(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Fit,
                 sizePx = 768,
+                loadOriginal = true,
                 cornerRadius = cornerRadius
             )
         } else {
@@ -92,6 +94,7 @@ internal fun PlayerCoverImage(
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
     sizePx: Int = 1200,
+    loadOriginal: Boolean = false,
     cornerRadius: Dp = 20.dp
 ) {
     val context = LocalContext.current
@@ -102,11 +105,17 @@ internal fun PlayerCoverImage(
                 ?.let { it.width.toFloat() / it.height.toFloat() }
         )
     }
-    val request = remember(context, model, sizePx) {
+    val request = remember(context, model, sizePx, loadOriginal) {
         if (model is Uri || model is String) {
             coil3.request.ImageRequest.Builder(context)
                 .data(model)
-                .size(sizePx)
+                .apply {
+                    if (loadOriginal) {
+                        size(Size.ORIGINAL)
+                    } else {
+                        size(sizePx)
+                    }
+                }
                 .build()
         } else {
             model
@@ -175,6 +184,7 @@ internal fun AlbumArtView(
     embeddedCover: Bitmap?,
     cornerRadius: Dp = 20.dp,
     contentScale: ContentScale = ContentScale.Fit,
+    loadOriginal: Boolean = true,
     showHiResLogo: Boolean = false,
     hiResLogoUri: String = "",
     modifier: Modifier = Modifier
@@ -192,6 +202,7 @@ internal fun AlbumArtView(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = contentScale,
                 sizePx = 768,
+                loadOriginal = loadOriginal,
                 cornerRadius = cornerRadius
             )
         } else {

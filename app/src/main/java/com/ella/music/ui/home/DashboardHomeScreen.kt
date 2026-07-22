@@ -119,12 +119,13 @@ fun HomeScreen(
             .size
     }
     val metadataCategoryCounts = remember(songs) {
-        mainViewModel.getMetadataCategoryCounts(listOf("folder", "genre", "year", "composer", "lyricist"))
+        mainViewModel.getMetadataCategoryCounts(listOf("folder", "genre", "year", "composer", "arranger", "lyricist"))
     }
     val folderCount = metadataCategoryCounts["folder"] ?: 0
     val genreCount = metadataCategoryCounts["genre"] ?: 0
     val yearCount = metadataCategoryCounts["year"] ?: 0
     val composerCount = metadataCategoryCounts["composer"] ?: 0
+    val arrangerCount = metadataCategoryCounts["arranger"] ?: 0
     val lyricistCount = metadataCategoryCounts["lyricist"] ?: 0
     val recentSongIds = remember(history) {
         history
@@ -268,6 +269,7 @@ fun HomeScreen(
                 genreCount,
                 yearCount,
                 composerCount,
+                arrangerCount,
                 lyricistCount
             ) {
                 val all = mapOf(
@@ -281,6 +283,7 @@ fun HomeScreen(
                     "genre" to HomeTileSpec("genre", context.getString(R.string.category_genre), context.getString(R.string.home_count_genres, genreCount), tileColor("genre", Color(0xFF06D6A0)), Screen.MetadataCategory.createRoute("genre")) { onNavigateToMetadataCategory("genre") },
                     "year" to HomeTileSpec("year", context.getString(R.string.category_year), context.getString(R.string.home_count_folders, yearCount), tileColor("year", Color(0xFF4CC9F0)), Screen.MetadataCategory.createRoute("year")) { onNavigateToMetadataCategory("year") },
                     "composer" to HomeTileSpec("composer", context.getString(R.string.category_composer), context.getString(R.string.home_count_artists, composerCount), tileColor("composer", Color(0xFFB5179E)), Screen.MetadataCategory.createRoute("composer")) { onNavigateToMetadataCategory("composer") },
+                    "arranger" to HomeTileSpec("arranger", context.getString(R.string.category_arranger), context.getString(R.string.home_count_artists, arrangerCount), tileColor("arranger", Color(0xFF4361EE)), Screen.MetadataCategory.createRoute("arranger")) { onNavigateToMetadataCategory("arranger") },
                     "lyricist" to HomeTileSpec("lyricist", context.getString(R.string.category_lyricist), context.getString(R.string.home_count_artists, lyricistCount), tileColor("lyricist", Color(0xFFFF6D00)), Screen.MetadataCategory.createRoute("lyricist")) { onNavigateToMetadataCategory("lyricist") }
                 )
                 tileOrder.mapNotNull { all[it] }.filterNot { it.id in hiddenTiles }

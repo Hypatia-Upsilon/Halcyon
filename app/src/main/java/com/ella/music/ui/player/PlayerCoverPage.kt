@@ -209,7 +209,9 @@ internal fun CoverPlayerPage(
     modifier: Modifier = Modifier
 ) {
     val staticCoverPreviewModel = resolveCoverPreviewModel(song, embeddedCover)
-    var previewCoverModel by remember(song?.playlistIdentityKey(), embeddedCover) { mutableStateOf<Any?>(null) }
+    // Keep an opened preview as a snapshot.  Changing tracks must update the player behind the
+    // dialog, not dismiss or replace the artwork the user is currently inspecting.
+    var previewCover by remember { mutableStateOf<PlayerCoverPreview?>(null) }
     val bluetoothDeviceName = rememberBluetoothOutputName()
     val queueLocked by playerViewModel.queueLocked.collectAsState()
     val navidromeConfig by playerViewModel.settingsManager.navidromeConfig.collectAsState(
@@ -414,7 +416,12 @@ internal fun CoverPlayerPage(
                                 if (staticCoverPreviewModel != null) {
                                     Modifier.combinedClickable(
                                         onClick = {},
-                                        onLongClick = { previewCoverModel = staticCoverPreviewModel }
+                                        onLongClick = {
+                                            previewCover = PlayerCoverPreview(
+                                                model = staticCoverPreviewModel,
+                                                title = song?.title.orEmpty()
+                                            )
+                                        }
                                     )
                                 } else {
                                     Modifier
@@ -650,7 +657,12 @@ internal fun CoverPlayerPage(
                                     if (staticCoverPreviewModel != null) {
                                         Modifier.combinedClickable(
                                             onClick = {},
-                                            onLongClick = { previewCoverModel = staticCoverPreviewModel }
+                                            onLongClick = {
+                                                previewCover = PlayerCoverPreview(
+                                                    model = staticCoverPreviewModel,
+                                                    title = song?.title.orEmpty()
+                                                )
+                                            }
                                         )
                                     } else {
                                         Modifier
@@ -892,15 +904,20 @@ internal fun CoverPlayerPage(
             onCycleRemoteStreamQuality = playerViewModel::cycleRemoteStreamQuality,
             initialPage = actionMenuInitialPage
         )
-        previewCoverModel?.let { coverModel ->
+        previewCover?.let { cover ->
             CoverPreviewDialog(
-                model = coverModel,
-                title = song?.title.orEmpty(),
-                onDismiss = { previewCoverModel = null }
+                model = cover.model,
+                title = cover.title,
+                onDismiss = { previewCover = null }
             )
         }
     }
 }
+
+private data class PlayerCoverPreview(
+    val model: Any,
+    val title: String
+)
 
 @Composable
 private fun PlayerCoverTitleRow(

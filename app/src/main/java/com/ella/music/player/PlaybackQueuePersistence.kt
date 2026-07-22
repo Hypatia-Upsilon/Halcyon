@@ -128,6 +128,7 @@ internal fun Song.toPlaybackQueueJson(): JSONObject = JSONObject()
     .put("genre", genre)
     .put("year", year)
     .put("composer", composer)
+    .put("arranger", arranger)
     .put("lyricist", lyricist)
     .put("coverUrl", coverUrl)
     .put("onlineSource", onlineSource)
@@ -154,6 +155,7 @@ internal fun JSONObject.toPlaybackQueueSongOrNull(): Song? {
         genre = optString("genre"),
         year = optString("year"),
         composer = optString("composer"),
+        arranger = optString("arranger"),
         lyricist = optString("lyricist"),
         coverUrl = optString("coverUrl"),
         onlineSource = optString("onlineSource"),
@@ -231,6 +233,7 @@ private fun JsonReader.readPlaybackQueueSongOrNull(): Song? {
     var genre = ""
     var year = ""
     var composer = ""
+    var arranger = ""
     var lyricist = ""
     var coverUrl = ""
     var onlineSource = ""
@@ -257,6 +260,7 @@ private fun JsonReader.readPlaybackQueueSongOrNull(): Song? {
             "genre" -> genre = nextStringOrEmpty()
             "year" -> year = nextStringOrEmpty()
             "composer" -> composer = nextStringOrEmpty()
+            "arranger" -> arranger = nextStringOrEmpty()
             "lyricist" -> lyricist = nextStringOrEmpty()
             "coverUrl" -> coverUrl = nextStringOrEmpty()
             "onlineSource" -> onlineSource = nextStringOrEmpty()
@@ -287,6 +291,7 @@ private fun JsonReader.readPlaybackQueueSongOrNull(): Song? {
         genre = genre,
         year = year,
         composer = composer,
+        arranger = arranger,
         lyricist = lyricist,
         coverUrl = coverUrl,
         onlineSource = onlineSource,

@@ -5,6 +5,8 @@ import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.ella.music.data.AppLogStore
+import com.ella.music.data.lastfm.LastFmHistoryStore
+import com.ella.music.data.lastfm.ListeningHistorySource
 import com.ella.music.data.PlaylistStore
 import com.ella.music.data.PlaybackStatsStore
 import com.ella.music.data.SettingsManager
@@ -55,6 +57,7 @@ private const val LYRIC_POSITION_BACKWARD_DRIFT_TOLERANCE_MS = 600L
 // Compose lyrics interpolate between position samples on the display clock. 10 Hz is therefore
 // visually smooth while avoiding a 20 Hz controller query / bridge dispatch loop all day.
 private const val PLAYBACK_POSITION_UPDATE_INTERVAL_MS = 100L
+private const val SEEK_EXTERNAL_LYRIC_SYNC_DEBOUNCE_MS = 80L
 
 private const val DECODER_MODE_SYSTEM = 0
 private const val DECODER_MODE_AUTO = 2
@@ -75,18 +78,33 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     private val playlistStore = PlaylistStore.getInstance(application)
     private val openSubsonicCollectionsStore = OpenSubsonicCollectionsStore.getInstance(application)
     private val playbackStatsStore = PlaybackStatsStore.getInstance(application)
+    private val lastFmHistoryStore = LastFmHistoryStore.getInstance(application)
     private val navidromeService = NavidromeService(application)
-    private val playbackStatsTracker = PlayerPlaybackStatsTracker(playbackStatsStore) { song ->
-        val config = when (song.onlineSource) {
-            RemoteMusicProvider.Navidrome.id -> settingsManager.navidromeConfig.first()
-            RemoteMusicProvider.OpenSubsonic.id -> settingsManager.openSubsonicConfig.first()
-            else -> null
+    private val playbackStatsTracker = PlayerPlaybackStatsTracker(
+        playbackStatsStore = playbackStatsStore,
+        onPlayCounted = { song ->
+            // Never hold the 10 Hz position/lyrics loop on a network request.
+            viewModelScope.launch(Dispatchers.IO) {
+                val config = when (song.onlineSource) {
+                    RemoteMusicProvider.Navidrome.id -> settingsManager.navidromeConfig.first()
+                    RemoteMusicProvider.OpenSubsonic.id -> settingsManager.openSubsonicConfig.first()
+                    else -> null
+                }
+                if (config?.isConfigured == true && song.onlineId.isNotBlank()) {
+                    runCatching { navidromeService.scrobble(config, song.onlineId) }
+                        .onFailure { AppLogStore.warn(application, "SubsonicScrobble", "Failed to scrobble ${song.title}", it) }
+                }
+            }
+        },
+        onLastFmScrobbleEligible = { song, startedAt ->
+            viewModelScope.launch(Dispatchers.IO) {
+                val source = ListeningHistorySource.fromPreference(settingsManager.listeningHistorySource.first())
+                if (source.usesLastFm) {
+                    lastFmHistoryStore.enqueueScrobble(song, startedAt)
+                }
+            }
         }
-        if (config?.isConfigured == true && song.onlineId.isNotBlank()) {
-            runCatching { navidromeService.scrobble(config, song.onlineId) }
-                .onFailure { AppLogStore.warn(application, "SubsonicScrobble", "Failed to scrobble ${song.title}", it) }
-        }
-    }
+    )
     private val lazyOnlineQueueController = PlayerLazyOnlineQueueController(viewModelScope, playerManager)
 
     val currentSong: StateFlow<Song?> = playerManager.currentSong
@@ -202,6 +220,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     val stopAfterCurrentEnabled: StateFlow<Boolean> = sleepTimerController.stopAfterCurrentEnabled
 
     private var positionUpdateJob: Job? = null
+    private var seekExternalLyricSyncJob: Job? = null
     private var lastSentPlayingState: Boolean? = null
     private var lastTickerPayload: Pair<String, String?>? = null
     private var bluetoothLyricEnabled = false
@@ -753,6 +772,12 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             playerManager.currentSong.collectLatest { song ->
                 if (song != null) {
+                    viewModelScope.launch(Dispatchers.IO) {
+                        val source = ListeningHistorySource.fromPreference(settingsManager.listeningHistorySource.first())
+                        if (source.usesLastFm) {
+                            lastFmHistoryStore.updateNowPlaying(song)
+                        }
+                    }
                     val songKey = song.lyricIdentityKey()
                     if (loadedLyricSongKey == songKey) {
                         updateCurrentLyricIndex()
@@ -819,6 +844,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                     lastSentPlayingState = playing
                     lyriconBridge.sendPlaybackState(playing)
                     if (!playing) {
+                        seekExternalLyricSyncJob?.cancel()
+                        seekExternalLyricSyncJob = null
                         tickerBridge.clearLyric()
                         if (desktopLyricHideWhenPausedEnabled) {
                             desktopLyricBridge.clearLyric()
@@ -1222,7 +1249,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun applySeekSideEffects(positionMs: Long) {
         manualSeekAfterPreviousButton = true
-        lyriconBridge.seekTo(positionMs)
 
         val lyrics = _lyrics.value
         val index = currentLyricIndexAt(
@@ -1231,14 +1257,27 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             suppressLeadingZero = positionMs in 0L until LEADING_ZERO_LYRIC_SUPPRESSION_MS
         ).index
         _currentLyricIndex.value = index
-        if (index >= 0) {
-            if (superLyricBridge.isEnabled() && isPlaying.value) {
-                superLyricBridge.sendLyric(
-                    line = lyrics[index],
-                    positionMs = positionMs,
-                    showTranslation = _showLyricTranslation.value && superLyricTranslationEnabled
-                )
-            }
+        scheduleSeekExternalLyricSync(positionMs)
+    }
+
+    /**
+     * A seek is a UI-critical controller command.  The Lyricon/SuperLyric publishers can make
+     * synchronous IPC calls, so issuing them for every tap on the lyric page used to leave those
+     * calls queued ahead of the next pause.  Coalesce a burst and publish only its final target.
+     */
+    private fun scheduleSeekExternalLyricSync(positionMs: Long) {
+        if (!lyriconBridge.isEnabled() && !superLyricBridge.isEnabled()) return
+        seekExternalLyricSyncJob?.cancel()
+        seekExternalLyricSyncJob = viewModelScope.launch {
+            delay(SEEK_EXTERNAL_LYRIC_SYNC_DEBOUNCE_MS)
+            lyriconBridge.seekTo(positionMs)
+            if (!isPlaying.value || !superLyricBridge.isEnabled()) return@launch
+            val line = _lyrics.value.getOrNull(_currentLyricIndex.value) ?: return@launch
+            superLyricBridge.sendLyric(
+                line = line,
+                positionMs = positionMs,
+                showTranslation = _showLyricTranslation.value && superLyricTranslationEnabled
+            )
         }
     }
 
@@ -1727,6 +1766,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         super.onCleared()
         externalLyricResendJob?.cancel()
         positionUpdateJob?.cancel()
+        seekExternalLyricSyncJob?.cancel()
         sleepTimerController.dispose()
         tickerBridge.clearLyric()
         lyricGetterBridge.clearLyric()

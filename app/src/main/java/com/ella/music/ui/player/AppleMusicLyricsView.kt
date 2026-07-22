@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -702,6 +704,25 @@ private fun StatusBarMergedTimedLyricRow(
     wordLiftEnabled: Boolean,
     textAlign: TextAlign
 ) {
+    val primaryEndMs = remember(primaryWords) { primaryWords.maxOfOrNull { it.endMs } }
+    val secondaryLiftProgress = if (active && wordLiftEnabled && primaryEndMs != null) {
+        ((positionMs - primaryEndMs).toFloat() / STATUS_BAR_SECONDARY_LIFT_DURATION_MS)
+            .coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+    val animatedSecondaryLiftProgress by animateFloatAsState(
+        targetValue = secondaryLiftProgress,
+        animationSpec = tween(durationMillis = STATUS_BAR_SECONDARY_LIFT_ANIMATION_MS),
+        label = "status-bar-secondary-lift"
+    )
+    val secondaryLiftPx = with(LocalDensity.current) {
+        if (wordLiftEnabled) {
+            maxOf(primaryStyle.fontSize.toPx() * 0.06f, 5f) * animatedSecondaryLiftProgress
+        } else {
+            0f
+        }
+    }
     val contentAlignment = when (textAlign) {
         TextAlign.End -> Alignment.CenterEnd
         TextAlign.Center -> Alignment.Center
@@ -717,7 +738,12 @@ private fun StatusBarMergedTimedLyricRow(
         contentAlignment = contentAlignment
     ) {
         Row(
-            modifier = Modifier.wrapContentWidth(unbounded = true),
+            // `width(IntrinsicSize.Max)` makes the marquee measure the combined primary and
+            // secondary text as one unbounded run. Without it, a multi-fragment secondary
+            // could receive the viewport constraint and wrap to a second visual row.
+            modifier = Modifier
+                .width(IntrinsicSize.Max)
+                .wrapContentWidth(unbounded = true),
             verticalAlignment = Alignment.CenterVertically
         ) {
             TimedLyricText(
@@ -741,11 +767,18 @@ private fun StatusBarMergedTimedLyricRow(
                 ),
                 maxLines = 1,
                 softWrap = false,
-                overflow = TextOverflow.Clip
+                overflow = TextOverflow.Clip,
+                // A completed word stays lifted in the primary karaoke renderer.  Move the
+                // static secondary as a whole by the same amount once the primary line ends so
+                // the two pieces keep their baseline instead of visually splitting apart.
+                modifier = Modifier.graphicsLayer { translationY = -secondaryLiftPx }
             )
         }
     }
 }
+
+private const val STATUS_BAR_SECONDARY_LIFT_DURATION_MS = 120f
+private const val STATUS_BAR_SECONDARY_LIFT_ANIMATION_MS = 110
 
 @Composable
 private fun TimedLyricText(

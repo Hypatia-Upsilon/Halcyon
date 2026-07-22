@@ -232,7 +232,10 @@ private fun SortBottomSheetItem(
             }
         }
 
-        if (hasDirectionChoices) {
+        // Direction is only meaningful for the active sort field.  Showing an accented
+        // direction button on every inactive row made it look as though several sorts were
+        // selected at once, and contradicted the field highlight above.
+        if (hasDirectionChoices && item.selected) {
             SortDirectionAction(
                 selected = item.direction == SortDirection.Ascending,
                 onClick = item.onSelectAscending?.let { select ->
@@ -255,7 +258,7 @@ private fun SortBottomSheetItem(
                 ascending = false,
                 contentDescription = stringResource(R.string.common_sort_descending)
             )
-        } else {
+        } else if (!hasDirectionChoices) {
             SelectionCheck(
                 selected = item.selected,
                 size = 22.dp,

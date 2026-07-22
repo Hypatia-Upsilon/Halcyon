@@ -32,6 +32,7 @@ internal fun songsToLibraryCacheJsonArray(songs: List<Song>): JSONArray {
                 .put("genre", song.genre)
                 .put("year", song.year)
                 .put("composer", song.composer)
+                .put("arranger", song.arranger)
                 .put("lyricist", song.lyricist)
                 .put("coverUrl", song.coverUrl)
                 .put("onlineSource", song.onlineSource)
@@ -128,6 +129,7 @@ private fun JsonReader.readCacheSong(): Song {
     var genre = ""
     var year = ""
     var composer = ""
+    var arranger = ""
     var lyricist = ""
     var coverUrl = ""
     var onlineSource = ""
@@ -155,6 +157,7 @@ private fun JsonReader.readCacheSong(): Song {
             "genre" -> genre = nextStringOrEmpty()
             "year" -> year = nextStringOrEmpty()
             "composer" -> composer = nextStringOrEmpty()
+            "arranger" -> arranger = nextStringOrEmpty()
             "lyricist" -> lyricist = nextStringOrEmpty()
             "coverUrl" -> coverUrl = nextStringOrEmpty()
             "onlineSource" -> onlineSource = nextStringOrEmpty()
@@ -184,6 +187,7 @@ private fun JsonReader.readCacheSong(): Song {
         genre = genre,
         year = year,
         composer = composer,
+        arranger = arranger,
         lyricist = lyricist,
         coverUrl = coverUrl,
         onlineSource = onlineSource,

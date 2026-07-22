@@ -32,6 +32,7 @@ import com.ella.music.data.model.Song
 import com.ella.music.data.model.SongTagInfo
 import com.ella.music.data.model.UserPlaylist
 import com.ella.music.ui.components.EllaMiuixBottomSheet
+import com.ella.music.ui.components.ExplicitSongTitle
 import com.ella.music.ui.components.EllaMiuixMenuItem
 import com.ella.music.ui.components.EllaMiuixSheetActions
 import com.ella.music.ui.components.EllaMiuixSheetColumn
@@ -63,8 +64,8 @@ internal fun ArtistSongActionMenu(
 ) {
     ArtistSheetColumn {
         ArtistSheetHandle()
-        Text(
-            text = song.title,
+        ExplicitSongTitle(
+            title = song.title,
             fontSize = 18.sp,
             fontWeight = FontWeight.ExtraBold,
             color = MiuixTheme.colorScheme.onSurface,
@@ -192,8 +193,8 @@ internal fun ArtistTagEditorMenu(
             color = MiuixTheme.colorScheme.onSurface,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
         )
-        Text(
-            text = song.title,
+        ExplicitSongTitle(
+            title = song.title,
             fontSize = 13.sp,
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             maxLines = 1,

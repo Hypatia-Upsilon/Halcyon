@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
@@ -32,6 +33,7 @@ import com.ella.music.data.model.Song
 import com.ella.music.data.model.SongTagInfo
 import com.ella.music.data.model.albumIdentityId
 import com.ella.music.data.model.formatPlaybackDuration
+import com.ella.music.ui.components.ExplicitSongTitle
 import top.yukonga.miuix.kmp.basic.Text
 
 @Composable
@@ -57,6 +59,7 @@ internal fun PlayerDetailPage(
     onAlbum: () -> Unit,
     onArtist: (String) -> Unit,
     onComposer: (String) -> Unit,
+    onArranger: (String) -> Unit,
     onLyricist: (String) -> Unit,
     onYear: (String) -> Unit,
     onGenre: (String) -> Unit,
@@ -67,6 +70,9 @@ internal fun PlayerDetailPage(
 ) {
     val composerNames = remember(tagInfo?.composer, song?.composer) {
         splitArtistNames(tagInfo?.composer?.ifBlank { song?.composer.orEmpty() }.orEmpty())
+    }
+    val arrangerNames = remember(tagInfo?.arranger, song?.arranger) {
+        splitArtistNames(tagInfo?.arranger?.ifBlank { song?.arranger.orEmpty() }.orEmpty())
     }
     val lyricistNames = remember(tagInfo?.lyricist, song?.lyricist) {
         splitArtistNames(tagInfo?.lyricist?.ifBlank { song?.lyricist.orEmpty() }.orEmpty())
@@ -105,6 +111,16 @@ internal fun PlayerDetailPage(
                 name = name,
                 songs = effectiveLibrarySongs.filter { candidate ->
                     splitArtistNames(candidate.composer).any { it.equals(name, ignoreCase = true) }
+                }
+            )
+        }
+    }
+    val arrangerDetails = remember(arrangerNames, effectiveLibrarySongs) {
+        arrangerNames.map { name ->
+            PlayerDetailEntity(
+                name = name,
+                songs = effectiveLibrarySongs.filter { candidate ->
+                    splitArtistNames(candidate.arranger).any { it.equals(name, ignoreCase = true) }
                 }
             )
         }
@@ -190,11 +206,12 @@ internal fun PlayerDetailPage(
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = song?.title.orEmpty().ifBlank { stringResource(R.string.player_unknown_song) },
+                ExplicitSongTitle(
+                    title = song?.title.orEmpty().ifBlank { stringResource(R.string.player_unknown_song) },
                     color = LocalPlayerContentColor.current.copy(alpha = 0.96f),
                     fontSize = 22.sp,
-                    fontWeight = FontWeight.ExtraBold
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.fillMaxWidth()
                 )
                 aliasText.takeIf { it.isNotBlank() }?.let { alias ->
                     Spacer(modifier = Modifier.height(8.dp))
@@ -263,6 +280,20 @@ internal fun PlayerDetailPage(
                                 title = detail.name,
                                 summary = detail.songs.stats().personSummary(),
                                 onClick = { onComposer(detail.name) }
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (arrangerDetails.isNotEmpty()) {
+                item {
+                    PlayerDetailGroupCard(title = stringResource(R.string.player_detail_arranger)) {
+                        arrangerDetails.forEach { detail ->
+                            PlayerDetailGroupedActionRow(
+                                title = detail.name,
+                                summary = detail.songs.stats().personSummary(),
+                                onClick = { onArranger(detail.name) }
                             )
                         }
                     }

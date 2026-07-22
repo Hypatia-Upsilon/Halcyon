@@ -89,5 +89,5 @@ object LibrarySortUiState {
         metadataCategoryDetailAlbumSortIndices[type] = index.coerceAtLeast(0)
     }
 
-    private val metadataCategoryTypes = listOf("folder", "genre", "year", "composer", "lyricist")
+    private val metadataCategoryTypes = listOf("folder", "genre", "year", "composer", "arranger", "lyricist")
 }

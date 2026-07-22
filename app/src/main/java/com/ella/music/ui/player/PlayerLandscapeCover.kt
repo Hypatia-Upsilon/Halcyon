@@ -884,6 +884,7 @@ private fun PhoneLandscapeCoverImage(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
                 sizePx = 960,
+                loadOriginal = true,
                 showDefaultPlaceholder = false
             )
         } else {

@@ -209,9 +209,10 @@ fun LibrarySearchScreen(
 
     val requestedCategoryTypes = remember(filter) {
         when (filter) {
-            SearchFilter.All -> listOf("folder", "composer", "lyricist", "genre", "year")
+            SearchFilter.All -> listOf("folder", "composer", "arranger", "lyricist", "genre", "year")
             SearchFilter.Folders -> listOf("folder")
             SearchFilter.Composers -> listOf("composer")
+            SearchFilter.Arrangers -> listOf("arranger")
             SearchFilter.Lyricists -> listOf("lyricist")
             SearchFilter.Genres -> listOf("genre")
             SearchFilter.Years -> listOf("year")

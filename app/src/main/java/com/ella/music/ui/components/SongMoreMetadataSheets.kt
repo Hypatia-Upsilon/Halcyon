@@ -2,6 +2,7 @@ package com.ella.music.ui.components
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,22 +56,67 @@ internal fun RatingSheet(
     onRatingSelected: (Int) -> Unit
 ) {
     SongSheetColumn {
-        SongMenuItem(
-            title = if (currentRating <= 0) {
-                "\u2713 ${stringResource(R.string.song_more_rating_none)}"
-            } else {
-                stringResource(R.string.song_more_rating_none)
-            },
+        RatingMenuItem(
+            rating = 0,
+            selected = currentRating <= 0,
             onClick = { onRatingSelected(0) }
         )
         (1..5).forEach { rating ->
-            val stars = "\u2605".repeat(rating) + "\u2606".repeat(5 - rating)
-            SongMenuItem(
-                title = if (currentRating == rating) "\u2713 $stars" else stars,
+            RatingMenuItem(
+                rating = rating,
+                selected = currentRating == rating,
                 onClick = { onRatingSelected(rating) }
             )
         }
         SongMenuItem(stringResource(R.string.common_cancel), onDismiss)
+    }
+}
+
+@Composable
+private fun RatingMenuItem(
+    rating: Int,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MiuixTheme.colorScheme.surfaceContainer.copy(alpha = 0.78f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (selected) {
+            Icon(
+                imageVector = MiuixIcons.Basic.Check,
+                contentDescription = null,
+                tint = MiuixTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+        } else {
+            Spacer(modifier = Modifier.size(18.dp))
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        if (rating == 0) {
+            Text(
+                text = stringResource(R.string.song_more_rating_none),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = MiuixTheme.colorScheme.onSurface
+            )
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                (1..5).forEach { star ->
+                    RatingStarIcon(
+                        filled = star <= rating,
+                        tint = if (star <= rating) MiuixTheme.colorScheme.primary
+                        else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        modifier = Modifier.size(21.dp)
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -100,6 +146,7 @@ internal fun SongMetadataEditorSheet(
     var trackNumber by remember(tagInfo) { mutableStateOf(tagInfo?.track.orEmpty()) }
     var discNumber by remember(fullTagInfo) { mutableStateOf(fullTagInfo?.discNumber?.toString().orEmpty()) }
     var composer by remember(tagInfo) { mutableStateOf(tagInfo?.composer.orEmpty()) }
+    var arranger by remember(tagInfo) { mutableStateOf(tagInfo?.arranger.orEmpty()) }
     var lyricist by remember(tagInfo) { mutableStateOf(tagInfo?.lyricist.orEmpty()) }
     var copyright by remember(tagInfo) { mutableStateOf(tagInfo?.copyright.orEmpty()) }
     var comment by remember(tagInfo) { mutableStateOf(tagInfo?.comment.orEmpty()) }
@@ -229,6 +276,7 @@ internal fun SongMetadataEditorSheet(
 
         SectionHeader(stringResource(R.string.song_more_metadata_section_credits))
         MetadataField(stringResource(R.string.song_more_metadata_composer), composer) { composer = it }
+        MetadataField(stringResource(R.string.song_more_metadata_arranger), arranger) { arranger = it }
         MetadataField(stringResource(R.string.song_more_metadata_lyricist), lyricist) { lyricist = it }
         MetadataField(stringResource(R.string.song_more_metadata_copyright), copyright) { copyright = it }
         MetadataField(stringResource(R.string.song_more_metadata_comment), comment) { comment = it }
@@ -271,12 +319,11 @@ internal fun SongMetadataEditorSheet(
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             (1..5).forEach { star ->
-                val starChar = if (star <= rating) "★" else "☆"
-                Text(
-                    text = starChar,
-                    fontSize = 28.sp,
-                    color = if (star <= rating) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                RatingStarIcon(
+                    filled = star <= rating,
+                    tint = if (star <= rating) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurfaceVariantSummary,
                     modifier = Modifier
+                        .size(28.dp)
                         .clip(RoundedCornerShape(4.dp))
                         .clickable { rating = if (rating == star) 0 else star }
                         .padding(4.dp)
@@ -405,6 +452,7 @@ internal fun SongMetadataEditorSheet(
                     trackNumber = trackNumber.toIntOrNull()?.takeIf { v -> v.toString() != tagInfo?.track },
                     discNumber = discNumber.toIntOrNull()?.takeIf { v -> v != fullTagInfo?.discNumber },
                     composer = composer.takeIf { v -> v != tagInfo?.composer },
+                    arranger = arranger.takeIf { v -> v != tagInfo?.arranger },
                     lyricist = lyricist.takeIf { v -> v != tagInfo?.lyricist },
                     copyright = copyright.takeIf { v -> v != tagInfo?.copyright },
                     comment = comment.takeIf { v -> v != tagInfo?.comment },
@@ -441,6 +489,7 @@ internal fun SongMetadataEditorSheet(
                     trackNumber = match.tags.trackNumber?.toString() ?: trackNumber
                     discNumber = match.tags.discNumber?.toString() ?: discNumber
                     composer = match.tags.composer ?: composer
+                    arranger = match.tags.arranger ?: arranger
                     lyricist = match.tags.lyricist ?: lyricist
                     copyright = match.tags.copyright ?: copyright
                     comment = match.tags.comment ?: comment

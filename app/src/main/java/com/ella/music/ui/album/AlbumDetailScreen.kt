@@ -84,6 +84,7 @@ import com.ella.music.ui.components.LibraryFloatingControlsBottomPadding
 import com.ella.music.ui.components.LibraryFloatingControlsEndPadding
 import com.ella.music.ui.components.LibrarySecondaryFloatingControlsBottomPadding
 import com.ella.music.ui.components.LazyListScrollIndicator
+import com.ella.music.ui.components.RestoreListScrollAfterSearch
 import com.ella.music.ui.components.LocateCurrentSongFloatingButton
 import com.ella.music.ui.components.SafeCoverImage
 import com.ella.music.ui.components.ShuffleAllFloatingButton
@@ -249,6 +250,11 @@ fun AlbumDetailScreen(
             .flatMap { splitArtistNames(it.composer) }
             .distinctBy { it.lowercase(Locale.ROOT) }
     }
+    val participatingArrangers = remember(albumSongs) {
+        albumSongs
+            .flatMap { splitArtistNames(it.arranger) }
+            .distinctBy { it.lowercase(Locale.ROOT) }
+    }
     val participatingLyricists = remember(albumSongs) {
         albumSongs
             .flatMap { splitArtistNames(it.lyricist) }
@@ -297,6 +303,16 @@ fun AlbumDetailScreen(
             )
         }
     }
+    val arrangerDisplayItems = remember(participatingArrangers, albumSongs) {
+        participatingArrangers.map { arranger ->
+            buildAlbumMetadataDisplayItem(
+                name = arranger,
+                songs = mainViewModel.getSongsForMetadataCategory("arranger", arranger),
+                mainViewModel = mainViewModel,
+                fallbackSong = albumSongs.firstOrNull()
+            )
+        }
+    }
     val lyricistDisplayItems = remember(participatingLyricists, albumSongs) {
         participatingLyricists.map { lyricist ->
             buildAlbumMetadataDisplayItem(
@@ -308,6 +324,11 @@ fun AlbumDetailScreen(
         }
     }
     val listState = rememberLazyListState()
+    RestoreListScrollAfterSearch(
+        searchExpanded = searchExpanded,
+        query = searchQuery,
+        listState = listState
+    )
     val albumSongHeaderCount = 2
     val showSongSideIndex = !selectionMode &&
         sortMode == AlbumDetailSongSortMode.Title &&
@@ -410,14 +431,18 @@ fun AlbumDetailScreen(
         }
     }
 
-    BackHandler(enabled = selectionMode || sortExpanded || searchExpanded) {
+    // Keep the explicit album-list restoration path for every system-back route.  Previously
+    // this handler was disabled for the normal detail state, so gesture/system back bypassed
+    // `onBack` and Navigation popped directly without restoring the album-list anchor.
+    BackHandler {
         when {
             selectionMode -> finishSelectionMode()
             searchExpanded -> {
                 searchExpanded = false
                 searchQuery = ""
             }
-            else -> sortExpanded = false
+            sortExpanded -> sortExpanded = false
+            else -> onBack()
         }
     }
 
@@ -563,6 +588,7 @@ fun AlbumDetailScreen(
                 albumGenres.isNotEmpty() ||
                 participatingArtists.isNotEmpty() ||
                 participatingComposers.isNotEmpty() ||
+                participatingArrangers.isNotEmpty() ||
                 participatingLyricists.isNotEmpty() ||
                 albumRecordedYear != null
             ) {
@@ -573,6 +599,7 @@ fun AlbumDetailScreen(
                         genres = genreDisplayItems,
                         artists = artistDisplayItems,
                         composers = composerDisplayItems,
+                        arrangers = arrangerDisplayItems,
                         lyricists = lyricistDisplayItems,
                         year = yearDisplayItem,
                         mainViewModel = mainViewModel,
@@ -580,6 +607,7 @@ fun AlbumDetailScreen(
                         onGenreClick = { genre -> onNavigateToMetadataCategory("genre", genre) },
                         onArtistClick = onNavigateToArtist,
                         onComposerClick = { composer -> onNavigateToMetadataCategory("composer", composer) },
+                        onArrangerClick = { arranger -> onNavigateToMetadataCategory("arranger", arranger) },
                         onLyricistClick = { lyricist -> onNavigateToMetadataCategory("lyricist", lyricist) },
                         onYearClick = { year -> onNavigateToMetadataCategory("year", year) }
                     )

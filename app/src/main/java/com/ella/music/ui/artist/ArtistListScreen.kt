@@ -69,6 +69,7 @@ import com.ella.music.ui.components.FloatingSelectionControls
 import com.ella.music.ui.components.LibraryFloatingControlsBottomPadding
 import com.ella.music.ui.components.LibraryFloatingControlsEndPadding
 import com.ella.music.ui.components.LazyListScrollIndicator
+import com.ella.music.ui.components.RestoreListScrollAfterSearch
 import com.ella.music.ui.components.SideIndexListEndPadding
 import com.ella.music.ui.components.DirectionalSortModeField
 import com.ella.music.ui.components.SortDropdownMenu
@@ -556,6 +557,11 @@ fun ArtistListScreen(
             }
         } else {
             val listState = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
+            RestoreListScrollAfterSearch(
+                searchExpanded = searchExpanded,
+                query = searchQuery,
+                listState = listState
+            )
             var fastScrollJob by remember { mutableStateOf<Job?>(null) }
             LaunchedEffect(scrollToTopRequest) {
                 if (scrollToTopRequest > 0) listState.animateScrollToItem(0)

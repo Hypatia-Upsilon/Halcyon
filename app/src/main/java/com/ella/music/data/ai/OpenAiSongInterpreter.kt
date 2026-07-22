@@ -106,6 +106,7 @@ class OpenAiSongInterpreter(
             .put("流派", tag.genre.ifBlank { song.genre })
             .put("年份", tag.year.ifBlank { song.year })
             .put("作曲", tag.composer.ifBlank { song.composer })
+            .put("编曲", tag.arranger.ifBlank { song.arranger })
             .put("作词", tag.lyricist.ifBlank { song.lyricist })
             .put("注释", tag.displayComment)
             .put("时长", song.durationText)

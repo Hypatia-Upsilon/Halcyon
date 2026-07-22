@@ -223,7 +223,7 @@ internal fun LibrarySearchResultsPane(
                         displayName = if (categoryType == "folder") item.name.substringAfterLast('/').ifBlank { item.name } else item.name,
                         coverModel = item.representativeSong?.coverUrl?.takeIf { it.isNotBlank() }
                             ?: item.coverAlbumIds.firstOrNull()?.let(mainViewModel::getAlbumArtUri),
-                        roundCover = categoryType in listOf("composer", "lyricist"),
+                        roundCover = categoryType in listOf("composer", "arranger", "lyricist"),
                         query = trimmedQuery,
                         onClick = {
                             onCommitSearch()

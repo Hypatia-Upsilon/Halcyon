@@ -59,6 +59,7 @@ import com.ella.music.ui.components.GlassPill
 import com.ella.music.ui.components.LiquidGlassBottomBar
 import com.ella.music.ui.components.LiquidGlassBottomBarItem
 import com.ella.music.ui.components.MiniPlayer
+import com.ella.music.ui.components.MiniPlayerLyricTiming
 import com.ella.music.ui.components.createPlaylistOrShowDuplicateToast
 import com.ella.music.ui.components.simpleLuminance
 import com.ella.music.ui.navigation.Screen
@@ -94,6 +95,8 @@ internal fun FloatingBottomControls(
     lyricText: String?,
     lyricTranslation: String?,
     lyricProgress: Float,
+    lyricPositionMs: Long,
+    lyricTiming: MiniPlayerLyricTiming?,
     miniPlayerRightButton: Int = 0,
     tabs: List<BottomDockTab>,
     currentTabRoute: String?,
@@ -142,6 +145,8 @@ internal fun FloatingBottomControls(
                 lyricText = lyricText,
                 lyricTranslation = lyricTranslation,
                 lyricProgress = lyricProgress,
+                lyricPositionMs = lyricPositionMs,
+                lyricTiming = lyricTiming,
                 coverRotationEnabled = coverRotationEnabled,
                 albumArtUri = mainViewModel.getAlbumArtUri(currentSong.albumId),
                 loadCoverArt = mainViewModel::getCoverArtBitmap,
@@ -184,6 +189,8 @@ internal fun FloatingBottomControls(
                                 onSkipPrevious = { playerViewModel.skipToPrevious() },
                                 onShowQueue = { queueSheetExpanded = true },
                                 lyricProgress = lyricProgress,
+                                lyricPositionMs = lyricPositionMs,
+                                lyricTiming = lyricTiming,
                             )
                         }
                     }
@@ -355,6 +362,8 @@ private fun CompactBottomDock(
     lyricText: String?,
     lyricTranslation: String?,
     lyricProgress: Float,
+    lyricPositionMs: Long,
+    lyricTiming: MiniPlayerLyricTiming?,
     coverRotationEnabled: Boolean,
     albumArtUri: Uri?,
     loadCoverArt: ((Song) -> android.graphics.Bitmap?)?,
@@ -397,6 +406,8 @@ private fun CompactBottomDock(
             lyricText = if (showCompactLyrics) lyricText else null,
             lyricTranslation = if (showCompactLyrics) lyricTranslation else null,
             lyricProgress = if (showCompactLyrics) lyricProgress else 0f,
+            lyricPositionMs = lyricPositionMs,
+            lyricTiming = if (showCompactLyrics) lyricTiming else null,
             coverRotationEnabled = coverRotationEnabled,
             albumArtUri = albumArtUri,
             loadCoverArt = loadCoverArt,

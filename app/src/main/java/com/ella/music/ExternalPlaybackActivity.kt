@@ -215,7 +215,8 @@ class ExternalPlaybackActivity : ComponentActivity() {
             albumArtist = retrieved.albumArtist.orEmpty(),
             genre = retrieved.genre.orEmpty(),
             year = queried.year ?: retrieved.year.orEmpty(),
-            composer = queried.composer ?: retrieved.composer.orEmpty()
+            composer = queried.composer ?: retrieved.composer.orEmpty(),
+            arranger = retrieved.arranger.orEmpty()
         )
     }
 
@@ -256,6 +257,7 @@ class ExternalPlaybackActivity : ComponentActivity() {
             genre = tagInfo.genre.usableTag() ?: genre,
             year = tagInfo.year.usableTag() ?: year,
             composer = tagInfo.composer.usableTag() ?: composer,
+            arranger = tagInfo.arranger.usableTag() ?: arranger,
             lyricist = tagInfo.lyricist.usableTag() ?: lyricist,
             trackNumber = tagInfo.trackNumber ?: trackNumber,
             discNumber = tagInfo.discNumber ?: discNumber
@@ -329,6 +331,7 @@ class ExternalPlaybackActivity : ComponentActivity() {
                 genre = retriever.extract(MediaMetadataRetriever.METADATA_KEY_GENRE),
                 year = retriever.extract(MediaMetadataRetriever.METADATA_KEY_YEAR),
                 composer = retriever.extract(MediaMetadataRetriever.METADATA_KEY_COMPOSER),
+                arranger = null,
                 duration = retriever.extract(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull(),
                 trackNumber = retriever.extract(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER)?.substringBefore('/')?.toIntOrNull()
             )
@@ -391,6 +394,7 @@ class ExternalPlaybackActivity : ComponentActivity() {
         val genre: String? = null,
         val year: String? = null,
         val composer: String? = null,
+        val arranger: String? = null,
         val duration: Long? = null,
         val trackNumber: Int? = null
     )

@@ -99,6 +99,7 @@ import com.ella.music.ui.components.LibraryFloatingControlsEndPadding
 import com.ella.music.ui.components.LibrarySecondaryFloatingControlsBottomPadding
 import com.ella.music.ui.components.LazyGridScrollIndicator
 import com.ella.music.ui.components.LazyListScrollIndicator
+import com.ella.music.ui.components.RestoreListScrollAfterSearch
 import com.ella.music.ui.components.LocateCurrentSongFloatingButton
 import com.ella.music.ui.components.DefaultAlbumCover
 import com.ella.music.ui.components.SafeCoverImage
@@ -225,7 +226,7 @@ fun MetadataCategoryDetailScreen(
         updateRangeAnchorsForManualSelection(songId, selecting)
         if (selectedIds.isEmpty()) selectionMode = false
     }
-    val showAlbumTab = type == "genre" || type == "year" || type == "composer" || type == "lyricist"
+    val showAlbumTab = type == "genre" || type == "year" || type in PERSON_METADATA_CATEGORY_TYPES
     val shouldBuildAlbumTabContent = showAlbumTab && selectedTab == MetadataDetailTab.Albums
     val detailAlbums = remember(songs, libraryAlbums, shouldBuildAlbumTabContent) {
         if (shouldBuildAlbumTabContent) {
@@ -261,19 +262,22 @@ fun MetadataCategoryDetailScreen(
         }
     }
     val albumArtistContextName = remember(type, name) {
-        name.takeIf { type == "composer" || type == "lyricist" }
+        name.takeIf { type in PERSON_METADATA_CATEGORY_TYPES }
     }
     val hasSameNameArtist = remember(type, name, librarySongs, libraryAlbums) {
-        (type == "composer" || type == "lyricist") && (
+        type in PERSON_METADATA_CATEGORY_TYPES && (
             mainViewModel.getSongsForArtist(name).isNotEmpty() ||
                 mainViewModel.getReleaseAlbumsForArtist(name).isNotEmpty()
         )
     }
     val hasSameNameComposer = remember(type, name, librarySongs) {
-        type == "lyricist" && mainViewModel.getSongsForMetadataCategory("composer", name).isNotEmpty()
+        type != "composer" && mainViewModel.getSongsForMetadataCategory("composer", name).isNotEmpty()
+    }
+    val hasSameNameArranger = remember(type, name, librarySongs) {
+        type != "arranger" && mainViewModel.getSongsForMetadataCategory("arranger", name).isNotEmpty()
     }
     val hasSameNameLyricist = remember(type, name, librarySongs) {
-        type == "composer" && mainViewModel.getSongsForMetadataCategory("lyricist", name).isNotEmpty()
+        type != "lyricist" && mainViewModel.getSongsForMetadataCategory("lyricist", name).isNotEmpty()
     }
     val pageBackground = ellaPageBackground()
     val folderRootName = stringResource(R.string.folder_root)
@@ -282,6 +286,11 @@ fun MetadataCategoryDetailScreen(
         if (type == "folder") name.folderDisplayName(folderRootName) else name.ifBlank { defaultCategoryTitle }
     }
     val listState = rememberLazyListState()
+    RestoreListScrollAfterSearch(
+        searchExpanded = searchExpanded,
+        query = searchQuery,
+        listState = listState
+    )
     val scope = rememberCoroutineScope()
     val saveScope = context.findComponentActivity()?.lifecycleScope ?: scope
     var fastScrollJob by remember { mutableStateOf<Job?>(null) }
@@ -720,7 +729,7 @@ fun MetadataCategoryDetailScreen(
                         } else {
                             stringResource(R.string.category_song_summary, sortedSongs.size, type.categoryTitle(), sortMode.label())
                         }
-                        if (type == "composer" || type == "lyricist") {
+                        if (type in PERSON_METADATA_CATEGORY_TYPES) {
                             Row(
                                 modifier = Modifier.padding(bottom = 10.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -735,6 +744,12 @@ fun MetadataCategoryDetailScreen(
                                     MetadataDetailLinkChip(
                                         text = stringResource(R.string.category_composer_page),
                                         onClick = { onMetadataCategoryClick("composer", name) }
+                                    )
+                                }
+                                if (hasSameNameArranger) {
+                                    MetadataDetailLinkChip(
+                                        text = stringResource(R.string.category_arranger_page),
+                                        onClick = { onMetadataCategoryClick("arranger", name) }
                                     )
                                 }
                                 if (hasSameNameLyricist) {

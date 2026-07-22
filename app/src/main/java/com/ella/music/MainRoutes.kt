@@ -167,7 +167,7 @@ private fun String?.metadataCategoryType(): String? {
     val parts = route.split('/')
     if (parts.size != 2 || parts[0] != Screen.MetadataCategory.baseRoute) return null
     return parts[1].urlDecode().takeIf { type ->
-        type in setOf("folder", "genre", "year", "composer", "lyricist")
+        type in setOf("folder", "genre", "year", "composer", "arranger", "lyricist")
     }
 }
 

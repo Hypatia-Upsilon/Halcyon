@@ -712,6 +712,7 @@ internal fun DetailPageContent(
         },
         onArtist = { name -> onNavigateToArtist(name) },
         onComposer = { name -> onNavigateToMetadataCategory("composer", name) },
+        onArranger = { name -> onNavigateToMetadataCategory("arranger", name) },
         onLyricist = { name -> onNavigateToMetadataCategory("lyricist", name) },
         onYear = { year -> onNavigateToMetadataCategory("year", year) },
         onGenre = { genre -> onNavigateToMetadataCategory("genre", genre) },

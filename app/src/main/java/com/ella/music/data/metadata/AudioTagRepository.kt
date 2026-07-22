@@ -23,6 +23,7 @@ data class AudioTagInfo(
     val album: String? = null,
     val albumArtist: String? = null,
     val composer: String? = null,
+    val arranger: String? = null,
     val lyricist: String? = null,
     val genre: String? = null,
     val year: String? = null,
@@ -263,7 +264,7 @@ class AudioTagRepository(
     }
 
     private fun AudioTagInfo.hasUsefulTagData(): Boolean =
-        listOf(title, artist, album, albumArtist, composer, lyricist, genre, year, comment, lyrics, copyright, neteaseKey)
+        listOf(title, artist, album, albumArtist, composer, arranger, lyricist, genre, year, comment, lyrics, copyright, neteaseKey)
             .any { !it.isNullOrBlank() } ||
             trackNumber != null ||
             discNumber != null ||
@@ -277,6 +278,7 @@ class AudioTagRepository(
             album = album.takeIf { !it.isNullOrBlank() } ?: other.album,
             albumArtist = albumArtist.takeIf { !it.isNullOrBlank() } ?: other.albumArtist,
             composer = composer.takeIf { !it.isNullOrBlank() } ?: other.composer,
+            arranger = arranger.takeIf { !it.isNullOrBlank() } ?: other.arranger,
             lyricist = lyricist.takeIf { !it.isNullOrBlank() } ?: other.lyricist,
             genre = genre.takeIf { !it.isNullOrBlank() } ?: other.genre,
             year = year.takeIf { !it.isNullOrBlank() } ?: other.year,
@@ -294,6 +296,7 @@ class AudioTagRepository(
             album = album,
             albumArtist = albumArtist,
             composer = composer,
+            arranger = arranger,
             lyricist = lyricist,
             genre = genre,
             year = year,
@@ -336,12 +339,20 @@ class LyricoAudioTagReaderWriter : AudioTagReader, AudioTagWriter {
                 "\\u00a9cmt"
             )
         val resolvedNeteaseKey = raw.bestNeteaseKey(resolvedComment)
+        val resolvedArranger = raw.firstTagValue(
+            "ARRANGER",
+            "ARRANGED BY",
+            "ARRANGEDBY",
+            "ARRANGEMENT",
+            "ARRANGE"
+        )
         AudioTagInfo(
             title = data.title,
             artist = data.artist,
             album = data.album,
             albumArtist = data.albumArtist,
             composer = data.composer,
+            arranger = resolvedArranger,
             lyricist = data.lyricist,
             genre = data.genre,
             year = data.date,
@@ -442,6 +453,7 @@ class LyricoAudioTagReaderWriter : AudioTagReader, AudioTagWriter {
         album?.let { put("ALBUM", it) }
         albumArtist?.let { put("ALBUMARTIST", it) }
         composer?.let { put("COMPOSER", it) }
+        arranger?.let { put("ARRANGER", it) }
         lyricist?.let { put("LYRICIST", it) }
         genre?.let { put("GENRE", it) }
         year?.let { put("DATE", it) }

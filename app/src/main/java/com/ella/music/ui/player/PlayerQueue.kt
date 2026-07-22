@@ -54,6 +54,7 @@ import com.ella.music.data.repository.CoverUsage
 import com.ella.music.data.repository.MusicRepository
 import com.ella.music.ui.components.ArtworkUsage
 import com.ella.music.ui.components.DefaultAlbumCover
+import com.ella.music.ui.components.ExplicitSongTitle
 import com.ella.music.ui.components.SafeCoverImage
 import com.ella.music.ui.components.rememberSongArtworkState
 import kotlinx.coroutines.launch
@@ -314,13 +315,14 @@ internal fun PlayerQueueMenu(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = queueSong.title,
+                                ExplicitSongTitle(
+                                    title = queueSong.title,
                                     fontSize = 13.sp,
                                     fontWeight = if (isCurrentSong) FontWeight.Bold else FontWeight.Medium,
                                     color = if (isCurrentSong) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurface,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                                 Text(
                                     text = queueSong.artist,

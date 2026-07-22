@@ -81,6 +81,7 @@ import com.ella.music.ui.components.LibraryFloatingControlsBottomPadding
 import com.ella.music.ui.components.LibraryFloatingControlsEndPadding
 import com.ella.music.ui.components.LibrarySecondaryFloatingControlsBottomPadding
 import com.ella.music.ui.components.LazyListScrollIndicator
+import com.ella.music.ui.components.RestoreListScrollAfterSearch
 import com.ella.music.ui.components.LocateCurrentSongFloatingButton
 import com.ella.music.ui.components.ShuffleAllFloatingButton
 import com.ella.music.ui.components.SideIndexListEndPadding
@@ -576,6 +577,11 @@ fun FolderDetailScreen(
             }
         } else {
             val listState = remember(normalizedFolderPath) { LazyListState() }
+            RestoreListScrollAfterSearch(
+                searchExpanded = searchExpanded,
+                query = searchQuery,
+                listState = listState
+            )
             var fastScrollJob by remember { mutableStateOf<Job?>(null) }
             LaunchedEffect(scrollToTopRequest) {
                 if (scrollToTopRequest > 0) listState.animateScrollToItem(0)
