@@ -323,6 +323,16 @@ fun ArtistScreen(
         usage = ArtworkUsage.ArtistImage,
         showDefaultWhenMissing = false
     )
+    // The representative song is still chosen by the #266 policy above; only the decoded
+    // source changes here so that the header is no longer capped at the list thumbnail size.
+    val artistOriginalCoverModel by produceState<Any?>(
+        initialValue = artistCoverState.model,
+        representativeCoverSong?.let { listOf(it.playlistIdentityKey(), it.dateModified, it.fileSize).joinToString("|") }
+    ) {
+        value = withContext(Dispatchers.IO) {
+            representativeCoverSong?.let(mainViewModel::getOriginalCoverModel) ?: artistCoverState.model
+        }
+    }
     val customArtistCoverAssets = rememberArtistCoverAssets(
         artistName = artistName,
         folderLocation = artistCoverFolderUri,
@@ -481,7 +491,7 @@ fun ArtistScreen(
             item {
                 ArtistHeader(
                     artistName = artistName,
-                    fallbackCoverModel = artistCoverState.model,
+                    fallbackCoverModel = artistOriginalCoverModel,
                     customCoverAssets = customArtistCoverAssets,
                     dynamicCoverEnabled = dynamicCoverEnabled,
                     carousel = artistCoverCarousel,

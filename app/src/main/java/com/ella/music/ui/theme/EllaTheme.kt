@@ -10,6 +10,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalContext
 import com.ella.music.ui.settings.SYSTEM_FONT_PATH
+import com.ella.music.ui.components.loadAndroidTypeface
 import java.io.File
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -115,10 +116,7 @@ private fun isXiaomiFamilyDevice(): Boolean {
 
 private fun String.toCustomAppFontFamily(weight: Int): FontFamily? {
     if (isBlank() || this == SYSTEM_FONT_PATH) return null
-    val file = File(this)
-    if (!file.exists() || !file.canRead()) return null
     return runCatching {
-        val typeface = Typeface.create(Typeface.createFromFile(file), weight.coerceIn(100, 900), false)
-        FontFamily(typeface)
+        FontFamily(loadAndroidTypeface(this, weight.coerceIn(100, 900), italic = false, boldFallback = false))
     }.getOrNull()
 }

@@ -316,6 +316,7 @@ internal fun FloatingBottomControls(
                     compareByDescending<com.ella.music.data.model.UserPlaylist> { it.id == FAVORITES_PLAYLIST_ID }
                         .thenByDescending { it.createdAt }
                 ),
+                songsToAdd = songsToAdd,
                 onDismiss = { queueSongsToAdd = null },
                 onCreatePlaylist = {
                     queueSongsForNewPlaylist = songsToAdd

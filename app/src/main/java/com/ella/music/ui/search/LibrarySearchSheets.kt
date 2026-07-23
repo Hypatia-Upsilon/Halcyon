@@ -162,6 +162,7 @@ internal fun LibrarySearchAuxiliarySurfaces(
         ) {
             AddToPlaylistSheet(
                 playlists = playlists,
+                songsToAdd = songsToAdd,
                 songCount = songsToAdd.size,
                 onDismiss = { onPlaylistPickerSongsChange(null) },
                 onCreatePlaylist = {

@@ -279,6 +279,18 @@ class SettingsManager(private val context: Context) {
         val KEY_LYRIC_WESTERN_FONT_PATH = stringPreferencesKey("lyric_western_font_path")
         val KEY_LYRIC_CJK_FONT_NAME = stringPreferencesKey("lyric_cjk_font_name")
         val KEY_LYRIC_CJK_FONT_PATH = stringPreferencesKey("lyric_cjk_font_path")
+        val KEY_GLOBAL_WESTERN_FONT_NAME = stringPreferencesKey("global_western_font_name")
+        val KEY_GLOBAL_WESTERN_FONT_PATH = stringPreferencesKey("global_western_font_path")
+        val KEY_GLOBAL_CJK_FONT_NAME = stringPreferencesKey("global_cjk_font_name")
+        val KEY_GLOBAL_CJK_FONT_PATH = stringPreferencesKey("global_cjk_font_path")
+        val KEY_LYRIC_ORIGINAL_WESTERN_FONT_NAME = stringPreferencesKey("lyric_original_western_font_name")
+        val KEY_LYRIC_ORIGINAL_WESTERN_FONT_PATH = stringPreferencesKey("lyric_original_western_font_path")
+        val KEY_LYRIC_ORIGINAL_CJK_FONT_NAME = stringPreferencesKey("lyric_original_cjk_font_name")
+        val KEY_LYRIC_ORIGINAL_CJK_FONT_PATH = stringPreferencesKey("lyric_original_cjk_font_path")
+        val KEY_LYRIC_TRANSLATION_WESTERN_FONT_NAME = stringPreferencesKey("lyric_translation_western_font_name")
+        val KEY_LYRIC_TRANSLATION_WESTERN_FONT_PATH = stringPreferencesKey("lyric_translation_western_font_path")
+        val KEY_LYRIC_TRANSLATION_CJK_FONT_NAME = stringPreferencesKey("lyric_translation_cjk_font_name")
+        val KEY_LYRIC_TRANSLATION_CJK_FONT_PATH = stringPreferencesKey("lyric_translation_cjk_font_path")
         val KEY_LYRIC_FONT_WEIGHT = intPreferencesKey("lyric_font_weight")
         val KEY_LYRIC_FONT_SCALE = intPreferencesKey("lyric_font_scale")
         val KEY_LYRIC_SECONDARY_FONT_SCALE = intPreferencesKey("lyric_secondary_font_scale")
@@ -296,6 +308,10 @@ class SettingsManager(private val context: Context) {
         val KEY_USB_FOLDER_URIS = stringPreferencesKey("usb_folder_uris")
         val KEY_USE_ANDROID_MEDIA_LIBRARY = booleanPreferencesKey("use_android_media_library")
         val KEY_FULL_TAG_SEARCH_ENABLED = booleanPreferencesKey("full_tag_search_enabled")
+        val KEY_FULL_TAG_SEARCH_PROMPT_HANDLED = booleanPreferencesKey("full_tag_search_prompt_handled")
+        val KEY_COVER_EXPORT_FOLDER_URI = stringPreferencesKey("cover_export_folder_uri")
+        val KEY_SEARCH_ALL_CATEGORY_TYPES = stringPreferencesKey("search_all_category_types")
+        val KEY_SONG_RATING_DISPLAY_MODE = intPreferencesKey("song_rating_display_mode")
         val KEY_INITIAL_SCAN_PROMPT_HANDLED = booleanPreferencesKey("initial_scan_prompt_handled")
         val KEY_LOCAL_PLAYLIST_SCAN_PROMPT_HANDLED = booleanPreferencesKey("local_playlist_scan_prompt_handled")
         val KEY_ARTIST_SEPARATORS = stringPreferencesKey("artist_separators")
@@ -502,6 +518,9 @@ class SettingsManager(private val context: Context) {
         const val LYRIC_SECONDARY_PRONUNCIATION = 2
         const val MINI_PLAYER_RIGHT_NEXT = 0
         const val MINI_PLAYER_RIGHT_QUEUE = 1
+        const val SONG_RATING_DISPLAY_STAR_NUMBER = 0
+        const val SONG_RATING_DISPLAY_STARS = 1
+        val SEARCH_ALL_CATEGORY_TYPES = setOf("folder", "composer", "arranger", "lyricist", "genre", "year")
 
         const val DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"
         const val DEFAULT_OPENAI_MODEL = "gpt-4.1-mini"
@@ -1177,6 +1196,18 @@ class SettingsManager(private val context: Context) {
     val lyricWesternFontPath: Flow<String> = context.dataStore.data.map { it[KEY_LYRIC_WESTERN_FONT_PATH] ?: "" }
     val lyricCjkFontName: Flow<String> = context.dataStore.data.map { it[KEY_LYRIC_CJK_FONT_NAME] ?: "" }
     val lyricCjkFontPath: Flow<String> = context.dataStore.data.map { it[KEY_LYRIC_CJK_FONT_PATH] ?: "" }
+    val globalWesternFontName: Flow<String> = context.dataStore.data.map { it[KEY_GLOBAL_WESTERN_FONT_NAME] ?: "" }
+    val globalWesternFontPath: Flow<String> = context.dataStore.data.map { it[KEY_GLOBAL_WESTERN_FONT_PATH] ?: "" }
+    val globalCjkFontName: Flow<String> = context.dataStore.data.map { it[KEY_GLOBAL_CJK_FONT_NAME] ?: "" }
+    val globalCjkFontPath: Flow<String> = context.dataStore.data.map { it[KEY_GLOBAL_CJK_FONT_PATH] ?: "" }
+    val lyricOriginalWesternFontName: Flow<String> = context.dataStore.data.map { it[KEY_LYRIC_ORIGINAL_WESTERN_FONT_NAME] ?: "" }
+    val lyricOriginalWesternFontPath: Flow<String> = context.dataStore.data.map { it[KEY_LYRIC_ORIGINAL_WESTERN_FONT_PATH] ?: "" }
+    val lyricOriginalCjkFontName: Flow<String> = context.dataStore.data.map { it[KEY_LYRIC_ORIGINAL_CJK_FONT_NAME] ?: "" }
+    val lyricOriginalCjkFontPath: Flow<String> = context.dataStore.data.map { it[KEY_LYRIC_ORIGINAL_CJK_FONT_PATH] ?: "" }
+    val lyricTranslationWesternFontName: Flow<String> = context.dataStore.data.map { it[KEY_LYRIC_TRANSLATION_WESTERN_FONT_NAME] ?: "" }
+    val lyricTranslationWesternFontPath: Flow<String> = context.dataStore.data.map { it[KEY_LYRIC_TRANSLATION_WESTERN_FONT_PATH] ?: "" }
+    val lyricTranslationCjkFontName: Flow<String> = context.dataStore.data.map { it[KEY_LYRIC_TRANSLATION_CJK_FONT_NAME] ?: "" }
+    val lyricTranslationCjkFontPath: Flow<String> = context.dataStore.data.map { it[KEY_LYRIC_TRANSLATION_CJK_FONT_PATH] ?: "" }
     val lyricFontWeight: Flow<Int> = context.dataStore.data.map { it[KEY_LYRIC_FONT_WEIGHT] ?: 800 }
     val lyricFontScale: Flow<Int> = context.dataStore.data.map {
         (it[KEY_LYRIC_FONT_SCALE] ?: 100).coerceIn(LYRIC_FONT_SCALE_MIN, LYRIC_FONT_SCALE_ULTRA_WIDE_MAX)
@@ -1215,7 +1246,18 @@ class SettingsManager(private val context: Context) {
     val useAndroidMediaLibrary: Flow<Boolean> =
         context.dataStore.data.map { it[KEY_USE_ANDROID_MEDIA_LIBRARY] ?: true }
     val fullTagSearchEnabled: Flow<Boolean> =
-        context.dataStore.data.map { it[KEY_FULL_TAG_SEARCH_ENABLED] ?: true }
+        context.dataStore.data.map { it[KEY_FULL_TAG_SEARCH_ENABLED] ?: false }
+    val fullTagSearchPromptHandled: Flow<Boolean> =
+        context.dataStore.data.map { it[KEY_FULL_TAG_SEARCH_PROMPT_HANDLED] ?: false }
+    val coverExportFolderUri: Flow<String> =
+        context.dataStore.data.map { it[KEY_COVER_EXPORT_FOLDER_URI] ?: "" }
+    val searchAllCategoryTypes: Flow<Set<String>> = context.dataStore.data.map {
+        parseSearchAllCategoryTypes(it[KEY_SEARCH_ALL_CATEGORY_TYPES])
+    }
+    val songRatingDisplayMode: Flow<Int> = context.dataStore.data.map {
+        (it[KEY_SONG_RATING_DISPLAY_MODE] ?: SONG_RATING_DISPLAY_STAR_NUMBER)
+            .coerceIn(SONG_RATING_DISPLAY_STAR_NUMBER, SONG_RATING_DISPLAY_STARS)
+    }
     val listeningHistorySource: Flow<Int> = context.dataStore.data.map {
         (it[KEY_LISTENING_HISTORY_SOURCE] ?: LISTENING_HISTORY_SOURCE_LOCAL)
             .coerceIn(LISTENING_HISTORY_SOURCE_LOCAL, LISTENING_HISTORY_SOURCE_COMBINED)
@@ -2218,6 +2260,33 @@ class SettingsManager(private val context: Context) {
         }
     }
 
+    suspend fun setGlobalFont(westernName: String, westernPath: String, cjkName: String, cjkPath: String) {
+        context.dataStore.edit {
+            it[KEY_GLOBAL_WESTERN_FONT_NAME] = westernName
+            it[KEY_GLOBAL_WESTERN_FONT_PATH] = westernPath
+            it[KEY_GLOBAL_CJK_FONT_NAME] = cjkName
+            it[KEY_GLOBAL_CJK_FONT_PATH] = cjkPath
+        }
+    }
+
+    suspend fun setLyricOriginalFont(westernName: String, westernPath: String, cjkName: String, cjkPath: String) {
+        context.dataStore.edit {
+            it[KEY_LYRIC_ORIGINAL_WESTERN_FONT_NAME] = westernName
+            it[KEY_LYRIC_ORIGINAL_WESTERN_FONT_PATH] = westernPath
+            it[KEY_LYRIC_ORIGINAL_CJK_FONT_NAME] = cjkName
+            it[KEY_LYRIC_ORIGINAL_CJK_FONT_PATH] = cjkPath
+        }
+    }
+
+    suspend fun setLyricTranslationFont(westernName: String, westernPath: String, cjkName: String, cjkPath: String) {
+        context.dataStore.edit {
+            it[KEY_LYRIC_TRANSLATION_WESTERN_FONT_NAME] = westernName
+            it[KEY_LYRIC_TRANSLATION_WESTERN_FONT_PATH] = westernPath
+            it[KEY_LYRIC_TRANSLATION_CJK_FONT_NAME] = cjkName
+            it[KEY_LYRIC_TRANSLATION_CJK_FONT_PATH] = cjkPath
+        }
+    }
+
     suspend fun setLyricFontWeight(weight: Int) {
         context.dataStore.edit { it[KEY_LYRIC_FONT_WEIGHT] = weight.coerceIn(100, 900) }
     }
@@ -2516,6 +2585,33 @@ class SettingsManager(private val context: Context) {
         context.dataStore.edit { it[KEY_FULL_TAG_SEARCH_ENABLED] = enabled }
     }
 
+    suspend fun setFullTagSearchPromptHandled(handled: Boolean) {
+        context.dataStore.edit { it[KEY_FULL_TAG_SEARCH_PROMPT_HANDLED] = handled }
+    }
+
+    suspend fun setCoverExportFolderUri(uri: String) {
+        context.dataStore.edit { it[KEY_COVER_EXPORT_FOLDER_URI] = uri.trim() }
+    }
+
+    suspend fun setSearchAllCategoryTypeEnabled(type: String, enabled: Boolean) {
+        val normalized = type.trim().lowercase()
+        if (normalized !in SEARCH_ALL_CATEGORY_TYPES) return
+        context.dataStore.edit { prefs ->
+            val current = parseSearchAllCategoryTypes(prefs[KEY_SEARCH_ALL_CATEGORY_TYPES])
+            val next = if (enabled) current + normalized else current - normalized
+            prefs[KEY_SEARCH_ALL_CATEGORY_TYPES] = next.sorted().joinToString(",")
+        }
+    }
+
+    suspend fun setSongRatingDisplayMode(mode: Int) {
+        context.dataStore.edit {
+            it[KEY_SONG_RATING_DISPLAY_MODE] = mode.coerceIn(
+                SONG_RATING_DISPLAY_STAR_NUMBER,
+                SONG_RATING_DISPLAY_STARS
+            )
+        }
+    }
+
     suspend fun setListeningHistorySource(source: Int) {
         context.dataStore.edit {
             it[KEY_LISTENING_HISTORY_SOURCE] = source.coerceIn(
@@ -2617,6 +2713,7 @@ class SettingsManager(private val context: Context) {
             setBoolean(KEY_LYRIC_FONT_APPLY_TO_DESKTOP)
             setBoolean(KEY_LYRIC_PERSPECTIVE_EFFECT)
             setBoolean(KEY_FULL_TAG_SEARCH_ENABLED)
+            setBoolean(KEY_FULL_TAG_SEARCH_PROMPT_HANDLED)
             setBoolean(KEY_MINI_PLAYER_LYRIC_TRANSLATION)
             setBoolean(KEY_MINI_PLAYER_COVER_ROTATION)
             setBoolean(KEY_MINI_PLAYER_LYRICS_ENABLED)
@@ -2760,6 +2857,7 @@ class SettingsManager(private val context: Context) {
             setInt(KEY_PLAYER_BEAUTIFUL_LYRICS_BRIGHTNESS)
             setInt(KEY_WEBDAV_AUTO_BACKUP_INTERVAL_HOURS)
             setInt(KEY_LISTENING_HISTORY_SOURCE)
+            setInt(KEY_SONG_RATING_DISPLAY_MODE)
 
             val dynamicSortKeyPrefixes = listOf(
                 "sort_metadata_category_",
@@ -2814,6 +2912,18 @@ class SettingsManager(private val context: Context) {
             setString(KEY_LYRIC_WESTERN_FONT_PATH)
             setString(KEY_LYRIC_CJK_FONT_NAME)
             setString(KEY_LYRIC_CJK_FONT_PATH)
+            setString(KEY_GLOBAL_WESTERN_FONT_NAME)
+            setString(KEY_GLOBAL_WESTERN_FONT_PATH)
+            setString(KEY_GLOBAL_CJK_FONT_NAME)
+            setString(KEY_GLOBAL_CJK_FONT_PATH)
+            setString(KEY_LYRIC_ORIGINAL_WESTERN_FONT_NAME)
+            setString(KEY_LYRIC_ORIGINAL_WESTERN_FONT_PATH)
+            setString(KEY_LYRIC_ORIGINAL_CJK_FONT_NAME)
+            setString(KEY_LYRIC_ORIGINAL_CJK_FONT_PATH)
+            setString(KEY_LYRIC_TRANSLATION_WESTERN_FONT_NAME)
+            setString(KEY_LYRIC_TRANSLATION_WESTERN_FONT_PATH)
+            setString(KEY_LYRIC_TRANSLATION_CJK_FONT_NAME)
+            setString(KEY_LYRIC_TRANSLATION_CJK_FONT_PATH)
             setString(KEY_LYRIC_SHARE_CUSTOM_INFO)
             setString(KEY_STARTUP_POSTER_URI)
             setString(KEY_APP_WALLPAPER_URI)
@@ -2847,6 +2957,8 @@ class SettingsManager(private val context: Context) {
             setString(KEY_EQ_BANDS)
             setString(KEY_DYNAMIC_COVER_CUSTOM_FOLDERS)
             setString(KEY_ARTIST_COVER_FOLDER_URI)
+            setString(KEY_COVER_EXPORT_FOLDER_URI)
+            setString(KEY_SEARCH_ALL_CATEGORY_TYPES)
 
             fun clearMissingCustomImage(
                 enabledKey: Preferences.Key<Boolean>,
@@ -2925,6 +3037,15 @@ class SettingsManager(private val context: Context) {
             .filter { it.isNotBlank() }
             .distinct()
             .joinToString("\n")
+
+    private fun parseSearchAllCategoryTypes(raw: String?): Set<String> {
+        val saved = raw.orEmpty()
+            .split(',')
+            .map { it.trim().lowercase() }
+            .filter { it in SEARCH_ALL_CATEGORY_TYPES }
+            .toSet()
+        return if (raw == null) SEARCH_ALL_CATEGORY_TYPES else saved
+    }
 
     suspend fun setDecoderMode(mode: Int) {
         context.dataStore.edit { it[KEY_DECODER_MODE] = mode.coerceIn(0, 2) }

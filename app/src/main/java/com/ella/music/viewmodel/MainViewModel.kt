@@ -172,7 +172,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _selectedTab.value = index
     }
 
-    fun scanMusic(fullRescan: Boolean = false, deepRescan: Boolean = fullRescan) {
+    fun scanMusic(fullRescan: Boolean = false, deepRescan: Boolean? = null) {
         if (scanJob?.isActive == true || isScanning.value) return
         scanJob = viewModelScope.launch {
             awaitCachedLibraryRestoreBeforeScanning()
@@ -182,7 +182,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 loadRemoteLibrarySource(source, forceRefresh = true)
                 return@launch
             }
-            scanFromCurrentSettings(fullRescan = fullRescan, deepRescan = deepRescan)
+            val effectiveDeepRescan = deepRescan ?: (fullRescan || settingsManager.fullTagSearchEnabled.first())
+            scanFromCurrentSettings(fullRescan = fullRescan, deepRescan = effectiveDeepRescan)
         }
     }
 
@@ -506,6 +507,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun getAlbumCoverArtBitmap(song: Song) = repository.getCoverArtBitmap(song, 512, CoverUsage.AlbumGrid)
 
     fun getLargeCoverArtBitmap(song: Song) = repository.getCoverArtBitmap(song, 1200, CoverUsage.Player)
+
+    fun getOriginalCoverModel(song: Song): Any? = repository.getOriginalCoverModel(song)
 
     fun getMetadataEditorCoverArtBitmap(song: Song) = repository.getCoverArtBitmap(song, 1600, CoverUsage.Player)
 

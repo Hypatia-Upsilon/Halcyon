@@ -73,6 +73,7 @@ internal fun Song.dynamicCoverResolutionKey(): String =
 internal fun DynamicCoverVideo(
     source: DynamicCoverSource,
     isPlaying: Boolean,
+    playAudio: Boolean = false,
     onPlaybackError: () -> Unit,
     modifier: Modifier = Modifier,
     cornerRadiusDp: Float = 14f,
@@ -108,7 +109,8 @@ internal fun DynamicCoverVideo(
     val exoPlayer = remember(playbackMemoryKey) {
         ExoPlayer.Builder(context).build().apply {
             repeatMode = Media3Player.REPEAT_MODE_ALL
-            volume = 0f
+            // Dynamic covers stay silent, while an explicitly selected MV owns its own audio.
+            volume = if (playAudio) 1f else 0f
             setMediaItem(MediaItem.fromUri(source.uri))
             prepare()
             if (initialPositionMs > 0L) seekTo(initialPositionMs)
@@ -153,7 +155,8 @@ internal fun DynamicCoverVideo(
         }
     }
 
-    DisposableEffect(isPlaying, exoPlayer) {
+    DisposableEffect(isPlaying, playAudio, exoPlayer) {
+        exoPlayer.volume = if (playAudio) 1f else 0f
         exoPlayer.playWhenReady = isPlaying
         onDispose { }
     }
@@ -192,6 +195,7 @@ internal fun DynamicCoverVideo(
             view.setShutterBackgroundColor(Color.TRANSPARENT)
             view.clipToOutline = true
             view.hideController()
+            exoPlayer.volume = if (playAudio) 1f else 0f
             exoPlayer.playWhenReady = isPlaying
         }
     )

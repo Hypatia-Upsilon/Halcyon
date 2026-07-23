@@ -120,10 +120,12 @@ internal fun ExplicitSongTitle(
             overflow = overflow,
             textAlign = textAlign,
             softWrap = softWrap,
-            modifier = titleModifier.weight(1f)
+            // Leave only the title's measured width before the badge, rather than pushing E
+            // to the far edge of every row.
+            modifier = titleModifier.weight(1f, fill = false)
         )
         if (presentation.isExplicit) {
-            Spacer(modifier = Modifier.width(5.dp))
+            Spacer(modifier = Modifier.width(2.dp))
             ExplicitBadge(contentColor = color)
         }
     }

@@ -39,6 +39,8 @@ import androidx.compose.ui.unit.sp
 import com.ella.music.R
 import com.ella.music.data.SettingsManager
 import com.ella.music.data.model.UserPlaylist
+import com.ella.music.data.model.Song
+import com.ella.music.data.model.playlistIdentityKey
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.BasicComponent
@@ -48,6 +50,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 @Composable
 fun AddToPlaylistSheet(
     playlists: List<UserPlaylist>,
+    songsToAdd: List<Song> = emptyList(),
     songCount: Int? = null,
     onDismiss: () -> Unit,
     onCreatePlaylist: () -> Unit,
@@ -78,6 +81,7 @@ fun AddToPlaylistSheet(
         } ?: sortedPlaylists
     }
     val selectedPlaylists = writablePlaylists.filter { it.id in selectedIds }
+    val targetSongKeys = remember(songsToAdd) { songsToAdd.mapTo(mutableSetOf()) { it.playlistIdentityKey() } }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -183,9 +187,12 @@ fun AddToPlaylistSheet(
             ) {
                 items(visiblePlaylists, key = { it.id }) { playlist ->
                     val selected = playlist.id in selectedIds
+                    val alreadyContainsAll = targetSongKeys.isNotEmpty() &&
+                        targetSongKeys.all { targetKey -> playlist.songs.any { it.key == targetKey } }
                     AddToPlaylistRow(
                         playlist = playlist,
                         selected = selected,
+                        enabled = !alreadyContainsAll,
                         onClick = {
                             if (multiSelect) {
                                 selectedIds = if (selected) {
@@ -228,6 +235,7 @@ fun AddToPlaylistSheet(
 private fun AddToPlaylistRow(
     playlist: UserPlaylist,
     selected: Boolean,
+    enabled: Boolean,
     onClick: () -> Unit
 ) {
     val coverModel = remember(playlist.id, playlist.songs) { playlist.coverModel() }
@@ -235,7 +243,7 @@ private fun AddToPlaylistRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 6.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -264,14 +272,14 @@ private fun AddToPlaylistRow(
             Text(
                 text = playlist.name,
                 fontSize = 15.sp,
-                color = MiuixTheme.colorScheme.onSurface,
+                color = if (enabled) MiuixTheme.colorScheme.onSurface else MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.55f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = stringResource(R.string.song_count, playlist.songs.size),
                 fontSize = 12.sp,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = if (enabled) 1f else 0.55f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

@@ -357,8 +357,9 @@ fun FolderScreen(
                 onDismissRequest = { playlistPickerSongs = null }
             ) {
                 AddToPlaylistSheet(
-                    playlists = playlists,
-                    songCount = songsToAdd.size,
+                playlists = playlists,
+                songsToAdd = songsToAdd,
+                songCount = songsToAdd.size,
                     onDismiss = { playlistPickerSongs = null },
                     onCreatePlaylist = {
                         createPlaylistSongs = songsToAdd

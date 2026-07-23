@@ -67,6 +67,10 @@ fun LibrarySearchScreen(
     val showAlbumArtists by settingsManager.showAlbumArtists.collectAsState(initial = true)
     val artistCoverFolderUri by settingsManager.artistCoverFolderUri.collectAsState(initial = "")
     val fullTagSearchEnabled by settingsManager.fullTagSearchEnabled.collectAsState(initial = true)
+    val songRatingDisplayMode by settingsManager.songRatingDisplayMode.collectAsState(
+        initial = SettingsManager.SONG_RATING_DISPLAY_STAR_NUMBER
+    )
+    val searchAllCategoryTypes by settingsManager.searchAllCategoryTypes.collectAsState(initial = SettingsManager.SEARCH_ALL_CATEGORY_TYPES)
     val scanExcludeFolders by settingsManager.scanExcludeFolders.collectAsState(initial = "")
     val blockedFolders = remember(scanExcludeFolders) { scanExcludeFolders.toFolderSettingList() }
     var query by rememberSaveable(initialQuery) { mutableStateOf(initialQuery.orEmpty()) }
@@ -207,9 +211,9 @@ fun LibrarySearchScreen(
         saveCachedSongSearchResults(context, trimmedQuery, filter, current)
     }
 
-    val requestedCategoryTypes = remember(filter) {
+    val requestedCategoryTypes = remember(filter, searchAllCategoryTypes) {
         when (filter) {
-            SearchFilter.All -> listOf("folder", "composer", "arranger", "lyricist", "genre", "year")
+            SearchFilter.All -> searchAllCategoryTypes.sorted()
             SearchFilter.Folders -> listOf("folder")
             SearchFilter.Composers -> listOf("composer")
             SearchFilter.Arrangers -> listOf("arranger")
@@ -581,6 +585,7 @@ fun LibrarySearchScreen(
             libraryCacheLoaded = libraryCacheLoaded,
             currentSong = currentSong,
             showPlayNextInLists = showPlayNextInLists,
+            songRatingDisplayMode = songRatingDisplayMode,
             excludeSearchResultsFromPlaylist = excludeSearchResultsFromPlaylist,
             filter = filter,
             trimmedQuery = trimmedQuery,

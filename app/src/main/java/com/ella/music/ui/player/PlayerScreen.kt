@@ -178,8 +178,9 @@ fun PlayerScreen(
     val playerKeepScreenOn = playerSettings.playerKeepScreenOn
     val lyricSourceMode = playerSettings.lyricSourceMode
     val lyricFontState = rememberPlayerLyricFontState(context, settingsManager)
-    val lyricFontFamily = lyricFontState.fontFamily
-    val effectiveLyricFontPath = lyricFontState.fontPath
+    val lyricFontFamily = lyricFontState.originalFontFamily
+    val lyricTranslationFontFamily = lyricFontState.translationFontFamily
+    val effectiveLyricFontPath = lyricFontState.originalFontPath
     val lyricFontWeight = lyricFontState.fontWeight
     val lyricLayoutProfile = remember(
         configuration.screenWidthDp,
@@ -277,6 +278,9 @@ fun PlayerScreen(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
+            uiState.resumeMusicAfterVideo = isPlaying
+            uiState.startMusicVideoPlaying = isPlaying
+            if (isPlaying) playerViewModel.pauseForMusicVideo()
             uiState.musicVideoVisible = true
         } else {
             Toast.makeText(
@@ -439,7 +443,12 @@ fun PlayerScreen(
         }
     }
     LaunchedEffect(song?.dynamicCoverResolutionKey()) {
+        if (uiState.musicVideoVisible && uiState.resumeMusicAfterVideo) {
+            playerViewModel.resumeAfterMusicVideo()
+        }
         uiState.musicVideoVisible = false
+        uiState.resumeMusicAfterVideo = false
+        uiState.startMusicVideoPlaying = false
         // Clear all remembered video positions so the next/previous song's MV or
         // dynamic cover starts from the beginning instead of resuming a stale position.
         DynamicCoverPlaybackMemory.clearAll()
@@ -566,6 +575,7 @@ fun PlayerScreen(
                         dynamicCoverEnabled = dynamicCoverEnabled,
                         dynamicCoverCustomFolders = dynamicCoverCustomFolders,
                         musicVideoVisible = uiState.musicVideoVisible,
+                        musicVideoInitialPlaying = uiState.startMusicVideoPlaying,
                         onMusicVideoVisibleChange = { visible ->
                             val needsVideoPermission = visible &&
                                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -573,6 +583,15 @@ fun PlayerScreen(
                             if (needsVideoPermission) {
                                 musicVideoPermissionLauncher.launch(Manifest.permission.READ_MEDIA_VIDEO)
                             } else {
+                                if (visible) {
+                                    uiState.resumeMusicAfterVideo = isPlaying
+                                    uiState.startMusicVideoPlaying = isPlaying
+                                    if (isPlaying) playerViewModel.pauseForMusicVideo()
+                                } else if (uiState.resumeMusicAfterVideo) {
+                                    playerViewModel.resumeAfterMusicVideo()
+                                    uiState.resumeMusicAfterVideo = false
+                                    uiState.startMusicVideoPlaying = false
+                                }
                                 uiState.musicVideoVisible = visible
                             }
                         },
@@ -607,6 +626,7 @@ fun PlayerScreen(
                         lyricParserEngine = lyricParserEngine,
                         lyricLayoutProfile = lyricLayoutProfile,
                         lyricFontFamily = lyricFontFamily,
+                        lyricTranslationFontFamily = lyricTranslationFontFamily,
                         effectiveLyricFontPath = effectiveLyricFontPath,
                         lyricFontWeight = lyricFontWeight,
                         lyricFontScale = lyricFontScale,
@@ -648,7 +668,15 @@ fun PlayerScreen(
                         onPlayerKeepScreenOnChange = {
                             scope.launch { settingsManager.setPlayerKeepScreenOn(it) }
                         },
-                        onDynamicCoverFailedPathChange = { uiState.dynamicCoverFailedPath = it },
+                        onDynamicCoverFailedPathChange = {
+                            uiState.dynamicCoverFailedPath = it
+                            if (uiState.musicVideoVisible) {
+                                uiState.musicVideoVisible = false
+                                if (uiState.resumeMusicAfterVideo) playerViewModel.resumeAfterMusicVideo()
+                                uiState.resumeMusicAfterVideo = false
+                                uiState.startMusicVideoPlaying = false
+                            }
+                        },
                         onDynamicCoverSheetSongChange = { uiState.dynamicCoverSheetSong = it },
                         onPlaylistPickerSongChange = { uiState.playlistPickerSong = it },
                         onPlaylistPickerSongsChange = { uiState.playlistPickerSongs = it },
@@ -692,6 +720,7 @@ fun PlayerScreen(
                         lyricParserEngine = lyricParserEngine,
                         lyricLayoutProfile = lyricLayoutProfile,
                         lyricFontFamily = lyricFontFamily,
+                        lyricTranslationFontFamily = lyricTranslationFontFamily,
                         effectiveLyricFontPath = effectiveLyricFontPath,
                         lyricFontWeight = lyricFontWeight,
                         lyricFontScale = lyricFontScale,
@@ -783,6 +812,7 @@ fun PlayerScreen(
                 showPronunciation = showLyricPronunciation,
                 appleMusicWordLiftEnabled = appleMusicLyricsWordLift,
                 fontFamily = lyricFontFamily,
+                translationFontFamily = lyricTranslationFontFamily,
                 fontPath = effectiveLyricFontPath,
                 fontWeight = lyricFontWeight,
                 fontScale = lyricFontScale,

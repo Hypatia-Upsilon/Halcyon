@@ -1806,4 +1806,26 @@
 
     <string name="miui_uninstall_title">Deja un au revoir ?</string>
     <string name="miui_uninstall_content">Merci d\'avoir fait ce bout de chemin avec Halcyon.</string>
+    <string name="settings_font_global_western">Police globale (principale)</string>
+    <string name="settings_font_global_cjk">Police globale (secours CJK)</string>
+    <string name="settings_font_original_western">Paroles originales (principale)</string>
+    <string name="settings_font_original_cjk">Paroles originales (secours CJK)</string>
+    <string name="settings_font_translation_western">Traduction (principale)</string>
+    <string name="settings_font_translation_cjk">Traduction (secours CJK)</string>
+    <string name="full_tag_search_prompt_title">Activer la recherche complete ?</string>
+    <string name="full_tag_search_prompt_message">Elle recherche plus de metadonnees, mais ralentit l analyse. La recherche basique utilise l analyse rapide.</string>
+    <string name="full_tag_search_prompt_basic">Utiliser la recherche rapide</string>
+    <string name="full_tag_search_prompt_enable">Activer la recherche complete</string>
+    <string name="settings_cover_export_folder">Dossier des pochettes</string>
+    <string name="settings_cover_export_folder_summary">Choisir le dossier des pochettes enregistrees</string>
+    <string name="settings_cover_export_folder_selected">Dossier personnalise selectionne</string>
+    <string name="settings_cover_export_folder_saved">Dossier des pochettes mis a jour</string>
+    <string name="settings_cover_export_folder_remove">Effacer le dossier des pochettes</string>
+    <string name="settings_cover_export_folder_remove_summary">Enregistrer les prochaines pochettes dans Pictures/Halcyon</string>
+    <string name="settings_cover_export_folder_cleared">Dossier des pochettes efface</string>
+    <string name="settings_search_all_categories">Categories dans l onglet Tout</string>
+    <string name="settings_search_all_categories_summary">Affecte uniquement les categories de l onglet Tout.</string>
+    <string name="settings_song_rating_display_stars">Afficher les notes en etoiles</string>
+    <string name="settings_song_rating_display_stars_summary">Afficher une etoile par point de note</string>
+    <string name="settings_song_rating_display_number_summary">Afficher une etoile et le nombre de la note</string>
 </resources>

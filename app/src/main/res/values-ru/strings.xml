@@ -1793,4 +1793,26 @@
 
     <string name="miui_uninstall_title">Уже прощаемся?</string>
     <string name="miui_uninstall_content">Спасибо, что прошёл этот путь с Halcyon.</string>
+    <string name="settings_font_global_western">Общий шрифт (основной)</string>
+    <string name="settings_font_global_cjk">Общий шрифт (резервный CJK)</string>
+    <string name="settings_font_original_western">Оригинальный текст (основной)</string>
+    <string name="settings_font_original_cjk">Оригинальный текст (резервный CJK)</string>
+    <string name="settings_font_translation_western">Перевод (основной)</string>
+    <string name="settings_font_translation_cjk">Перевод (резервный CJK)</string>
+    <string name="full_tag_search_prompt_title">Включить полный поиск?</string>
+    <string name="full_tag_search_prompt_message">Он ищет больше метаданных, но замедляет сканирование. Базовый поиск использует быстрый скан.</string>
+    <string name="full_tag_search_prompt_basic">Использовать быстрый базовый поиск</string>
+    <string name="full_tag_search_prompt_enable">Включить полный поиск</string>
+    <string name="settings_cover_export_folder">Папка сохранения обложек</string>
+    <string name="settings_cover_export_folder_summary">Выберите папку для сохраненных обложек</string>
+    <string name="settings_cover_export_folder_selected">Выбрана пользовательская папка</string>
+    <string name="settings_cover_export_folder_saved">Папка обложек обновлена</string>
+    <string name="settings_cover_export_folder_remove">Очистить папку обложек</string>
+    <string name="settings_cover_export_folder_remove_summary">Сохранять новые обложки в Pictures/Halcyon</string>
+    <string name="settings_cover_export_folder_cleared">Папка обложек очищена</string>
+    <string name="settings_search_all_categories">Категории песен во вкладке Все</string>
+    <string name="settings_search_all_categories_summary">Влияет только на категории песен во вкладке Все.</string>
+    <string name="settings_song_rating_display_stars">Показывать рейтинг звездами</string>
+    <string name="settings_song_rating_display_stars_summary">Показывать звезду за каждый балл</string>
+    <string name="settings_song_rating_display_number_summary">Показывать звезду и число рейтинга</string>
 </resources>

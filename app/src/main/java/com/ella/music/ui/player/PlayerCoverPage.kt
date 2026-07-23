@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
@@ -76,6 +77,7 @@ internal fun CoverPlayerPage(
     dynamicCoverEnabled: Boolean,
     dynamicCoverCustomFolders: List<String>,
     musicVideoVisible: Boolean,
+    musicVideoInitialPlaying: Boolean,
     immersiveAlbumCover: Boolean,
     playerBackgroundEnabled: Boolean,
     playerBackgroundUri: String,
@@ -107,6 +109,7 @@ internal fun CoverPlayerPage(
     lyricParserEngine: Int,
     lyricLayoutProfile: PlayerLyricLayoutProfile,
     fontFamily: FontFamily?,
+    translationFontFamily: FontFamily? = fontFamily,
     fontPath: String,
     fontWeight: FontWeight,
     fontScale: Float,
@@ -208,7 +211,16 @@ internal fun CoverPlayerPage(
     drawBackground: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    val staticCoverPreviewModel = resolveCoverPreviewModel(song, embeddedCover)
+    val staticCoverPreviewModel by produceState<Any?>(
+        initialValue = resolveCoverPreviewModel(song, embeddedCover),
+        song?.let { listOf(it.playlistIdentityKey(), it.dateModified, it.fileSize).joinToString("|") }
+    ) {
+        value = withContext(Dispatchers.IO) {
+            song?.let(playerViewModel::getOriginalCoverModel)
+                ?: resolveCoverPreviewModel(song, embeddedCover)
+        }
+    }
+    val resolvedStaticCoverPreviewModel = staticCoverPreviewModel
     // Keep an opened preview as a snapshot.  Changing tracks must update the player behind the
     // dialog, not dismiss or replace the artwork the user is currently inspecting.
     var previewCover by remember { mutableStateOf<PlayerCoverPreview?>(null) }
@@ -267,12 +279,29 @@ internal fun CoverPlayerPage(
     // Show MV immediately on toggle, even while ExoPlayer is still discovering its duration.
     // The seek bar becomes seekable as soon as that duration arrives through the bridge.
     val controlsMusicVideo = musicVideoVisible && resolvedMusicVideo != null
+    LaunchedEffect(controlsMusicVideo, resolvedMusicVideo?.failureKey) {
+        if (controlsMusicVideo) {
+            // The MV player can be created after the main player is paused. Remember its desired
+            // state now so attach() starts the video as soon as Media3 is ready.
+            MusicVideoPlaybackBridge.setPlaying(resolvedMusicVideo, musicVideoInitialPlaying)
+        }
+    }
+    LaunchedEffect(musicVideoVisible, resolvedMusicVideo) {
+        // A missing/unreadable MV must not leave the regular audio player paused.
+        if (musicVideoVisible && resolvedMusicVideo == null) onToggleMusicVideo()
+    }
     val controlPosition = if (controlsMusicVideo) musicVideoPlayback.positionMs else currentPosition
     val controlDuration = if (controlsMusicVideo) musicVideoPlayback.durationMs else duration
+    val controlIsPlaying = if (controlsMusicVideo) musicVideoPlayback.playWhenReady else isPlaying
     val onControlSeek: (Float) -> Unit = if (controlsMusicVideo) {
         { progress -> MusicVideoPlaybackBridge.seekToProgress(resolvedMusicVideo, progress) }
     } else {
         onSeek
+    }
+    val onControlPlayPause: () -> Unit = if (controlsMusicVideo) {
+        { MusicVideoPlaybackBridge.togglePlayback(resolvedMusicVideo) }
+    } else {
+        onPlayPause
     }
     val portraitDynamicCover = displayedDynamicCover?.aspectRatio?.let { it < 0.92f } == true
     val coverSwipeModifier = if (coverSwipeEnabled) {
@@ -345,6 +374,7 @@ internal fun CoverPlayerPage(
                 showPronunciation = showPronunciation,
                 appleMusicWordLiftEnabled = appleMusicWordLiftEnabled,
                 fontFamily = fontFamily,
+                translationFontFamily = translationFontFamily,
                 fontPath = fontPath,
                 fontWeight = fontWeight,
                 fontScale = fontScale,
@@ -413,12 +443,12 @@ internal fun CoverPlayerPage(
                             }
                             .clip(immersiveCoverShape)
                             .then(
-                                if (staticCoverPreviewModel != null) {
+                                if (resolvedStaticCoverPreviewModel != null) {
                                     Modifier.combinedClickable(
                                         onClick = {},
                                         onLongClick = {
                                             previewCover = PlayerCoverPreview(
-                                                model = staticCoverPreviewModel,
+                                                model = resolvedStaticCoverPreviewModel,
                                                 title = song?.title.orEmpty()
                                             )
                                         }
@@ -433,7 +463,8 @@ internal fun CoverPlayerPage(
                         if (displayedDynamicCover != null) {
                             DynamicCoverVideo(
                                 source = displayedDynamicCover,
-                                isPlaying = isPlaying,
+                                isPlaying = controlIsPlaying,
+                                playAudio = controlsMusicVideo,
                                 onPlaybackError = { onDynamicCoverFailed(displayedDynamicCover.failureKey) },
                                 modifier = Modifier.fillMaxSize(),
                                 cornerRadiusDp = 0f,
@@ -534,6 +565,7 @@ internal fun CoverPlayerPage(
                                 currentPositionMs = currentPosition,
                                 isPlaying = isPlaying,
                                 fontFamily = fontFamily,
+                                translationFontFamily = translationFontFamily,
                                 fontWeight = fontWeight,
                                 fontScale = fontScale,
                                 secondaryFontScale = secondaryFontScale,
@@ -582,7 +614,7 @@ internal fun CoverPlayerPage(
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         PlayerTransportControls(
-                            isPlaying = isPlaying,
+                            isPlaying = controlIsPlaying,
                             shuffleEnabled = shuffleEnabled,
                             repeatMode = repeatMode,
                             palette = pagePalette,
@@ -593,7 +625,7 @@ internal fun CoverPlayerPage(
                             onCyclePlaybackMode = onCyclePlaybackMode,
                             onToggleQueueLock = playerViewModel::toggleQueueLock,
                             onPrevious = onPrevious,
-                            onPlayPause = onPlayPause,
+                            onPlayPause = onControlPlayPause,
                             onNext = onNext,
                             onToggleQueue = onToggleQueue,
                             onDismissQueue = onDismissQueue,
@@ -654,12 +686,12 @@ internal fun CoverPlayerPage(
                                 }
                                 .clip(coverShape)
                                 .then(
-                                    if (staticCoverPreviewModel != null) {
+                                    if (resolvedStaticCoverPreviewModel != null) {
                                         Modifier.combinedClickable(
                                             onClick = {},
                                             onLongClick = {
                                                 previewCover = PlayerCoverPreview(
-                                                    model = staticCoverPreviewModel,
+                                                    model = resolvedStaticCoverPreviewModel,
                                                     title = song?.title.orEmpty()
                                                 )
                                             }
@@ -674,7 +706,8 @@ internal fun CoverPlayerPage(
                             if (displayedDynamicCover != null) {
                                 DynamicCoverVideo(
                                     source = displayedDynamicCover,
-                                    isPlaying = isPlaying,
+                                    isPlaying = controlIsPlaying,
+                                    playAudio = controlsMusicVideo,
                                     onPlaybackError = { onDynamicCoverFailed(displayedDynamicCover.failureKey) },
                                     modifier = Modifier.fillMaxSize(),
                                     cornerRadiusDp = 14f
@@ -691,6 +724,7 @@ internal fun CoverPlayerPage(
                                 AlbumArtView(
                                     song = song,
                                     embeddedCover = embeddedCover,
+                                    coverModel = resolvedStaticCoverPreviewModel,
                                     cornerRadius = 14.dp,
                                     showHiResLogo = showHiResLogo,
                                     hiResLogoUri = hiResLogoUri,
@@ -741,6 +775,7 @@ internal fun CoverPlayerPage(
                                 currentPositionMs = currentPosition,
                                 isPlaying = isPlaying,
                                 fontFamily = fontFamily,
+                                translationFontFamily = translationFontFamily,
                                 fontWeight = fontWeight,
                                 fontScale = fontScale,
                                 secondaryFontScale = secondaryFontScale,
@@ -796,7 +831,7 @@ internal fun CoverPlayerPage(
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         PlayerTransportControls(
-                            isPlaying = isPlaying,
+                            isPlaying = controlIsPlaying,
                             shuffleEnabled = shuffleEnabled,
                             repeatMode = repeatMode,
                             palette = pagePalette,
@@ -807,7 +842,7 @@ internal fun CoverPlayerPage(
                             onCyclePlaybackMode = onCyclePlaybackMode,
                             onToggleQueueLock = playerViewModel::toggleQueueLock,
                             onPrevious = onPrevious,
-                            onPlayPause = onPlayPause,
+                            onPlayPause = onControlPlayPause,
                             onNext = onNext,
                             onToggleQueue = onToggleQueue,
                             onDismissQueue = onDismissQueue,

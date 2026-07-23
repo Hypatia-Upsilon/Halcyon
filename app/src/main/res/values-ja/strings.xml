@@ -1806,4 +1806,26 @@
 
     <string name="miui_uninstall_title">もうお別れですか？</string>
     <string name="miui_uninstall_content">Halcyon とここまで一緒に歩んでくれてありがとう。</string>
+    <string name="settings_font_global_western">グローバルフォント（メイン）</string>
+    <string name="settings_font_global_cjk">グローバルフォント（CJKフォールバック）</string>
+    <string name="settings_font_original_western">原文歌詞（メイン）</string>
+    <string name="settings_font_original_cjk">原文歌詞（CJKフォールバック）</string>
+    <string name="settings_font_translation_western">翻訳歌詞（メイン）</string>
+    <string name="settings_font_translation_cjk">翻訳歌詞（CJKフォールバック）</string>
+    <string name="full_tag_search_prompt_title">全項目検索を有効にしますか？</string>
+    <string name="full_tag_search_prompt_message">より多くのメタデータを検索できますが、スキャンは遅くなります。基本検索は高速スキャンを使います。</string>
+    <string name="full_tag_search_prompt_basic">高速な基本検索を使う</string>
+    <string name="full_tag_search_prompt_enable">全項目検索を有効にする</string>
+    <string name="settings_cover_export_folder">カバー保存フォルダ</string>
+    <string name="settings_cover_export_folder_summary">保存したカバー画像の場所を選択</string>
+    <string name="settings_cover_export_folder_selected">カスタム保存フォルダを選択済み</string>
+    <string name="settings_cover_export_folder_saved">カバー保存フォルダを更新しました</string>
+    <string name="settings_cover_export_folder_remove">カバー保存フォルダを消去</string>
+    <string name="settings_cover_export_folder_remove_summary">今後のカバーを Pictures/Halcyon に保存します</string>
+    <string name="settings_cover_export_folder_cleared">カバー保存フォルダを消去しました</string>
+    <string name="settings_search_all_categories">すべてタブの楽曲カテゴリ</string>
+    <string name="settings_search_all_categories_summary">すべてタブ内の楽曲カテゴリのみに影響します。</string>
+    <string name="settings_song_rating_display_stars">評価を星で表示</string>
+    <string name="settings_song_rating_display_stars_summary">評価点ごとに星を表示します</string>
+    <string name="settings_song_rating_display_number_summary">星と評価数を表示します</string>
 </resources>

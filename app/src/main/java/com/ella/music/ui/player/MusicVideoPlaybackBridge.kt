@@ -11,13 +11,15 @@ import java.util.concurrent.ConcurrentHashMap
  */
 internal data class MusicVideoPlaybackSnapshot(
     val positionMs: Long = 0L,
-    val durationMs: Long = 0L
+    val durationMs: Long = 0L,
+    val playWhenReady: Boolean = false
 )
 
 internal object MusicVideoPlaybackBridge {
     private data class Entry(
         val snapshot: MutableStateFlow<MusicVideoPlaybackSnapshot> =
             MutableStateFlow(MusicVideoPlaybackSnapshot()),
+        @Volatile var playWhenReady: Boolean = false,
         @Volatile var player: Player? = null
     )
 
@@ -35,15 +37,19 @@ internal object MusicVideoPlaybackBridge {
         if (source.role != PlayerVideoRole.MusicVideo) return
         val entry = entries.getOrPut(keyFor(source)) { Entry() }
         entry.player = player
+        player.playWhenReady = entry.playWhenReady
         publish(source, player)
     }
 
     fun publish(source: DynamicCoverSource, player: Player) {
         if (source.role != PlayerVideoRole.MusicVideo) return
         val duration = player.duration.takeIf { it > 0L } ?: 0L
-        entries.getOrPut(keyFor(source)) { Entry() }.snapshot.value = MusicVideoPlaybackSnapshot(
+        val entry = entries.getOrPut(keyFor(source)) { Entry() }
+        entry.playWhenReady = player.playWhenReady
+        entry.snapshot.value = MusicVideoPlaybackSnapshot(
             positionMs = player.currentPosition.coerceAtLeast(0L),
-            durationMs = duration
+            durationMs = duration,
+            playWhenReady = entry.playWhenReady
         )
     }
 
@@ -60,5 +66,23 @@ internal object MusicVideoPlaybackBridge {
         if (duration <= 0L) return
         player.seekTo((duration * progress.coerceIn(0f, 1f)).toLong())
         publish(resolvedSource, player)
+    }
+
+    fun setPlaying(source: DynamicCoverSource?, playing: Boolean) {
+        val resolvedSource = source ?: return
+        val entry = entries.getOrPut(keyFor(resolvedSource)) { Entry() }
+        entry.playWhenReady = playing
+        entry.player?.let { player ->
+            player.playWhenReady = playing
+            publish(resolvedSource, player)
+        } ?: run {
+            entry.snapshot.value = entry.snapshot.value.copy(playWhenReady = playing)
+        }
+    }
+
+    fun togglePlayback(source: DynamicCoverSource?) {
+        val resolvedSource = source ?: return
+        val entry = entries.getOrPut(keyFor(resolvedSource)) { Entry() }
+        setPlaying(resolvedSource, !entry.playWhenReady)
     }
 }

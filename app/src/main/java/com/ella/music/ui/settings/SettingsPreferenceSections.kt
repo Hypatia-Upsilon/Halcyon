@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -12,6 +13,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.ella.music.R
 import com.ella.music.data.SettingsManager
 import com.ella.music.ui.components.TagEditorOptionIds
@@ -352,7 +355,6 @@ internal fun SettingsScanSection(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val settingsManager = remember { SettingsManager.getInstance(context) }
-    val autoScan by settingsManager.autoScan.collectAsState(initial = false)
     val autoScanLocalPlaylists by settingsManager.autoScanLocalPlaylists.collectAsState(initial = false)
     val minDurationSec by settingsManager.minDurationSec.collectAsState(initial = 15)
     val artistSeparators by settingsManager.artistSeparators.collectAsState(initial = "")
@@ -362,7 +364,14 @@ internal fun SettingsScanSection(
     val tagIgnoreCase by settingsManager.tagIgnoreCase.collectAsState(initial = false)
     val showAlbumArtists by settingsManager.showAlbumArtists.collectAsState(initial = true)
     val artistCoverFolderUri by settingsManager.artistCoverFolderUri.collectAsState(initial = "")
+    val coverExportFolderUri by settingsManager.coverExportFolderUri.collectAsState(initial = "")
     val artistCoverCarousel by settingsManager.artistCoverCarousel.collectAsState(initial = true)
+    val searchAllCategoryTypes by settingsManager.searchAllCategoryTypes.collectAsState(
+        initial = SettingsManager.SEARCH_ALL_CATEGORY_TYPES
+    )
+    val songRatingDisplayMode by settingsManager.songRatingDisplayMode.collectAsState(
+        initial = SettingsManager.SONG_RATING_DISPLAY_STAR_NUMBER
+    )
 
     val artistCoverFolderPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
@@ -380,19 +389,20 @@ internal fun SettingsScanSection(
         }
         Toast.makeText(context, context.getString(R.string.settings_artist_cover_folder_saved), Toast.LENGTH_SHORT).show()
     }
+    val coverExportFolderPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val readWrite = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        runCatching { context.contentResolver.takePersistableUriPermission(uri, readWrite) }
+        scope.launch { settingsManager.setCoverExportFolderUri(uri.toString()) }
+        Toast.makeText(context, context.getString(R.string.settings_cover_export_folder_saved), Toast.LENGTH_SHORT).show()
+    }
 
     SmallTitle(text = stringResource(R.string.settings_scan))
 
     SettingsCardGroup(highlight = highlightKey == "scan") {
         Column {
-            SwitchPreference(
-                title = stringResource(R.string.settings_auto_scan),
-                summary = stringResource(R.string.settings_auto_scan_summary),
-                checked = autoScan,
-                onCheckedChange = {
-                    scope.launch { settingsManager.setAutoScan(it) }
-                }
-            )
             SwitchPreference(
                 title = stringResource(R.string.settings_auto_scan_local_playlists),
                 summary = stringResource(R.string.settings_auto_scan_local_playlists_summary),
@@ -454,6 +464,29 @@ internal fun SettingsScanSection(
                     scope.launch { settingsManager.setShowAlbumArtists(it) }
                 }
             )
+            SearchAllCategoryTypesPreference(
+                enabledTypes = searchAllCategoryTypes,
+                onEnabledChange = { type, enabled ->
+                    scope.launch { settingsManager.setSearchAllCategoryTypeEnabled(type, enabled) }
+                }
+            )
+            SwitchPreference(
+                title = stringResource(R.string.settings_song_rating_display_stars),
+                summary = if (songRatingDisplayMode == SettingsManager.SONG_RATING_DISPLAY_STARS) {
+                    stringResource(R.string.settings_song_rating_display_stars_summary)
+                } else {
+                    stringResource(R.string.settings_song_rating_display_number_summary)
+                },
+                checked = songRatingDisplayMode == SettingsManager.SONG_RATING_DISPLAY_STARS,
+                onCheckedChange = { enabled ->
+                    scope.launch {
+                        settingsManager.setSongRatingDisplayMode(
+                            if (enabled) SettingsManager.SONG_RATING_DISPLAY_STARS
+                            else SettingsManager.SONG_RATING_DISPLAY_STAR_NUMBER
+                        )
+                    }
+                }
+            )
             ArrowPreference(
                 title = stringResource(R.string.settings_artist_cover_folder),
                 summary = if (artistCoverFolderUri.isBlank()) {
@@ -481,6 +514,60 @@ internal fun SettingsScanSection(
                     }
                 )
             }
+            ArrowPreference(
+                title = stringResource(R.string.settings_cover_export_folder),
+                summary = if (coverExportFolderUri.isBlank()) {
+                    stringResource(R.string.settings_cover_export_folder_summary)
+                } else {
+                    stringResource(R.string.settings_cover_export_folder_selected)
+                },
+                onClick = { coverExportFolderPicker.launch(null) }
+            )
+            if (coverExportFolderUri.isNotBlank()) {
+                ArrowPreference(
+                    title = stringResource(R.string.settings_cover_export_folder_remove),
+                    summary = stringResource(R.string.settings_cover_export_folder_remove_summary),
+                    onClick = {
+                        scope.launch { settingsManager.setCoverExportFolderUri("") }
+                        Toast.makeText(context, context.getString(R.string.settings_cover_export_folder_cleared), Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchAllCategoryTypesPreference(
+    enabledTypes: Set<String>,
+    onEnabledChange: (String, Boolean) -> Unit
+) {
+    val options = listOf(
+        "folder" to R.string.library_search_folders,
+        "composer" to R.string.library_search_composers,
+        "arranger" to R.string.library_search_arrangers,
+        "lyricist" to R.string.library_search_lyricists,
+        "genre" to R.string.library_search_genres,
+        "year" to R.string.library_search_years
+    )
+    Column {
+        top.yukonga.miuix.kmp.basic.Text(
+            text = stringResource(R.string.settings_search_all_categories),
+            color = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSurface,
+            modifier = androidx.compose.ui.Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+        )
+        top.yukonga.miuix.kmp.basic.Text(
+            text = stringResource(R.string.settings_search_all_categories_summary),
+            color = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            fontSize = 12.sp,
+            modifier = androidx.compose.ui.Modifier.padding(start = 16.dp, end = 16.dp, bottom = 6.dp)
+        )
+        options.forEach { (type, labelRes) ->
+            SwitchPreference(
+                title = stringResource(labelRes),
+                checked = type in enabledTypes,
+                onCheckedChange = { onEnabledChange(type, it) }
+            )
         }
     }
 }

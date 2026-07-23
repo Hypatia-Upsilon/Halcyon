@@ -717,6 +717,7 @@ fun PlaylistDetailScreen(
                     AddToPlaylistSheet(
                         playlists = playlists
                             .sortedWith(compareByDescending<UserPlaylist> { it.id == FAVORITES_PLAYLIST_ID }.thenByDescending { it.createdAt }),
+                        songsToAdd = songsToAdd,
                         songCount = songsToAdd.size,
                         onDismiss = { playlistPickerSongs = null },
                         onCreatePlaylist = {

@@ -7,24 +7,45 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.ella.music.R
 import com.ella.music.data.exception.WritePermissionRequiredException
 import com.ella.music.data.model.Song
 import com.ella.music.data.model.albumIdentityId
+import com.ella.music.data.model.playlistIdentityKey
 import com.ella.music.data.splitArtistNames
 import com.ella.music.data.tagIdentityKey
 import com.ella.music.viewmodel.MainViewModel
 import com.ella.music.viewmodel.PlayerViewModel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import top.yukonga.miuix.kmp.basic.Text
 
 @Composable
 fun SongMoreActionHost(
@@ -70,6 +91,7 @@ fun SongMoreActionHost(
     var ratingSong by remember { mutableStateOf<Song?>(null) }
     var infoSong by remember { mutableStateOf<Song?>(null) }
     var aiSong by remember { mutableStateOf<Song?>(null) }
+    var coverPreviewSong by remember { mutableStateOf<Song?>(null) }
     var artistChoices by remember { mutableStateOf<List<String>>(emptyList()) }
     var dangerConfirmTitle by remember { mutableStateOf("") }
     var dangerConfirmMessage by remember { mutableStateOf("") }
@@ -77,6 +99,14 @@ fun SongMoreActionHost(
     var dangerConfirmAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var pendingWriteRetry by remember { mutableStateOf<(suspend () -> Unit)?>(null) }
     val writePermissionNeeded = stringResource(R.string.song_more_metadata_write_permission_needed)
+    val actionCoverModel by produceState<Any?>(
+        initialValue = null,
+        actionSong?.let { listOf(it.playlistIdentityKey(), it.dateModified, it.fileSize).joinToString("|") }
+    ) {
+        value = actionSong?.let { song ->
+            withContext(Dispatchers.IO) { mainViewModel.getOriginalCoverModel(song) }
+        }
+    }
 
     val writePermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
@@ -131,7 +161,14 @@ fun SongMoreActionHost(
         ) {
             SongMoreActionSheet(
                 song = song,
-                extraTopContent = extraTopContent,
+                extraTopContent = {
+                    SongMoreCoverPreview(
+                        song = song,
+                        coverModel = actionCoverModel,
+                        onPreview = { coverPreviewSong = song }
+                    )
+                    extraTopContent?.invoke(this)
+                },
                 onDismiss = ::closeAction,
                 onAddToPlaylist = {
                     runResolvedSongAction(song, addToPlaylistFailed) { resolvedSong ->
@@ -365,4 +402,54 @@ fun SongMoreActionHost(
             )
         }
     )
+
+    coverPreviewSong?.let { song ->
+        val model = if (song == actionSong) actionCoverModel else null
+        if (model != null) {
+            CoverPreviewDialog(
+                model = model,
+                title = song.title.ifBlank { song.fileName },
+                onDismiss = { coverPreviewSong = null }
+            )
+        } else {
+            coverPreviewSong = null
+        }
+    }
+}
+
+@Composable
+private fun SongMoreCoverPreview(
+    song: Song,
+    coverModel: Any?,
+    onPreview: () -> Unit
+) {
+    if (coverModel == null) return
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+    ) {
+        SafeCoverImage(
+            model = coverModel,
+            contentDescription = null,
+            modifier = Modifier
+                .size(72.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .combinedClickable(onClick = {}, onLongClick = onPreview),
+            contentScale = ContentScale.Crop,
+            sizePx = 3000,
+            loadOriginal = true
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Box(modifier = Modifier.weight(1f).padding(top = 4.dp)) {
+            Text(
+                text = song.album.ifBlank { song.artist },
+                color = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
 }

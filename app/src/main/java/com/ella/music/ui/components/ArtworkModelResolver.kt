@@ -58,10 +58,9 @@ fun rememberSongArtworkState(
         loadCoverArt != null &&
         when (usage) {
             ArtworkUsage.ListThumbnail -> true
-            // Cards in fast-scrolling grids: only load the embedded bitmap when there is no
-            // album-art URI. Otherwise we'd show the (Coil-cached) URI first and then async-swap
-            // to the embedded bitmap as each recycled cell resolves, which flickers on fast scroll.
-            ArtworkUsage.ArtistImage -> albumArtUri == null || preferEmbedded
+            // Artist/album detail headers need the song's embedded cover even when MediaStore
+            // exposes an album-art URI.  Several providers return no artwork for mp3/ogg there.
+            ArtworkUsage.ArtistImage -> true
             ArtworkUsage.MiniPlayer -> albumArtUri == null || preferEmbedded
         }
     val cachedModel = remember(cacheKey) {

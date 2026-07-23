@@ -36,11 +36,13 @@ internal fun PlayerLibraryActionSheets(
                 currentRating = mainViewModel.getSongRating(currentSong),
                 onDismiss = { onRatingSheetSongChange(null) },
                 onRatingSelected = { rating ->
+                    // The write can require MediaStore permission or take a moment on slow I/O;
+                    // close the chooser first so the selected rating never blocks navigation.
+                    onRatingSheetSongChange(null)
                     scope.launch {
                         val result = mainViewModel.writeSongRating(currentSong, rating)
                         if (result.isSuccess) {
                             Toast.makeText(context, context.getString(R.string.song_more_rating_saved), Toast.LENGTH_SHORT).show()
-                            onRatingSheetSongChange(null)
                         } else {
                             val error = result.exceptionOrNull()
                             if (error is WritePermissionRequiredException) {
@@ -48,7 +50,6 @@ internal fun PlayerLibraryActionSheets(
                                     val retryResult = mainViewModel.writeSongRating(currentSong, rating)
                                     if (retryResult.isSuccess) {
                                         Toast.makeText(context, context.getString(R.string.song_more_rating_saved), Toast.LENGTH_SHORT).show()
-                                        onRatingSheetSongChange(null)
                                     } else {
                                         Toast.makeText(
                                             context,

@@ -128,6 +128,17 @@ internal class MusicCoverArtManager(
         }
     }
 
+    /**
+     * Returns the original embedded image bytes for full-screen preview/save/share.  Keeping this
+     * separate from [getCoverArtBitmap] prevents a 1200px rendering bitmap from being mistaken
+     * for the source image.
+     */
+    fun getOriginalCoverModel(song: Song): Any? {
+        return getCoverArt(song)
+            ?: song.coverUrl.takeIf { it.isNotBlank() }
+            ?: getAlbumArtUri(song.albumId)
+    }
+
     fun getAlbumArtUri(albumId: Long): Uri? {
         if (albumId <= 0L) return null
         return android.content.ContentUris.withAppendedId(

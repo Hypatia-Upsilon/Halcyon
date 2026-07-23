@@ -37,6 +37,7 @@ internal fun PlayerPlaylistSheets(
         ) {
             AddToPlaylistSheet(
                 playlists = playlists.sortedForPlayerSheet(),
+                songsToAdd = listOf(currentSong),
                 onDismiss = { onPlaylistPickerSongChange(null) },
                 onCreatePlaylist = {
                     onCreatePlaylistSongChange(currentSong)
@@ -66,6 +67,7 @@ internal fun PlayerPlaylistSheets(
         ) {
             AddToPlaylistSheet(
                 playlists = playlists.sortedForPlayerSheet(),
+                songsToAdd = songsToAdd,
                 onDismiss = { onPlaylistPickerSongsChange(null) },
                 onCreatePlaylist = {
                     onCreatePlaylistSongsChange(songsToAdd)

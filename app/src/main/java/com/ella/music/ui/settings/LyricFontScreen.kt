@@ -61,10 +61,22 @@ fun LyricFontScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val settingsManager = remember { SettingsManager.getInstance(context) }
-    val westernFontName by settingsManager.lyricWesternFontName.collectAsState(initial = "")
-    val westernFontPath by settingsManager.lyricWesternFontPath.collectAsState(initial = "")
-    val cjkFontName by settingsManager.lyricCjkFontName.collectAsState(initial = "")
-    val cjkFontPath by settingsManager.lyricCjkFontPath.collectAsState(initial = "")
+    val legacyWesternFontName by settingsManager.lyricWesternFontName.collectAsState(initial = "")
+    val legacyWesternFontPath by settingsManager.lyricWesternFontPath.collectAsState(initial = "")
+    val legacyCjkFontName by settingsManager.lyricCjkFontName.collectAsState(initial = "")
+    val legacyCjkFontPath by settingsManager.lyricCjkFontPath.collectAsState(initial = "")
+    val globalWesternFontName by settingsManager.globalWesternFontName.collectAsState(initial = "")
+    val globalWesternFontPath by settingsManager.globalWesternFontPath.collectAsState(initial = "")
+    val globalCjkFontName by settingsManager.globalCjkFontName.collectAsState(initial = "")
+    val globalCjkFontPath by settingsManager.globalCjkFontPath.collectAsState(initial = "")
+    val originalWesternFontName by settingsManager.lyricOriginalWesternFontName.collectAsState(initial = "")
+    val originalWesternFontPath by settingsManager.lyricOriginalWesternFontPath.collectAsState(initial = "")
+    val originalCjkFontName by settingsManager.lyricOriginalCjkFontName.collectAsState(initial = "")
+    val originalCjkFontPath by settingsManager.lyricOriginalCjkFontPath.collectAsState(initial = "")
+    val translationWesternFontName by settingsManager.lyricTranslationWesternFontName.collectAsState(initial = "")
+    val translationWesternFontPath by settingsManager.lyricTranslationWesternFontPath.collectAsState(initial = "")
+    val translationCjkFontName by settingsManager.lyricTranslationCjkFontName.collectAsState(initial = "")
+    val translationCjkFontPath by settingsManager.lyricTranslationCjkFontPath.collectAsState(initial = "")
     val lyricFontWeight by settingsManager.lyricFontWeight.collectAsState(initial = 800)
     val lyricFontItalic by settingsManager.lyricFontItalic.collectAsState(initial = false)
     val lyricShareUseLyricFont by settingsManager.lyricShareUseLyricFont.collectAsState(initial = false)
@@ -73,30 +85,47 @@ fun LyricFontScreen(
     var fonts by remember { mutableStateOf<List<FontChoice>>(emptyList()) }
     var systemFonts by remember { mutableStateOf<List<FontChoice>>(emptyList()) }
     var showSystemFontPicker by remember { mutableStateOf(false) }
-    var activeTarget by remember { mutableStateOf(LyricFontTarget.Western) }
+    var activeTarget by remember { mutableStateOf(LyricFontTarget.GlobalWestern) }
     val isDark = MiuixTheme.colorScheme.background.luminance() < 0.5f
     val pageBackground = if (isDark) Color(0xFF101014) else Color(0xFFF4F4F7)
-    val selectedFontPath = if (activeTarget == LyricFontTarget.Western) westernFontPath else cjkFontPath
+    val selectedFontPath = when (activeTarget) {
+        LyricFontTarget.GlobalWestern -> globalWesternFontPath.ifBlank { legacyWesternFontPath }
+        LyricFontTarget.GlobalCjk -> globalCjkFontPath
+        LyricFontTarget.OriginalWestern -> originalWesternFontPath.ifBlank { legacyWesternFontPath }
+        LyricFontTarget.OriginalCjk -> originalCjkFontPath.ifBlank { legacyCjkFontPath }
+        LyricFontTarget.TranslationWestern -> translationWesternFontPath.ifBlank { legacyWesternFontPath }
+        LyricFontTarget.TranslationCjk -> translationCjkFontPath.ifBlank { legacyCjkFontPath }
+    }
     val currentSystemFont = remember(selectedFontPath, systemFonts) {
         systemFonts.firstOrNull { it.path == selectedFontPath }
     }
-    val westernDisplayName = westernFontName.ifBlank { "MiSans Bold" }
-    val cjkDisplayName = cjkFontName.ifBlank { "MiSans Bold" }
+    val globalWesternDisplayName = globalWesternFontName.ifBlank { legacyWesternFontName.ifBlank { "系统默认" } }
+    val globalCjkDisplayName = globalCjkFontName.ifBlank { "系统补缺" }
+    val originalWesternDisplayName = originalWesternFontName.ifBlank { legacyWesternFontName.ifBlank { "Inter" } }
+    val originalCjkDisplayName = originalCjkFontName.ifBlank { legacyCjkFontName.ifBlank { "MiSans Bold" } }
+    val translationWesternDisplayName = translationWesternFontName.ifBlank { legacyWesternFontName.ifBlank { "Inter" } }
+    val translationCjkDisplayName = translationCjkFontName.ifBlank { legacyCjkFontName.ifBlank { "MiSans Bold" } }
 
     suspend fun applyFont(font: FontChoice) {
-        if (activeTarget == LyricFontTarget.Western) {
-            settingsManager.setLyricWesternFont(font.name, font.path)
-        } else {
-            settingsManager.setLyricCjkFont(font.name, font.path)
+        when (activeTarget) {
+            LyricFontTarget.GlobalWestern -> settingsManager.setGlobalFont(font.name, font.path, globalCjkFontName, globalCjkFontPath)
+            LyricFontTarget.GlobalCjk -> settingsManager.setGlobalFont(globalWesternFontName, globalWesternFontPath, font.name, font.path)
+            LyricFontTarget.OriginalWestern -> settingsManager.setLyricOriginalFont(font.name, font.path, originalCjkFontName, originalCjkFontPath)
+            LyricFontTarget.OriginalCjk -> settingsManager.setLyricOriginalFont(originalWesternFontName, originalWesternFontPath, font.name, font.path)
+            LyricFontTarget.TranslationWestern -> settingsManager.setLyricTranslationFont(font.name, font.path, translationCjkFontName, translationCjkFontPath)
+            LyricFontTarget.TranslationCjk -> settingsManager.setLyricTranslationFont(translationWesternFontName, translationWesternFontPath, font.name, font.path)
         }
         notifyDesktopLyricFontChanged(context, settingsManager)
     }
 
     suspend fun clearActiveFont() {
-        if (activeTarget == LyricFontTarget.Western) {
-            settingsManager.clearLyricWesternFont()
-        } else {
-            settingsManager.clearLyricCjkFont()
+        when (activeTarget) {
+            LyricFontTarget.GlobalWestern -> settingsManager.setGlobalFont("", "", globalCjkFontName, globalCjkFontPath)
+            LyricFontTarget.GlobalCjk -> settingsManager.setGlobalFont(globalWesternFontName, globalWesternFontPath, "", "")
+            LyricFontTarget.OriginalWestern -> settingsManager.setLyricOriginalFont("", "", originalCjkFontName, originalCjkFontPath)
+            LyricFontTarget.OriginalCjk -> settingsManager.setLyricOriginalFont(originalWesternFontName, originalWesternFontPath, "", "")
+            LyricFontTarget.TranslationWestern -> settingsManager.setLyricTranslationFont("", "", translationCjkFontName, translationCjkFontPath)
+            LyricFontTarget.TranslationCjk -> settingsManager.setLyricTranslationFont(translationWesternFontName, translationWesternFontPath, "", "")
         }
         notifyDesktopLyricFontChanged(context, settingsManager)
     }
@@ -168,16 +197,40 @@ fun LyricFontScreen(
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 LyricFontTargetCard(
-                    title = stringResource(R.string.settings_lyric_font_western),
-                    currentName = westernDisplayName,
-                    selected = activeTarget == LyricFontTarget.Western,
-                    onClick = { activeTarget = LyricFontTarget.Western }
+                    title = stringResource(R.string.settings_font_global_western),
+                    currentName = globalWesternDisplayName,
+                    selected = activeTarget == LyricFontTarget.GlobalWestern,
+                    onClick = { activeTarget = LyricFontTarget.GlobalWestern }
                 )
                 LyricFontTargetCard(
-                    title = stringResource(R.string.settings_lyric_font_cjk),
-                    currentName = cjkDisplayName,
-                    selected = activeTarget == LyricFontTarget.Cjk,
-                    onClick = { activeTarget = LyricFontTarget.Cjk }
+                    title = stringResource(R.string.settings_font_global_cjk),
+                    currentName = globalCjkDisplayName,
+                    selected = activeTarget == LyricFontTarget.GlobalCjk,
+                    onClick = { activeTarget = LyricFontTarget.GlobalCjk }
+                )
+                LyricFontTargetCard(
+                    title = stringResource(R.string.settings_font_original_western),
+                    currentName = originalWesternDisplayName,
+                    selected = activeTarget == LyricFontTarget.OriginalWestern,
+                    onClick = { activeTarget = LyricFontTarget.OriginalWestern }
+                )
+                LyricFontTargetCard(
+                    title = stringResource(R.string.settings_font_original_cjk),
+                    currentName = originalCjkDisplayName,
+                    selected = activeTarget == LyricFontTarget.OriginalCjk,
+                    onClick = { activeTarget = LyricFontTarget.OriginalCjk }
+                )
+                LyricFontTargetCard(
+                    title = stringResource(R.string.settings_font_translation_western),
+                    currentName = translationWesternDisplayName,
+                    selected = activeTarget == LyricFontTarget.TranslationWestern,
+                    onClick = { activeTarget = LyricFontTarget.TranslationWestern }
+                )
+                LyricFontTargetCard(
+                    title = stringResource(R.string.settings_font_translation_cjk),
+                    currentName = translationCjkDisplayName,
+                    selected = activeTarget == LyricFontTarget.TranslationCjk,
+                    onClick = { activeTarget = LyricFontTarget.TranslationCjk }
                 )
                 SettingsCardGroup {
                     SwitchPreference(
@@ -209,8 +262,8 @@ fun LyricFontScreen(
                     )
                 }
                 LyricFontWeightCard(
-                    westernFontPath = westernFontPath,
-                    cjkFontPath = cjkFontPath,
+                    westernFontPath = originalWesternFontPath.ifBlank { legacyWesternFontPath },
+                    cjkFontPath = originalCjkFontPath.ifBlank { legacyCjkFontPath },
                     lyricFontWeight = lyricFontWeight,
                     onWeightChange = { weight ->
                         scope.launch {
@@ -245,15 +298,8 @@ fun LyricFontScreen(
                                     deleteImportedFont(font)
                                 }
 
-                                if (westernFontPath == font.path) {
-                                    settingsManager.clearLyricWesternFont()
-                                }
-                                if (cjkFontPath == font.path) {
-                                    settingsManager.clearLyricCjkFont()
-                                }
-                                if (westernFontPath == font.path || cjkFontPath == font.path) {
-                                    notifyDesktopLyricFontChanged(context, settingsManager)
-                                }
+                                clearImportedFontReferences(settingsManager, font.path)
+                                notifyDesktopLyricFontChanged(context, settingsManager)
 
                                 fonts = withContext(Dispatchers.IO) { collectFontChoices(context) }
 
@@ -333,8 +379,12 @@ fun LyricFontScreen(
 }
 
 private enum class LyricFontTarget {
-    Western,
-    Cjk
+    GlobalWestern,
+    GlobalCjk,
+    OriginalWestern,
+    OriginalCjk,
+    TranslationWestern,
+    TranslationCjk
 }
 
 private const val DEFAULT_FONT_CHOICE_PATH = "__lyric_slot_default__"
@@ -348,4 +398,27 @@ private suspend fun notifyDesktopLyricFontChanged(
         Intent(context, DesktopLyricService::class.java)
             .setAction(DesktopLyricService.ACTION_APPLY_SETTINGS)
     )
+}
+
+private suspend fun clearImportedFontReferences(settingsManager: SettingsManager, path: String) {
+    // Clear only the slot holding the deleted file. Empty slots deliberately fall back through
+    // the migration/default chain, so a deleted imported font never leaves a broken Typeface.
+    if (settingsManager.globalWesternFontPath.first() == path) {
+        settingsManager.setGlobalFont("", "", settingsManager.globalCjkFontName.first(), settingsManager.globalCjkFontPath.first())
+    }
+    if (settingsManager.globalCjkFontPath.first() == path) {
+        settingsManager.setGlobalFont(settingsManager.globalWesternFontName.first(), settingsManager.globalWesternFontPath.first(), "", "")
+    }
+    if (settingsManager.lyricOriginalWesternFontPath.first() == path) {
+        settingsManager.setLyricOriginalFont("", "", settingsManager.lyricOriginalCjkFontName.first(), settingsManager.lyricOriginalCjkFontPath.first())
+    }
+    if (settingsManager.lyricOriginalCjkFontPath.first() == path) {
+        settingsManager.setLyricOriginalFont(settingsManager.lyricOriginalWesternFontName.first(), settingsManager.lyricOriginalWesternFontPath.first(), "", "")
+    }
+    if (settingsManager.lyricTranslationWesternFontPath.first() == path) {
+        settingsManager.setLyricTranslationFont("", "", settingsManager.lyricTranslationCjkFontName.first(), settingsManager.lyricTranslationCjkFontPath.first())
+    }
+    if (settingsManager.lyricTranslationCjkFontPath.first() == path) {
+        settingsManager.setLyricTranslationFont(settingsManager.lyricTranslationWesternFontName.first(), settingsManager.lyricTranslationWesternFontPath.first(), "", "")
+    }
 }

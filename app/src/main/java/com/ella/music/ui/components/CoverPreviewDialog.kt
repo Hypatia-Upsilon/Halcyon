@@ -60,16 +60,19 @@ import androidx.compose.ui.unit.IntSize as ComposeIntSize
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
+import androidx.documentfile.provider.DocumentFile
 import coil3.compose.AsyncImage
 import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.toBitmap
 import com.ella.music.R
+import com.ella.music.data.SettingsManager
 import java.io.File
 import java.io.FileOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Text
@@ -401,8 +404,22 @@ private suspend fun saveCoverToPictures(context: Context, model: Any, title: Str
                 .ifBlank { "cover" }
                 .replace(Regex("""[\\/:*?\"<>|]"""), "_")
                 .take(80)
+            val displayName = "$safeTitle.png"
+            val customFolderUri = SettingsManager.getInstance(context).coverExportFolderUri.first()
+            if (customFolderUri.isNotBlank()) {
+                val root = DocumentFile.fromTreeUri(context, Uri.parse(customFolderUri))
+                    ?: return@withContext false
+                val outputFile = root.createUniqueChildFile("image/png", displayName)
+                    ?: return@withContext false
+                context.contentResolver.openOutputStream(outputFile.uri)?.use { stream ->
+                    check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)) {
+                        "Unable to encode cover image"
+                    }
+                } ?: return@withContext false
+                return@withContext true
+            }
             val values = ContentValues().apply {
-                put(MediaStore.Images.Media.DISPLAY_NAME, "Halcyon_$safeTitle.png")
+                put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
                 put(MediaStore.Images.Media.MIME_TYPE, "image/png")
                 put(
                     MediaStore.Images.Media.RELATIVE_PATH,
@@ -430,6 +447,18 @@ private suspend fun saveCoverToPictures(context: Context, model: Any, title: Str
             bitmap.recycle()
         }
     }
+}
+
+private fun DocumentFile.createUniqueChildFile(mimeType: String, requestedName: String): DocumentFile? {
+    val baseName = requestedName.substringBeforeLast('.', requestedName).ifBlank { "cover" }
+    val extension = requestedName.substringAfterLast('.', "png")
+    var candidate = requestedName
+    var suffix = 1
+    while (findFile(candidate) != null) {
+        candidate = "$baseName ($suffix).$extension"
+        suffix++
+    }
+    return createFile(mimeType, candidate)
 }
 
 private suspend fun loadCoverBitmapCopy(context: Context, model: Any): Bitmap? =

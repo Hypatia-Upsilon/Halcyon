@@ -132,6 +132,7 @@ import com.ella.music.ui.player.PlayerScreen
 import com.ella.music.ui.player.PlayerPalette
 import com.ella.music.ui.player.loadPaletteCoverBitmap
 import com.ella.music.ui.theme.EllaTheme
+import com.ella.music.ui.components.ScriptFontPaths
 import com.ella.music.ui.theme.MONET_COVER
 import com.ella.music.ui.theme.THEME_DARK
 import com.ella.music.ui.theme.THEME_FOLLOW_SYSTEM
@@ -162,15 +163,7 @@ class MainActivity : ComponentActivity() {
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            lifecycleScope.launch {
-                if (SettingsManager.getInstance(this@MainActivity).initialScanPromptHandled.first()) {
-                    mainViewModel?.scanMusicIfAutoEnabled()
-                }
-            }
-        }
-    }
+    ) { }
 
     private var mainViewModel: MainViewModel? = null
     private var appliedLanguageTag: String? = null
@@ -216,8 +209,18 @@ class MainActivity : ComponentActivity() {
             val appLanguage by settingsManager.appLanguage.collectAsState(
                 initial = appliedLanguageTag ?: SettingsManager.APP_LANGUAGE_SYSTEM
             )
-            val appFontPath by settingsManager.lyricFontPath.collectAsState(initial = "")
+            val legacyAppFontPath by settingsManager.lyricFontPath.collectAsState(initial = "")
+            val globalWesternFontPath by settingsManager.globalWesternFontPath.collectAsState(initial = "")
+            val globalCjkFontPath by settingsManager.globalCjkFontPath.collectAsState(initial = "")
             val appFontWeight by settingsManager.lyricFontWeight.collectAsState(initial = 800)
+            val appFontPath = remember(legacyAppFontPath, globalWesternFontPath, globalCjkFontPath) {
+                val western = globalWesternFontPath.ifBlank { legacyAppFontPath }
+                if (western.isBlank() && globalCjkFontPath.isBlank()) {
+                    ""
+                } else {
+                    ScriptFontPaths(western, globalCjkFontPath).encode()
+                }
+            }
             val monetMode by settingsManager.monetColorMode.collectAsState(initial = 0)
             val hideSystemBars by settingsManager.hideSystemBars.collectAsState(initial = false)
             val monetSong by playerVm.currentSong.collectAsState()
@@ -290,7 +293,7 @@ class MainActivity : ComponentActivity() {
             }
 
             LaunchedEffect(Unit) {
-                val canScanNow = checkAndRequestPermissions()
+                checkAndRequestPermissions()
                 if (!startupPlaybackHandled) {
                     startupPlaybackHandled = true
                     when (settingsManager.startupPlayMode.first()) {
@@ -307,9 +310,6 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-                }
-                if (canScanNow && settingsManager.initialScanPromptHandled.first()) {
-                    mainVm.scanMusicIfAutoEnabled()
                 }
             }
 
@@ -429,6 +429,7 @@ fun EllaApp(
     val isPlayerVisible = showPlayerOverlay || currentRoute == Screen.Player.route
     val libraryCacheLoaded by mainViewModel.libraryCacheLoaded.collectAsState()
     val initialScanPromptHandled by settingsManager.initialScanPromptHandled.collectAsState(initial = true)
+    val fullTagSearchPromptHandled by settingsManager.fullTagSearchPromptHandled.collectAsState(initial = true)
     val localPlaylistScanPromptHandled by settingsManager.localPlaylistScanPromptHandled.collectAsState(initial = true)
     val autoScanLocalPlaylists by settingsManager.autoScanLocalPlaylists.collectAsState(initial = false)
     val shortcutLibraryLabel by settingsManager.shortcutLibraryLabel.collectAsState(initial = SettingsManager.DEFAULT_SHORTCUT_LIBRARY_LABEL)
@@ -437,6 +438,7 @@ fun EllaApp(
     val appShortcutOrder by settingsManager.appShortcutOrder.collectAsState(initial = SettingsManager.DEFAULT_APP_SHORTCUT_ORDER)
     val isScanning by mainViewModel.isScanning.collectAsState()
     var showInitialScanPrompt by remember { mutableStateOf(false) }
+    var showFullTagSearchPrompt by remember { mutableStateOf(false) }
     var showLocalPlaylistScanPrompt by remember { mutableStateOf(false) }
     var localPlaylistAutoScanHandled by rememberSaveable { mutableStateOf(false) }
 
@@ -586,13 +588,38 @@ fun EllaApp(
         bottomDockMode = BottomDockMode.Expanded
     }
 
-    LaunchedEffect(libraryCacheLoaded, initialScanPromptHandled, isScanning, librarySongs) {
+    LaunchedEffect(
+        libraryCacheLoaded,
+        initialScanPromptHandled,
+        fullTagSearchPromptHandled,
+        isScanning,
+        librarySongs
+    ) {
         if (!libraryCacheLoaded || initialScanPromptHandled) return@LaunchedEffect
         if (librarySongs.isNotEmpty()) {
             settingsManager.setInitialScanPromptHandled(true)
-            mainViewModel.scanMusicIfAutoEnabled()
+        } else if (!fullTagSearchPromptHandled) {
+            showFullTagSearchPrompt = true
         } else if (!isScanning) {
             showInitialScanPrompt = true
+        }
+    }
+
+    LaunchedEffect(
+        libraryCacheLoaded,
+        initialScanPromptHandled,
+        fullTagSearchPromptHandled,
+        showInitialScanPrompt,
+        librarySongs
+    ) {
+        if (
+            libraryCacheLoaded &&
+            initialScanPromptHandled &&
+            !fullTagSearchPromptHandled &&
+            !showInitialScanPrompt &&
+            librarySongs.isNotEmpty()
+        ) {
+            showFullTagSearchPrompt = true
         }
     }
 
@@ -1027,6 +1054,22 @@ fun EllaApp(
                         settingsManager.setUseAndroidMediaLibrary(true)
                         settingsManager.setAutoScan(false)
                         mainViewModel.scanMusic()
+                    }
+                }
+            )
+
+            FullTagSearchPromptDialog(
+                show = showFullTagSearchPrompt,
+                onChoose = { enabled ->
+                    showFullTagSearchPrompt = false
+                    scope.launch {
+                        settingsManager.setFullTagSearchEnabled(enabled)
+                        settingsManager.setFullTagSearchPromptHandled(true)
+                        // On a fresh library, choose the scan strategy before showing the
+                        // initial scan confirmation so the first scan never uses the old mode.
+                        if (!initialScanPromptHandled && librarySongs.isEmpty()) {
+                            showInitialScanPrompt = true
+                        }
                     }
                 }
             )

@@ -841,9 +841,10 @@ fun FolderDetailScreen(
                 onDismissRequest = { playlistPickerSongs = null }
             ) {
                 AddToPlaylistSheet(
-                    playlists = playlists
-                        .sortedWith(compareByDescending<com.ella.music.data.model.UserPlaylist> { it.id == FAVORITES_PLAYLIST_ID }.thenByDescending { it.createdAt }),
-                    songCount = songsToAdd.size,
+                playlists = playlists
+                    .sortedWith(compareByDescending<com.ella.music.data.model.UserPlaylist> { it.id == FAVORITES_PLAYLIST_ID }.thenByDescending { it.createdAt }),
+                songsToAdd = songsToAdd,
+                songCount = songsToAdd.size,
                     onDismiss = { playlistPickerSongs = null },
                     onCreatePlaylist = {
                         createPlaylistSongs = songsToAdd

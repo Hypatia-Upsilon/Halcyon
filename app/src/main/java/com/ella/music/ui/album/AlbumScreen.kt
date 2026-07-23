@@ -493,7 +493,11 @@ fun AlbumScreen(
             // Navigation restores lazy-grid state by index. Once pinned albums are prepended,
             // that index can point below every pinned row. Track the actual visible album id
             // before opening a child and resolve it again after returning instead.
-            var lastHandledRestoreRequest by rememberSaveable { mutableStateOf(0) }
+            // A request can arrive before cache/DataStore-backed pins have finished producing
+            // the final ordering. Remember the restored anchor instead of consuming the request
+            // immediately, then resolve it again whenever the list changes.
+            var restoredRequest by rememberSaveable { mutableStateOf(0) }
+            var restoredPinnedSignature by rememberSaveable { mutableStateOf("") }
             var fastScrollJob by remember { mutableStateOf<Job?>(null) }
             LaunchedEffect(scrollToTopRequest) {
                 if (scrollToTopRequest > 0) gridState.animateScrollToItem(0)
@@ -502,23 +506,29 @@ fun AlbumScreen(
                 restoreScrollRequest,
                 restoreAnchorAlbumId,
                 restoreAnchorOffset,
+                pinnedAlbumKeys,
                 sortedAlbums
             ) {
                 if (
-                    restoreScrollRequest > lastHandledRestoreRequest &&
+                    (restoreScrollRequest > restoredRequest ||
+                        (restoreScrollRequest == restoredRequest &&
+                            restoredPinnedSignature != pinnedAlbumKeys.sorted().joinToString("|"))) &&
                     restoreAnchorAlbumId != null &&
                     sortedAlbums.isNotEmpty()
                 ) {
                     val restoredIndex = sortedAlbums.indexOfFirst { it.id == restoreAnchorAlbumId }
                     if (restoredIndex >= 0) {
                         gridState.scrollToItem(restoredIndex, restoreAnchorOffset.coerceAtLeast(0))
+                        restoredRequest = restoreScrollRequest
+                        restoredPinnedSignature = pinnedAlbumKeys.sorted().joinToString("|")
+                        needsInitialPinnedPosition = false
                     }
-                    lastHandledRestoreRequest = restoreScrollRequest
-                    needsInitialPinnedPosition = false
                 }
             }
             LaunchedEffect(pinnedAlbumKeys, sortedAlbums.size, restoreScrollRequest) {
-                if (restoreScrollRequest > lastHandledRestoreRequest) return@LaunchedEffect
+                if (restoreScrollRequest > restoredRequest) {
+                    return@LaunchedEffect
+                }
                 if (
                     needsInitialPinnedPosition &&
                     pinnedAlbumKeys.isNotEmpty() &&
@@ -659,6 +669,7 @@ fun AlbumScreen(
                     compareByDescending<UserPlaylist> { it.id == FAVORITES_PLAYLIST_ID }
                         .thenByDescending { it.createdAt }
                 ),
+                songsToAdd = songsToAdd,
                 songCount = songsToAdd.size,
                 onDismiss = { playlistPickerSongs = null },
                 onCreatePlaylist = {

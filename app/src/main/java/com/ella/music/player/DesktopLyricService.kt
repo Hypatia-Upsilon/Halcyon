@@ -639,9 +639,11 @@ class DesktopLyricService : Service() {
         // back to the system default typeface instead of the custom lyric font.
         lyricFontPath = if (settingsManager.lyricFontApplyToDesktop.first()) {
             val defaultCjkPath = ensureBundledMiSansBoldPath(this@DesktopLyricService)
-            val western = settingsManager.lyricWesternFontPath.first()
+            val western = settingsManager.lyricOriginalWesternFontPath.first()
+                .ifBlank { settingsManager.lyricWesternFontPath.first() }
                 .ifBlank { defaultCjkPath }
-            val cjk = settingsManager.lyricCjkFontPath.first()
+            val cjk = settingsManager.lyricOriginalCjkFontPath.first()
+                .ifBlank { settingsManager.lyricCjkFontPath.first() }
                 .ifBlank { defaultCjkPath }
             ScriptFontPaths(western, cjk).encode()
         } else {

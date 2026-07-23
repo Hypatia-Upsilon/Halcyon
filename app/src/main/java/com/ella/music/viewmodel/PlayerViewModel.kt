@@ -1202,6 +1202,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     fun hasSavedPlaybackQueue(): Boolean = playerManager.hasSavedQueue()
 
     fun togglePlayPause() = playerManager.togglePlayPause()
+    fun pauseForMusicVideo() = playerManager.pause()
+    fun resumeAfterMusicVideo() = playerManager.play()
     fun skipToNext() {
         if (!lazyOnlineQueueController.playOffset(1)) playerManager.skipToNext()
     }
@@ -1389,6 +1391,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun getCoverArtBitmap(song: Song) = repository.getCoverArtBitmap(song, 1200, CoverUsage.Player)
+
+    fun getOriginalCoverModel(song: Song): Any? = repository.getOriginalCoverModel(song)
 
     fun getAudioInfo(song: Song) = repository.getAudioInfo(song)
 

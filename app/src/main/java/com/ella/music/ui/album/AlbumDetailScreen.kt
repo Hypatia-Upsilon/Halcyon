@@ -193,6 +193,14 @@ fun AlbumDetailScreen(
         showDefaultWhenMissing = false
     )
     val albumCoverModel = albumCoverState.model
+    val albumPreviewModel by produceState<Any?>(
+        initialValue = albumCoverModel,
+        albumSongs.firstOrNull()?.let { listOf(it.playlistIdentityKey(), it.dateModified, it.fileSize).joinToString("|") }
+    ) {
+        value = withContext(Dispatchers.IO) {
+            albumSongs.firstOrNull()?.let(mainViewModel::getOriginalCoverModel) ?: albumCoverModel
+        }
+    }
     var coverPreviewVisible by remember(albumCoverModel) { mutableStateOf(false) }
     val neteaseAlbumUrl by produceState<String?>(initialValue = null, albumId, albumSongs) {
         value = mainViewModel.getNeteaseAlbumUrlForAlbum(albumId)
@@ -476,7 +484,7 @@ fun AlbumDetailScreen(
                 AlbumHeader(
                     album = album,
                     releaseDate = albumReleaseDate,
-                    albumCoverModel = albumCoverModel,
+                    albumCoverModel = albumPreviewModel,
                     songCount = sortedAlbumSongs.size,
                     duration = albumDuration,
                     hasNeteaseAlbum = !neteaseAlbumUrl.isNullOrBlank(),
@@ -939,6 +947,7 @@ fun AlbumDetailScreen(
                         compareByDescending<UserPlaylist> { it.id == FAVORITES_PLAYLIST_ID }
                             .thenByDescending { it.createdAt }
                     ),
+                    songsToAdd = songsToAdd,
                     songCount = songsToAdd.size,
                     onDismiss = { playlistPickerSongs = null },
                     onCreatePlaylist = {
@@ -981,9 +990,9 @@ fun AlbumDetailScreen(
                 finishSelectionMode()
             }
         )
-        if (coverPreviewVisible && albumCoverModel != null) {
+        if (coverPreviewVisible && albumPreviewModel != null) {
             CoverPreviewDialog(
-                model = albumCoverModel,
+                model = albumPreviewModel!!,
                 title = album?.name.orEmpty(),
                 onDismiss = { coverPreviewVisible = false }
             )

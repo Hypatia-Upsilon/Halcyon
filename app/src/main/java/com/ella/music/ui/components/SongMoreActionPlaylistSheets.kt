@@ -32,6 +32,7 @@ internal fun SongMorePlaylistActionSheets(
                     compareByDescending<UserPlaylist> { it.id == FAVORITES_PLAYLIST_ID }
                         .thenByDescending { it.createdAt }
                 ),
+                songsToAdd = listOf(song),
                 onDismiss = { onPlaylistSongChange(null) },
                 onCreatePlaylist = {
                     onCreatePlaylistSongChange(song)

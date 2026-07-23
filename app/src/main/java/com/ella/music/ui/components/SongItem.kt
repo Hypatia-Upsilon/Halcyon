@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ella.music.R
 import com.ella.music.data.DOLBY_MARK
+import com.ella.music.data.SettingsManager
 import com.ella.music.data.audioQualitySummary
 import com.ella.music.data.model.AudioInfo
 import com.ella.music.data.model.Song
@@ -68,6 +71,7 @@ fun SongItem(
     isFavorite: Boolean = false,
     loadSongRating: ((Song) -> Int)? = null,
     ratingRevision: Int = 0,
+    ratingDisplayMode: Int? = null,
     showPlayNextInLists: Boolean = false,
     trailingContent: (@Composable RowScope.() -> Unit)? = null,
     showTrailingContentInSelectionMode: Boolean = false,
@@ -75,6 +79,12 @@ fun SongItem(
 ) {
     val unknown = stringResource(R.string.common_unknown)
     val unknownArtist = stringResource(R.string.player_unknown_artist)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val settingsManager = remember(context) { SettingsManager.getInstance(context) }
+    val preferredRatingDisplayMode by settingsManager.songRatingDisplayMode.collectAsState(
+        initial = SettingsManager.SONG_RATING_DISPLAY_STAR_NUMBER
+    )
+    val effectiveRatingDisplayMode = ratingDisplayMode ?: preferredRatingDisplayMode
     val audioInfo by produceState<AudioInfo?>(initialValue = null, song.id, loadAudioInfo) {
         value = withContext(Dispatchers.IO) { loadAudioInfo?.invoke(song) }
     }
@@ -175,18 +185,28 @@ fun SongItem(
                 }
                 if (rating > 0) {
                     Spacer(modifier = Modifier.width(5.dp))
-                    RatingStarIcon(
-                        filled = true,
-                        tint = Color(0xFFFFB703),
-                        modifier = Modifier.size(12.dp)
-                    )
-                    Spacer(modifier = Modifier.width(2.dp))
-                    Text(
-                        text = rating.toString(),
-                        fontSize = 11.sp,
-                        color = Color(0xFFFFB703),
-                        maxLines = 1
-                    )
+                    if (effectiveRatingDisplayMode == SettingsManager.SONG_RATING_DISPLAY_STARS) {
+                        repeat(rating) {
+                            RatingStarIcon(
+                                filled = true,
+                                tint = Color(0xFFFFB703),
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
+                    } else {
+                        RatingStarIcon(
+                            filled = true,
+                            tint = Color(0xFFFFB703),
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(
+                            text = rating.toString(),
+                            fontSize = 14.sp,
+                            color = Color(0xFFFFB703),
+                            maxLines = 1
+                        )
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(2.dp))

@@ -24,6 +24,7 @@ internal fun RestoreListScrollAfterSearch(
     listState: LazyListState
 ) {
     var wasSearchExpanded by remember { mutableStateOf(searchExpanded) }
+    var previousQuery by remember { mutableStateOf(query) }
     var anchor by remember { mutableStateOf<ScrollAnchor?>(null) }
     LaunchedEffect(searchExpanded, query) {
         when {
@@ -32,6 +33,14 @@ internal fun RestoreListScrollAfterSearch(
                     index = listState.firstVisibleItemIndex,
                     offset = listState.firstVisibleItemScrollOffset
                 )
+            }
+
+            searchExpanded && query.isNotBlank() && query != previousQuery -> {
+                // Let the filtered items commit before moving to their first result.  The extra
+                // frame prevents a stale layout from applying the old list's final anchor.
+                withFrameNanos { }
+                withFrameNanos { }
+                if (listState.layoutInfo.totalItemsCount > 0) listState.scrollToItem(0)
             }
 
             !searchExpanded && wasSearchExpanded && query.isBlank() -> {
@@ -47,6 +56,7 @@ internal fun RestoreListScrollAfterSearch(
             }
         }
         wasSearchExpanded = searchExpanded
+        previousQuery = query
     }
 }
 
@@ -57,6 +67,7 @@ internal fun RestoreGridScrollAfterSearch(
     gridState: LazyGridState
 ) {
     var wasSearchExpanded by remember { mutableStateOf(searchExpanded) }
+    var previousQuery by remember { mutableStateOf(query) }
     var anchor by remember { mutableStateOf<ScrollAnchor?>(null) }
     LaunchedEffect(searchExpanded, query) {
         when {
@@ -65,6 +76,12 @@ internal fun RestoreGridScrollAfterSearch(
                     index = gridState.firstVisibleItemIndex,
                     offset = gridState.firstVisibleItemScrollOffset
                 )
+            }
+
+            searchExpanded && query.isNotBlank() && query != previousQuery -> {
+                withFrameNanos { }
+                withFrameNanos { }
+                if (gridState.layoutInfo.totalItemsCount > 0) gridState.scrollToItem(0)
             }
 
             !searchExpanded && wasSearchExpanded && query.isBlank() -> {
@@ -79,6 +96,7 @@ internal fun RestoreGridScrollAfterSearch(
             }
         }
         wasSearchExpanded = searchExpanded
+        previousQuery = query
     }
 }
 

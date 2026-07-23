@@ -443,8 +443,21 @@ class MusicRepository(private val context: Context) {
             scanProgressState.update(index + 1)
         }
 
+        // MediaStore can lag behind filesystem changes.  A fast scan must not throw away songs
+        // discovered by a previous full scan merely because the provider has not indexed them
+        // yet; retain those entries until their local file actually disappears.
+        val retainedFromFilesystem = cachedSongs.filter { song ->
+            song.librarySyncKey() !in currentKeys &&
+                song.path !in currentPaths &&
+                song.hasExistingLocalFile()
+        }
+        retainedFromFilesystem.forEach { retained ->
+            if (mergedSongs.none { it.path == retained.path }) mergedSongs += retained
+        }
         val deletedSongs = cachedSongs.filter { song ->
-            song.librarySyncKey() !in currentKeys && song.path !in currentPaths
+            song.librarySyncKey() !in currentKeys &&
+                song.path !in currentPaths &&
+                song !in retainedFromFilesystem
         }
         deletedSongs.forEach(::clearMetadataCache)
         val summary = buildLibraryDeltaSummary(previousSummarySongs, mergedSongs)
@@ -453,12 +466,12 @@ class MusicRepository(private val context: Context) {
         AppLogStore.info(
             context,
             "MusicScanner",
-            "Incremental scan finished total=${currentItems.size} added=${summary.added} updated=${summary.updated} reused=$reusedCount deleted=${summary.deleted} failed=$failedCount",
+            "Incremental scan finished total=${currentItems.size} added=${summary.added} updated=${summary.updated} reused=$reusedCount retained=${retainedFromFilesystem.size} deleted=${summary.deleted} failed=$failedCount",
             AppLogType.LIBRARY
         )
         Log.d(
             "MusicScanner",
-            "Incremental scan finished total=${currentItems.size} added=${summary.added} updated=${summary.updated} reused=$reusedCount deleted=${summary.deleted} failed=$failedCount"
+            "Incremental scan finished total=${currentItems.size} added=${summary.added} updated=${summary.updated} reused=$reusedCount retained=${retainedFromFilesystem.size} deleted=${summary.deleted} failed=$failedCount"
         )
         LibraryScanResult(
             songs = mergedSongs,
@@ -1209,6 +1222,8 @@ class MusicRepository(private val context: Context) {
 
     fun getCoverArt(song: Song): ByteArray? = coverArtManager.getCoverArt(song)
 
+    fun getOriginalCoverModel(song: Song): Any? = coverArtManager.getOriginalCoverModel(song)
+
     fun getCoverArtBitmap(
         song: Song,
         maxSize: Int = 512,
@@ -1785,6 +1800,11 @@ class MusicRepository(private val context: Context) {
         } else {
             path
         }
+
+    private fun Song.hasExistingLocalFile(): Boolean {
+        if (path.isBlank() || path.isContentAudioSource() || path.isHttpAudioSource()) return false
+        return runCatching { File(path).isFile }.getOrDefault(false)
+    }
 
     private fun Song.scanSummaryKey(): String = path.ifBlank { librarySyncKey() }
 

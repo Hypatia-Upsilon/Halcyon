@@ -232,12 +232,11 @@ private fun SortBottomSheetItem(
             }
         }
 
-        // Direction is only meaningful for the active sort field.  Showing an accented
-        // direction button on every inactive row made it look as though several sorts were
-        // selected at once, and contradicted the field highlight above.
-        if (hasDirectionChoices && item.selected) {
+        // Keep both direction affordances visible for every sortable field.  Only the active
+        // field is accented, so inactive arrows remain discoverable without appearing selected.
+        if (hasDirectionChoices) {
             SortDirectionAction(
-                selected = item.direction == SortDirection.Ascending,
+                selected = item.selected && item.direction == SortDirection.Ascending,
                 onClick = item.onSelectAscending?.let { select ->
                     {
                         select()
@@ -248,7 +247,7 @@ private fun SortBottomSheetItem(
                 contentDescription = stringResource(R.string.common_sort_ascending)
             )
             SortDirectionAction(
-                selected = item.direction == SortDirection.Descending,
+                selected = item.selected && item.direction == SortDirection.Descending,
                 onClick = item.onSelectDescending?.let { select ->
                     {
                         select()

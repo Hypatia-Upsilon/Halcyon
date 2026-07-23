@@ -170,6 +170,7 @@ internal fun MetadataCategoryScreenSurfaces(
         ) {
             AddToPlaylistSheet(
                 playlists = playlists,
+                songsToAdd = songs,
                 songCount = songs.size,
                 onDismiss = { onPlaylistPickerSongsChange(null) },
                 onCreatePlaylist = {

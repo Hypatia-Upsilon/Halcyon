@@ -1805,4 +1805,26 @@
 
     <string name="miui_uninstall_title">Leaving so soon?</string>
     <string name="miui_uninstall_content">Thanks for walking this stretch with Halcyon.</string>
+    <string name="settings_font_global_western">Global font (primary)</string>
+    <string name="settings_font_global_cjk">Global font (CJK fallback)</string>
+    <string name="settings_font_original_western">Original lyrics (primary)</string>
+    <string name="settings_font_original_cjk">Original lyrics (CJK fallback)</string>
+    <string name="settings_font_translation_western">Translation lyrics (primary)</string>
+    <string name="settings_font_translation_cjk">Translation lyrics (CJK fallback)</string>
+    <string name="full_tag_search_prompt_title">Enable full-field search?</string>
+    <string name="full_tag_search_prompt_message">It can search more song metadata, but scanning will be slower. Basic search only matches names, artists, and albums and uses the faster scan.</string>
+    <string name="full_tag_search_prompt_basic">Use fast basic search</string>
+    <string name="full_tag_search_prompt_enable">Enable full-field search</string>
+    <string name="settings_cover_export_folder">Cover save folder</string>
+    <string name="settings_cover_export_folder_summary">Choose where saved cover images are stored</string>
+    <string name="settings_cover_export_folder_selected">Custom save folder selected</string>
+    <string name="settings_cover_export_folder_saved">Cover save folder updated</string>
+    <string name="settings_cover_export_folder_remove">Clear cover save folder</string>
+    <string name="settings_cover_export_folder_remove_summary">Save future covers to the default Pictures/Halcyon folder</string>
+    <string name="settings_cover_export_folder_cleared">Cover save folder cleared</string>
+    <string name="settings_search_all_categories">Song categories in the All search tab</string>
+    <string name="settings_search_all_categories_summary">Only affects song categories in All; separate tabs and song search are unchanged.</string>
+    <string name="settings_song_rating_display_stars">Show ratings as stars</string>
+    <string name="settings_song_rating_display_stars_summary">Display a star for each rating point beside favorites</string>
+    <string name="settings_song_rating_display_number_summary">Display a star with the rating number beside favorites</string>
 </resources>

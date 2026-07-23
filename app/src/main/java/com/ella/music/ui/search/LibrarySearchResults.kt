@@ -31,6 +31,7 @@ internal fun LibrarySearchResultsPane(
     libraryCacheLoaded: Boolean,
     currentSong: Song?,
     showPlayNextInLists: Boolean,
+    songRatingDisplayMode: Int,
     excludeSearchResultsFromPlaylist: Boolean,
     filter: SearchFilter,
     trimmedQuery: String,
@@ -113,6 +114,7 @@ internal fun LibrarySearchResultsPane(
                             loadCoverArt = { song -> mainViewModel.getCoverArtBitmap(song) },
                             loadAudioInfo = mainViewModel::getAudioInfo,
                             showPlayNextInLists = showPlayNextInLists,
+                            ratingDisplayMode = songRatingDisplayMode,
                             selectionMode = selectionMode,
                             selected = selected,
                             onPlayNext = {

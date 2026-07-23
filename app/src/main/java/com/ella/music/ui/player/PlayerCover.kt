@@ -182,6 +182,7 @@ internal fun PlayerCoverImage(
 internal fun AlbumArtView(
     song: Song?,
     embeddedCover: Bitmap?,
+    coverModel: Any? = null,
     cornerRadius: Dp = 20.dp,
     contentScale: ContentScale = ContentScale.Fit,
     loadOriginal: Boolean = true,
@@ -189,15 +190,15 @@ internal fun AlbumArtView(
     hiResLogoUri: String = "",
     modifier: Modifier = Modifier
 ) {
-    val coverModel = resolveCoverPreviewModel(song, embeddedCover)
+    val resolvedCoverModel = coverModel ?: resolveCoverPreviewModel(song, embeddedCover)
 
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
-        if (coverModel != null) {
+        if (resolvedCoverModel != null) {
             PlayerCoverImage(
-                model = coverModel,
+                model = resolvedCoverModel,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = contentScale,
