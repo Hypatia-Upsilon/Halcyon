@@ -22,8 +22,10 @@ internal fun PlayerLandscapeOverlayHost(
     coverMode: Boolean,
     dynamicCoverEnabled: Boolean,
     dynamicCoverCustomFolders: List<String>,
+    musicVideoCustomFolders: List<String>,
     musicVideoEnabled: Boolean,
     musicVideoVisible: Boolean,
+    hideNeighborCoversInitially: Boolean,
     song: Song?,
     embeddedCover: Bitmap?,
     paletteBitmap: Bitmap?,
@@ -99,6 +101,7 @@ internal fun PlayerLandscapeOverlayHost(
         musicVideoEnabled,
         musicVideoVisible,
         dynamicCoverCustomFolders,
+        musicVideoCustomFolders,
         dynamicCoverSongKey,
         dynamicCoverFailedPath
     ) {
@@ -111,7 +114,8 @@ internal fun PlayerLandscapeOverlayHost(
                 if (musicVideoEnabled && musicVideoVisible) {
                     current.musicVideoSource(
                         context,
-                        customRootPaths = dynamicCoverCustomFolders
+                        customRootPaths = dynamicCoverCustomFolders,
+                        musicVideoCustomFolders = musicVideoCustomFolders
                     )?.takeUnless { it.failureKey == dynamicCoverFailedPath }
                 } else {
                     current.dynamicCoverSource(
@@ -171,6 +175,7 @@ internal fun PlayerLandscapeOverlayHost(
             coverSwipeEnabled = coverSwipeEnabled,
             flowEffectMode = flowEffectMode,
             beautifulLyricsBackground = beautifulLyricsBackground,
+            hideNeighborCoversInitially = hideNeighborCoversInitially,
             onDynamicCoverFailed = onDynamicCoverFailed,
             isFavorite = isFavorite,
             onToggleFavorite = onToggleFavorite,
@@ -183,7 +188,15 @@ internal fun PlayerLandscapeOverlayHost(
             onCyclePlaybackMode = onCyclePlaybackMode,
             onPrevious = onPrevious,
             onSwipePrevious = onSwipePrevious,
-            onPlayPause = onPlayPause,
+            onPlayPause = {
+                // The MV uses its own silent decoder. Pause it immediately rather than waiting
+                // for the audio state to propagate through the player view model. The source can
+                // still be resolving when lyrics are double-tapped, so use the stable song owner.
+                if (musicVideoVisible) {
+                    MusicVideoPlaybackBridge.setPlaying(dynamicCoverSongKey, !isPlaying)
+                }
+                onPlayPause()
+            },
             onNext = onNext,
             onQueueSongClick = onQueueSongClick,
             onRemoveQueueSong = onRemoveQueueSong,

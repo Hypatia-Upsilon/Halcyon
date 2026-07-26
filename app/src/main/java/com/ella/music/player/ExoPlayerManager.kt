@@ -1,16 +1,12 @@
 package com.ella.music.player
 
 import android.content.ComponentName
-import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
-import android.provider.MediaStore
 import android.util.Log
 import android.util.LruCache
-import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -22,7 +18,6 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.ella.music.data.AppLogStore
 import com.ella.music.data.SettingsManager
-import com.ella.music.data.isUriAudioSource
 import com.ella.music.data.model.Song
 import com.ella.music.data.repository.MusicRepository
 import com.google.common.util.concurrent.FutureCallback
@@ -33,7 +28,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -41,7 +35,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.io.File
+import java.util.Collections
 import kotlin.random.Random
 
 class ExoPlayerManager(private val context: Context) {
@@ -80,11 +74,6 @@ class ExoPlayerManager(private val context: Context) {
 
     private var playlist = mutableListOf<Song>()
 
-    private data class ExternalSnapshotGuard(
-        val mediaId: String?,
-        val song: Song
-    )
-
     private val _playlist = MutableStateFlow<List<Song>>(emptyList())
     val playlistFlow: StateFlow<List<Song>> = _playlist.asStateFlow()
     private var playerListener: Player.Listener? = null
@@ -106,6 +95,7 @@ class ExoPlayerManager(private val context: Context) {
     private var externalSnapshotGuard: ExternalSnapshotGuard? = null
 
     private val persistenceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val commandScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val artworkRepository = MusicRepository.getInstance(context)
     private val settingsManager = SettingsManager.getInstance(context)
     private val notificationArtworkCache = object : LruCache<String, ByteArray>(4 * 1024) {
@@ -115,6 +105,8 @@ class ExoPlayerManager(private val context: Context) {
     private var notificationArtworkJob: Job? = null
     private var currentSongRefreshJob: Job? = null
     private var deferredSeekStateSaveJob: Job? = null
+    private var deferredSeekCommandJob: Job? = null
+    private var pendingSeekTargetMs: Long? = null
     @Volatile
     private var playbackStateSaveGeneration = 0L
     private var decoderRecoveryJob: Job? = null
@@ -158,6 +150,7 @@ class ExoPlayerManager(private val context: Context) {
     }
 
     fun disconnect() {
+        cancelPendingSeekCommand()
         playerListener?.let { mediaController?.removeListener(it) }
         controllerFuture?.let { MediaController.releaseFuture(it) }
         controllerFuture = null
@@ -352,17 +345,6 @@ class ExoPlayerManager(private val context: Context) {
         }
     }
 
-    /**
-     * Keep normal multi-thousand-song queues intact. Only very large libraries are reduced to a
-     * small controller window to stay below the MediaSession Binder transaction limit.
-     */
-    private fun List<Song>.windowedForController(index: Int): Pair<List<Song>, Int> {
-        if (size <= LARGE_LIBRARY_SAFE_MODE_THRESHOLD) return this to index
-        val from = (index - LARGE_LIBRARY_SAFE_MODE_QUEUE_SIZE / 2)
-            .coerceIn(0, size - LARGE_LIBRARY_SAFE_MODE_QUEUE_SIZE)
-        return subList(from, from + LARGE_LIBRARY_SAFE_MODE_QUEUE_SIZE).toList() to (index - from)
-    }
-
     fun setPlaylist(songs: List<Song>, startIndex: Int = 0) {
         setPlaylist(songs, startIndex, honorShuffle = true, resetQueueLock = true)
     }
@@ -379,6 +361,7 @@ class ExoPlayerManager(private val context: Context) {
         resetQueueLock: Boolean
     ) {
         if (songs.isEmpty()) return
+        cancelPendingSeekCommand()
         if (resetQueueLock) _queueLocked.value = false
         val requestedIndex = startIndex.coerceIn(songs.indices)
         externalSnapshotGuard = null
@@ -472,6 +455,7 @@ class ExoPlayerManager(private val context: Context) {
 
     fun playResolvedFromVirtualQueue(songs: List<Song>, currentIndex: Int, resolvedSong: Song) {
         if (songs.isEmpty()) return
+        cancelPendingSeekCommand()
         val safeIndex = currentIndex.coerceIn(songs.indices)
         externalSnapshotGuard = null
         suppressExternalSnapshotsUntilMs = 0L
@@ -645,6 +629,7 @@ class ExoPlayerManager(private val context: Context) {
 
     fun playQueueIndex(index: Int) {
         if (index !in playlist.indices) return
+        cancelPendingSeekCommand()
         externalSnapshotGuard = null
         suppressExternalSnapshotsUntilMs = 0L
         resetPlayNextForwardStack()
@@ -705,8 +690,53 @@ class ExoPlayerManager(private val context: Context) {
         savePlaybackQueue(force = true)
     }
 
+    /**
+     * Materializes a new visible queue order. Unlike playback shuffle this deliberately changes
+     * the queue itself, while retaining the currently playing media item and its position.
+     */
+    fun randomizePlaylistOrder(): Boolean {
+        if (_queueLocked.value || playlist.size < 2 || virtualPlaylistCurrentIndex != null) return false
+        val controller = activeController() ?: return false
+        val current = resolveCurrentPlaybackSong(controller) ?: return false
+        val shuffled = playlist.toMutableList()
+        // A new seed on each invocation avoids pseudo-shuffle returning the same list twice.
+        val random = Random(SystemClock.elapsedRealtimeNanos())
+        var attempts = 0
+        do {
+            shuffled.shuffle(random)
+            attempts++
+        } while (shuffled == playlist && attempts < 8)
+        // A two-item queue has a 50% chance of returning unchanged. Guarantee a visible reorder
+        // whenever there is more than one item, including duplicate Song identities.
+        if (shuffled == playlist) {
+            Collections.rotate(shuffled, 1)
+        }
+        val currentIndex = shuffled.indexOfFirst { it.isSamePlaybackIdentity(current) }
+        if (currentIndex < 0) return false
+        val positionMs = controller.currentPosition.coerceAtLeast(0L)
+        val wasPlaying = controller.isPlaying
+        reorderingPlaylistForShuffle = true
+        try {
+            clearPendingShuffleReorder(disableNativeShuffle = true, clearOriginalOrder = true)
+            // Random order is a concrete queue operation, not a playback-mode toggle. Preserve
+            // the user's shuffle preference while Media3 itself remains in ordered traversal.
+            controller.shuffleModeEnabled = false
+            resetPlayNextForwardStack()
+            applyControllerPlaylistOrder(controller, shuffled, currentIndex, positionMs, wasPlaying)
+            playlist.clear()
+            playlist.addAll(shuffled)
+            _playlist.value = shuffled
+            updateCurrentSong()
+            savePlaybackQueue(force = true)
+            return true
+        } finally {
+            reorderingPlaylistForShuffle = false
+        }
+    }
+
     fun clearPlaylist() {
         if (_queueLocked.value) return
+        cancelPendingSeekCommand()
         externalSnapshotGuard = null
         suppressExternalSnapshotsUntilMs = SystemClock.elapsedRealtime() + CLEAR_EXTERNAL_SNAPSHOT_SUPPRESSION_MS
         currentSongRefreshJob?.cancel()
@@ -764,6 +794,7 @@ class ExoPlayerManager(private val context: Context) {
 
     fun togglePlayPause() {
         mediaController?.let {
+            flushPendingSeekCommand()
             if (it.isPlaying) it.pause() else it.play()
         }
     }
@@ -789,11 +820,13 @@ class ExoPlayerManager(private val context: Context) {
     }
 
     fun pause() {
+        flushPendingSeekCommand()
         mediaController?.pause()
     }
 
     fun skipToNext() {
         val controller = mediaController ?: return
+        cancelPendingSeekCommand()
         rememberCurrentSongResumePosition()
         if (!performPendingShuffleReorder(trigger = "skipNext", seekToNextAfterReorder = true)) {
             controller.seekToNextMediaItem()
@@ -804,6 +837,7 @@ class ExoPlayerManager(private val context: Context) {
 
     fun skipToPrevious() {
         val controller = mediaController ?: return
+        cancelPendingSeekCommand()
         rememberCurrentSongResumePosition()
         val previousIndex = (controller.currentMediaItemIndex - 1).takeIf { it in playlist.indices }
         if (previousIndex != null) {
@@ -816,6 +850,7 @@ class ExoPlayerManager(private val context: Context) {
     }
 
     fun restartCurrent() {
+        cancelPendingSeekCommand()
         mediaController?.run {
             seekToDefaultPosition(currentMediaItemIndex.coerceAtLeast(0))
             play()
@@ -827,6 +862,7 @@ class ExoPlayerManager(private val context: Context) {
 
     fun restartSong(song: Song?) {
         val controller = mediaController ?: return
+        cancelPendingSeekCommand()
         val target = song ?: _currentSong.value
         val targetIndex = target?.let { current ->
             playlist.indexOfFirst { it.isSamePlaybackIdentity(current) }
@@ -854,9 +890,9 @@ class ExoPlayerManager(private val context: Context) {
     fun seekTo(positionMs: Long): Long? {
         val controller = mediaController ?: return null
         val target = playbackSeekTarget(positionMs, controller.duration)
-        controller.seekTo(target)
         _currentPosition.value = target
-        scheduleSeekStateSave()
+        enqueueSeekCommand(target)
+        scheduleSeekStateSave(target)
         return target
     }
 
@@ -867,10 +903,10 @@ class ExoPlayerManager(private val context: Context) {
             playerDurationMs = controller.duration,
             fallbackDurationMs = fallbackDurationMs
         ) ?: return null
-        controller.seekTo(target)
         _currentPosition.value = target
         if (controller.duration > 0L) _duration.value = controller.duration
-        scheduleSeekStateSave()
+        enqueueSeekCommand(target)
+        scheduleSeekStateSave(target)
         return target
     }
 
@@ -1253,16 +1289,6 @@ class ExoPlayerManager(private val context: Context) {
         return builder.build()
     }
 
-    private fun Song.playbackUri(): Uri {
-        if (path.isUriAudioSource()) {
-            return path.toUri()
-        }
-        if (onlineSource.isBlank() && path.startsWith("/") && id > 0L) {
-            return ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
-        }
-        return if (path.startsWith("/")) Uri.fromFile(File(path)) else path.toUri()
-    }
-
     private fun Song.mediaMetadata(
         titleOverride: CharSequence? = null,
         artistOverride: CharSequence? = null,
@@ -1295,14 +1321,6 @@ class ExoPlayerManager(private val context: Context) {
                 }
             }
             .build()
-    }
-
-    private fun Song.artworkUriForMediaCenter(): Uri? {
-        coverUrl.takeIf { it.isNotBlank() }?.let { return it.toUri() }
-        if (albumId > 0L) {
-            return Uri.parse("content://media/external/audio/albumart/$albumId")
-        }
-        return null
     }
 
     private fun updateCurrentSong() {
@@ -1358,20 +1376,13 @@ class ExoPlayerManager(private val context: Context) {
         return true
     }
 
-    private fun MediaController.matchesExternalSnapshot(guard: ExternalSnapshotGuard?): Boolean {
-        guard ?: return true
-        val item = currentMediaItem ?: return false
-        if (guard.mediaId != null && item.mediaId == guard.mediaId) return true
-        return item.matchesSong(guard.song)
-    }
-
     private suspend fun tryRecoverAutoDecoderPlayback(song: Song): Boolean {
         // Keep Auto genuinely automatic: normal queue changes stay inside the existing Media3
         // player (which already prepares its next media period). Rebuilding the service before
         // every AAC/ALAC track made rapid skips visibly stall and contradicted the setting's
         // "fallback only when unsupported" contract. We only pay that cost after a real decode
         // failure, then retain the FFmpeg override for the remaining connected session.
-        if (!song.isM4aOrAppleLosslessOrAAC()) return false
+        if (!song.isM4aOrAppleLosslessOrAACOrApe()) return false
         if (settingsManager.decoderMode.first() != DECODER_MODE_AUTO) return false
         if (PlaybackService.decoderModeOverride.value == DECODER_MODE_FFMPEG_PREFER) return false
 
@@ -1538,16 +1549,6 @@ class ExoPlayerManager(private val context: Context) {
             ?: _currentSong.value
     }
 
-    private fun buildPseudoShuffleSeed(sourceOrder: List<Song>, current: Song): Long {
-        var seed = 0x9E3779B97F4A7C15uL.toLong()
-        sourceOrder.forEachIndexed { index, song ->
-            val part = "${song.id}|${song.path}|${song.dateModified}|${song.fileSize}|$index".hashCode().toLong()
-            seed = seed xor (part + 0x9E3779B97F4A7C15uL.toLong() + (seed shl 6) + (seed ushr 2))
-        }
-        seed = seed xor "${current.id}|${current.path}".hashCode().toLong()
-        return seed
-    }
-
     private fun applyControllerPlaylistOrder(
         controller: MediaController,
         targetOrder: List<Song>,
@@ -1687,16 +1688,6 @@ class ExoPlayerManager(private val context: Context) {
         }
     }
 
-    private fun MediaItem.matchesSong(song: Song): Boolean {
-        val itemSong = toSongFromMediaItemExtras()
-        if (itemSong != null) {
-            return itemSong.isSamePlaybackIdentity(song)
-        }
-        if (song.path.isNotBlank() && localConfiguration?.uri?.toString().orEmpty() == song.path) return true
-        if (song.id > 0L && mediaId == song.id.toString()) return true
-        return localConfiguration?.uri?.toString().orEmpty() == song.path
-    }
-
     private fun clearBluetoothMetadataPatchState() {
         bluetoothMetadataPatchState = MediaNotificationLyricPatchPolicy.onCleared()
     }
@@ -1706,31 +1697,6 @@ class ExoPlayerManager(private val context: Context) {
             songKey = song?.playbackStackKey(),
             nowMs = SystemClock.elapsedRealtime()
         )
-    }
-
-    private fun MediaMetadata.matchesNotificationDisplay(other: MediaMetadata): Boolean {
-        return title?.toString() == other.title?.toString() &&
-            artist?.toString() == other.artist?.toString() &&
-            albumTitle?.toString() == other.albumTitle?.toString() &&
-            artworkUri == other.artworkUri &&
-            artworkData.contentEqualsOrBothNull(other.artworkData)
-    }
-
-    private fun ByteArray?.contentEqualsOrBothNull(other: ByteArray?): Boolean {
-        return when {
-            this == null && other == null -> true
-            this == null || other == null -> false
-            else -> contentEquals(other)
-        }
-    }
-
-    private fun MediaMetadata.withPatchedExtrasFrom(item: MediaItem, reason: String): MediaMetadata {
-        val mergedExtras = Bundle(item.mediaMetadata.extras ?: Bundle.EMPTY)
-        extras?.let(mergedExtras::putAll)
-        mergedExtras.markMetadataOnlyPatch(reason)
-        return buildUpon()
-            .setExtras(mergedExtras)
-            .build()
     }
 
     private fun restoreSavedQueueIfNeeded() {
@@ -1819,10 +1785,33 @@ class ExoPlayerManager(private val context: Context) {
      * position used to enqueue a SharedPreferences write for each tap; on slower storage those
      * writes accumulated and made the next pause visibly late.  Keep the latest target only.
      */
-    private fun scheduleSeekStateSave() {
+    private fun enqueueSeekCommand(target: Long) {
+        pendingSeekTargetMs = target
+        deferredSeekCommandJob?.cancel()
+        deferredSeekCommandJob = commandScope.launch {
+            delay(SEEK_COMMAND_COALESCE_MS)
+            flushPendingSeekCommand()
+        }
+    }
+
+    /** Sends only the newest target from a rapid seek burst before a pause/track switch. */
+    private fun flushPendingSeekCommand() {
+        val target = pendingSeekTargetMs ?: return
+        pendingSeekTargetMs = null
+        deferredSeekCommandJob = null
+        mediaController?.takeIf { it.isConnected }?.seekTo(target)
+    }
+
+    private fun cancelPendingSeekCommand() {
+        pendingSeekTargetMs = null
+        deferredSeekCommandJob?.cancel()
+        deferredSeekCommandJob = null
+    }
+
+    private fun scheduleSeekStateSave(targetPositionMs: Long) {
         if (playlist.isEmpty()) return
         lastStateSaveMs = System.currentTimeMillis()
-        val snapshot = capturePlaybackState()
+        val snapshot = capturePlaybackState(positionOverrideMs = targetPositionMs)
         val generation = ++playbackStateSaveGeneration
         deferredSeekStateSaveJob?.cancel()
         deferredSeekStateSaveJob = persistenceScope.launch {
@@ -1839,7 +1828,7 @@ class ExoPlayerManager(private val context: Context) {
             .apply()
     }
 
-    private fun capturePlaybackState(): PlaybackStateSnapshot {
+    private fun capturePlaybackState(positionOverrideMs: Long? = null): PlaybackStateSnapshot {
         val controller = mediaController
         val index = controller?.currentMediaItemIndex?.takeIf { it >= 0 }
             ?: _currentSong.value?.let { current ->
@@ -1848,7 +1837,7 @@ class ExoPlayerManager(private val context: Context) {
             ?: -1
         return PlaybackStateSnapshot(
             index = index.coerceAtLeast(0),
-            positionMs = controller?.currentPosition?.coerceAtLeast(0) ?: _currentPosition.value,
+            positionMs = positionOverrideMs ?: controller?.currentPosition?.coerceAtLeast(0) ?: _currentPosition.value,
             repeatMode = controller?.repeatMode ?: _repeatMode.value,
             shuffle = _shuffleEnabled.value,
             speed = controller?.playbackParameters?.speed ?: _playbackSpeed.value,
@@ -1919,6 +1908,8 @@ class ExoPlayerManager(private val context: Context) {
         // Guard so a seek never lands on the last frame and trips end-of-stream auto-advance.
         const val SEEK_END_GUARD_MS = 600L
         const val SEEK_STATE_SAVE_DEBOUNCE_MS = 220L
+        // Collapse rapid lyric-page taps before they reach the MediaController command queue.
+        const val SEEK_COMMAND_COALESCE_MS = 48L
         const val RESUME_POSITION_MIN_MS = 5_000L
         const val RESUME_POSITION_END_GUARD_MS = 8_000L
         const val MAX_RESUME_POSITION_ENTRIES = 256
@@ -1933,22 +1924,5 @@ class ExoPlayerManager(private val context: Context) {
         const val KEY_APP_SHUFFLE = "app_shuffle_enabled"
         const val DECODER_MODE_FFMPEG_PREFER = 1
         const val DECODER_MODE_AUTO = 2
-    }
-}
-
-internal fun Song.isM4aOrAppleLosslessOrAAC(): Boolean {
-    val ext = path.substringAfterLast('.', "").lowercase()
-    val mime = mimeType.lowercase()
-    return when {
-        ext == "m4a" || ext == "mp4" || ext == "aac" -> true
-        ext == "alac" -> true
-        mime in setOf(
-            "audio/mp4",
-            "audio/x-m4a",
-            "audio/aac",
-            "audio/mp4a-latm",
-            "audio/alac"
-        ) -> true
-        else -> false
     }
 }

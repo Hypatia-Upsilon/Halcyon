@@ -1,10 +1,6 @@
 package com.ella.music.ui.category
 
-import android.app.Activity
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.IntentSenderRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -12,35 +8,23 @@ import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -53,65 +37,41 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import com.ella.music.R
-import com.ella.music.data.LibraryAlbumAggregator
-import com.ella.music.data.exception.WritePermissionRequiredException
-import com.ella.music.data.model.Album
-import com.ella.music.data.model.FAVORITES_PLAYLIST_ID
 import com.ella.music.data.model.Song
-import com.ella.music.data.model.UserPlaylist
 import com.ella.music.data.model.playlistIdentityKey
 import com.ella.music.ui.LibrarySortUiState
 import com.ella.music.viewmodel.MainViewModel
 import com.ella.music.viewmodel.MetadataCategoryItem
 import com.ella.music.viewmodel.PlayerViewModel
-import com.ella.music.ui.components.ConfirmDangerDialog
-import com.ella.music.ui.components.AddToPlaylistSheet
-import com.ella.music.ui.components.CreatePlaylistAndAddSheet
-import com.ella.music.ui.components.createPlaylistOrShowDuplicateToast
+import com.ella.music.ui.components.rememberLibrarySelectionState
 import com.ella.music.ui.components.rememberSongDeleteRequester
-import com.ella.music.ui.components.shareLocalSongs
-import com.ella.music.ui.components.DoubleTapScrollOverlay
 import com.ella.music.ui.components.DirectionalSortField
 import com.ella.music.ui.components.EllaSearchBar
 import com.ella.music.ui.components.EllaCenteredLoadingIndicator
-import com.ella.music.ui.components.EllaMiuixBottomSheet
-import com.ella.music.ui.components.EllaMiuixSheetActions
-import com.ella.music.ui.components.EllaMiuixTextField
 import com.ella.music.ui.components.FastIndexBar
 import com.ella.music.ui.components.FloatingSelectionControls
 import com.ella.music.ui.components.LazyGridScrollIndicator
 import com.ella.music.ui.components.RestoreGridScrollAfterSearch
 import com.ella.music.ui.components.LibraryFloatingControlsBottomPadding
 import com.ella.music.ui.components.LibraryFloatingControlsEndPadding
-import com.ella.music.ui.components.LocateCurrentSongFloatingButton
 import com.ella.music.ui.components.SideIndexListEndPadding
-import com.ella.music.ui.components.SongItem
-import com.ella.music.ui.components.SongMoreActionHost
 import com.ella.music.ui.components.SortDropdownMenu
 import com.ella.music.ui.components.directionalSortDropdownItems
 import com.ella.music.ui.components.ellaPageBackground
 import com.ella.music.ui.components.wallpaperContentOverlayColor
-import com.ella.music.ui.components.requestPinnedEllaShortcut
-import com.ella.music.ui.folder.FolderBlockDialog
-import com.ella.music.ui.folder.normalizeFolderPath
+import com.ella.music.ui.components.selectMetadataCategoryCoverSong
 import com.ella.music.ui.folder.toFolderSettingList
 import com.ella.music.ui.listmodel.SortDirection
-import com.ella.music.ui.navigation.Screen
 import com.ella.music.ui.settings.findComponentActivity
-import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import com.ella.music.ui.components.EllaSmallTopAppBar
@@ -123,14 +83,11 @@ import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.Play
 import top.yukonga.miuix.kmp.icon.extended.SelectAll
-import top.yukonga.miuix.kmp.icon.extended.Sort
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.Locale
 
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
@@ -175,10 +132,7 @@ fun MetadataCategoryScreen(
     }
     var searchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    var selectionMode by remember { mutableStateOf(false) }
-    var selectedNames by remember { mutableStateOf(setOf<String>()) }
-    var rangeAnchorName by remember { mutableStateOf<String?>(null) }
-    var rangeTargetName by remember { mutableStateOf<String?>(null) }
+    val selection = rememberLibrarySelectionState<String>()
     var categoryMenuItem by remember { mutableStateOf<MetadataCategoryItem?>(null) }
     var folderToBlock by remember { mutableStateOf<String?>(null) }
     var playlistPickerSongs by remember { mutableStateOf<List<Song>?>(null) }
@@ -216,36 +170,8 @@ fun MetadataCategoryScreen(
             currentSelectionKeys.forEachIndexed { index, name -> put(name, index) }
         }
     }
-    fun clearSelection() {
-        selectedNames = emptySet()
-        rangeAnchorName = null
-        rangeTargetName = null
-        selectionMode = false
-    }
-    fun updateRangeAnchorsForManualSelection(name: String, selectedNow: Boolean) {
-        if (selectedNow) {
-            when {
-                rangeAnchorName == null -> rangeAnchorName = name
-                rangeAnchorName == name -> Unit
-                else -> rangeTargetName = name
-            }
-        } else {
-            if (rangeTargetName == name) rangeTargetName = null
-            if (rangeAnchorName == name) {
-                rangeAnchorName = rangeTargetName ?: selectedNames.firstOrNull { it != name }
-                rangeTargetName = null
-            }
-        }
-    }
-    fun toggleSelection(name: String) {
-        val selecting = name !in selectedNames
-        val next = if (selecting) selectedNames + name else selectedNames - name
-        selectedNames = next
-        updateRangeAnchorsForManualSelection(name, selecting)
-        if (next.isEmpty()) selectionMode = false
-    }
     fun selectedActionSongs(): List<Song> =
-        selectedNames
+        selection.selectedIds
             .asSequence()
             .flatMap { categoryName -> mainViewModel.getSongsForMetadataCategory(type, categoryName).asSequence() }
             .distinctBy { it.playlistIdentityKey() }
@@ -253,44 +179,25 @@ fun MetadataCategoryScreen(
     fun toggleSelectAllVisibleItems() {
         if (currentSelectionKeys.isEmpty()) return
         val visible = currentSelectionKeys.toSet()
-        if (visible.all { it in selectedNames }) {
-            selectedNames = selectedNames - visible
-            rangeAnchorName = null
-            rangeTargetName = null
+        if (visible.all { it in selection.selectedIds }) {
+            selection.selectedIds = selection.selectedIds - visible
+            selection.rangeAnchorId = null
+            selection.rangeTargetId = null
         } else {
-            selectedNames = selectedNames + visible
+            selection.selectedIds = selection.selectedIds + visible
         }
-        selectionMode = selectedNames.isNotEmpty()
+        selection.selectionMode = selection.selectedIds.isNotEmpty()
     }
-    val selectedVisibleCount = remember(selectedNames, currentSelectionKeys) {
-        currentSelectionKeys.count { it in selectedNames }
+    val selectedVisibleCount = remember(selection.selectedIds, currentSelectionKeys) {
+        currentSelectionKeys.count { it in selection.selectedIds }
     }
-    val rangeSelectionAvailable = remember(currentSelectionIndexByName, selectedNames, rangeAnchorName, rangeTargetName) {
-        val anchor = rangeAnchorName
-        val target = rangeTargetName
-        anchor != null &&
-            target != null &&
-            anchor != target &&
-            anchor in selectedNames &&
-            target in selectedNames &&
-            anchor in currentSelectionIndexByName &&
-            target in currentSelectionIndexByName
+    val rangeSelectionAvailable = remember(currentSelectionIndexByName, selection.selectedIds, selection.rangeAnchorId, selection.rangeTargetId) {
+        selection.isRangeSelectionAvailable(currentSelectionIndexByName)
     }
-    fun applyRangeSelection() {
-        val anchor = rangeAnchorName ?: return
-        val target = rangeTargetName ?: return
-        val anchorIndex = currentSelectionIndexByName[anchor] ?: return
-        val targetIndex = currentSelectionIndexByName[target] ?: return
-        if (anchorIndex == targetIndex) return
-        val bounds = if (anchorIndex < targetIndex) anchorIndex..targetIndex else targetIndex..anchorIndex
-        selectedNames = selectedNames + bounds.map { currentSelectionKeys[it] }
-        rangeAnchorName = target
-        rangeTargetName = null
-    }
-    BackHandler(enabled = selectionMode || sortExpanded || searchExpanded || folderToBlock != null) {
+    BackHandler(enabled = selection.selectionMode || sortExpanded || searchExpanded || folderToBlock != null) {
         when {
             folderToBlock != null -> folderToBlock = null
-            selectionMode -> clearSelection()
+            selection.selectionMode -> selection.finishSelectionMode()
             searchExpanded -> {
                 searchExpanded = false
                 searchQuery = ""
@@ -298,10 +205,10 @@ fun MetadataCategoryScreen(
             sortExpanded -> sortExpanded = false
         }
     }
-    LaunchedEffect(selectionMode, currentSelectionKeys) {
-        if (!selectionMode) return@LaunchedEffect
+    LaunchedEffect(selection.selectionMode, currentSelectionKeys) {
+        if (!selection.selectionMode) return@LaunchedEffect
         val visibleKeys = currentSelectionKeys.toSet()
-        selectedNames = selectedNames.filterTo(linkedSetOf()) { it in visibleKeys }
+        selection.selectedIds = selection.selectedIds.filterTo(linkedSetOf()) { it in visibleKeys }
     }
     LaunchedEffect(type, sortIndex) {
         LibrarySortUiState.updateMetadataCategorySortIndex(type, sortIndex)
@@ -323,15 +230,15 @@ fun MetadataCategoryScreen(
         ) {
         Box {
             EllaSmallTopAppBar(
-                title = if (selectionMode) {
-                    context.getString(R.string.library_selected_fraction, selectedNames.size, currentSelectionKeys.size)
+                title = if (selection.selectionMode) {
+                    context.getString(R.string.library_selected_fraction, selection.selectedIds.size, currentSelectionKeys.size)
                 } else {
                     type.categoryTitle()
                 },
                 color = pageBackground,
                 navigationIcon = {
                     if (showBackButton) {
-                        IconButton(onClick = { if (selectionMode) clearSelection() else onBack() }) {
+                        IconButton(onClick = { if (selection.selectionMode) selection.finishSelectionMode() else onBack() }) {
                             Icon(
                                 imageVector = MiuixIcons.Regular.Back,
                                 contentDescription = stringResource(R.string.common_back),
@@ -341,9 +248,10 @@ fun MetadataCategoryScreen(
                         }
                     }
                 },
-                titleStartPadding = if (showBackButton || selectionMode) 64.dp else 20.dp,
+                titleStartPadding = if (showBackButton || selection.selectionMode) 64.dp else 20.dp,
+                onDoubleTapTitle = { scope.launch { gridState.animateScrollToItem(0) } },
                 actions = {
-                    if (selectionMode) {
+                    if (selection.selectionMode) {
                         IconButton(onClick = {
                             val selectedSongs = selectedActionSongs()
                             if (selectedSongs.isEmpty()) {
@@ -351,7 +259,7 @@ fun MetadataCategoryScreen(
                             } else {
                                 playerViewModel.playNext(selectedSongs)
                                 Toast.makeText(context, context.getString(R.string.song_more_added_to_play_next), Toast.LENGTH_SHORT).show()
-                                clearSelection()
+                                selection.finishSelectionMode()
                             }
                         }) {
                             Icon(
@@ -395,8 +303,8 @@ fun MetadataCategoryScreen(
                         }
                     } else {
                         IconButton(onClick = {
-                            selectionMode = true
-                            selectedNames = emptySet()
+                            selection.selectionMode = true
+                            selection.selectedIds = emptySet()
                         }) {
                             Icon(
                                 imageVector = MiuixIcons.Regular.SelectAll,
@@ -450,13 +358,6 @@ fun MetadataCategoryScreen(
                         )
                     }
                 }
-            )
-            DoubleTapScrollOverlay(
-                onDoubleTap = { scope.launch { gridState.animateScrollToItem(0) } },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                endPadding = 208.dp
             )
         }
 
@@ -541,33 +442,34 @@ fun MetadataCategoryScreen(
                     )
                 ) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
-                        Text(
-                            text = "${type.categoryCountSummary(displayedItems.size)} · ${sortMode.displayLabel(type)}",
-                            fontSize = 13.sp,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        com.ella.music.ui.components.SortSummaryHeader(
+                            text = "${type.categoryCountSummary(displayedItems.size)} · ${sortMode.displayLabel(type)}"
                         )
                     }
                     items(displayedItems, key = { it.name }) { item ->
-                        val albumArtUri = remember(item.coverAlbumIds) {
-                            item.coverAlbumIds.firstOrNull()?.let(mainViewModel::getAlbumArtUri)
+                        val coverSong = remember(songs, type, item.name) {
+                            selectMetadataCategoryCoverSong(songs, type, item.name) ?: item.representativeSong
+                        }
+                        val albumArtUri = remember(coverSong?.albumId, item.coverAlbumIds) {
+                            coverSong?.albumId?.takeIf { it > 0L }?.let(mainViewModel::getAlbumArtUri)
+                                ?: item.coverAlbumIds.firstOrNull()?.let(mainViewModel::getAlbumArtUri)
                         }
                         MetadataCategoryCard(
                             type = type,
                             item = item,
                             sortMode = sortMode,
                             albumArtUri = albumArtUri,
-                            representativeSong = item.representativeSong,
+                            representativeSong = coverSong,
                             loadCoverArt = if (type.prefersEmbeddedCategoryCardCover()) mainViewModel::getAlbumCoverArtBitmap else null,
-                            selectionMode = selectionMode,
-                            selected = item.name in selectedNames,
+                            selectionMode = selection.selectionMode,
+                            selected = item.name in selection.selectedIds,
                             isPinned = item.name in pinnedCategoryKeys,
                             onClick = {
-                                if (selectionMode) toggleSelection(item.name) else onCategoryClick(item.name)
+                                if (selection.selectionMode) selection.toggleSelection(item.name) else onCategoryClick(item.name)
                             },
                             onLongClick = {
-                                if (selectionMode) {
-                                    toggleSelection(item.name)
+                                if (selection.selectionMode) {
+                                    selection.toggleSelection(item.name)
                                 } else {
                                     categoryMenuItem = item
                                 }
@@ -599,10 +501,10 @@ fun MetadataCategoryScreen(
                     )
                 }
                 FloatingSelectionControls(
-                    visible = selectionMode && currentSelectionKeys.isNotEmpty(),
+                    visible = selection.selectionMode && currentSelectionKeys.isNotEmpty(),
                     rangeEnabled = rangeSelectionAvailable,
                     allSelected = currentSelectionKeys.isNotEmpty() && selectedVisibleCount == currentSelectionKeys.size,
-                    onRangeSelect = ::applyRangeSelection,
+                    onRangeSelect = { selection.applyRangeSelection(currentSelectionKeys, currentSelectionIndexByName) },
                     onSelectAll = ::toggleSelectAllVisibleItems,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)

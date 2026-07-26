@@ -1,19 +1,12 @@
 package com.ella.music.ui.category
 
-import android.app.Activity
-import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.IntentSenderRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import android.widget.Toast
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,30 +18,21 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -56,69 +40,42 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import com.ella.music.R
 import com.ella.music.data.LibraryAlbumAggregator
-import com.ella.music.data.exception.WritePermissionRequiredException
-import com.ella.music.data.model.Album
-import com.ella.music.data.model.FAVORITES_PLAYLIST_ID
 import com.ella.music.data.model.Song
-import com.ella.music.data.model.UserPlaylist
 import com.ella.music.data.model.albumIdentityId
 import com.ella.music.data.model.playlistIdentityKey
 import com.ella.music.ui.LibrarySortUiState
 import com.ella.music.viewmodel.MainViewModel
-import com.ella.music.viewmodel.MetadataCategoryItem
 import com.ella.music.viewmodel.PlayerViewModel
-import com.ella.music.ui.components.ConfirmDangerDialog
-import com.ella.music.ui.components.AddToPlaylistSheet
-import com.ella.music.ui.components.DoubleTapScrollOverlay
 import com.ella.music.ui.components.EllaSearchBar
 import com.ella.music.ui.components.EllaCenteredLoadingIndicator
-import com.ella.music.ui.components.EllaMiuixBottomSheet
-import com.ella.music.ui.components.EllaMiuixSheetActions
-import com.ella.music.ui.components.EllaMiuixTextField
 import com.ella.music.ui.components.FastIndexBar
 import com.ella.music.ui.components.FloatingSelectionControls
-import com.ella.music.ui.components.FolderOutlineIcon
 import com.ella.music.ui.components.LibraryFloatingControlsBottomPadding
 import com.ella.music.ui.components.LibraryFloatingControlsEndPadding
 import com.ella.music.ui.components.LibrarySecondaryFloatingControlsBottomPadding
-import com.ella.music.ui.components.LazyGridScrollIndicator
 import com.ella.music.ui.components.LazyListScrollIndicator
 import com.ella.music.ui.components.RestoreListScrollAfterSearch
 import com.ella.music.ui.components.LocateCurrentSongFloatingButton
-import com.ella.music.ui.components.DefaultAlbumCover
-import com.ella.music.ui.components.SafeCoverImage
 import com.ella.music.ui.components.ShuffleAllFloatingButton
 import com.ella.music.ui.components.SideIndexListEndPadding
 import com.ella.music.ui.components.SongItem
-import com.ella.music.ui.components.SongMoreActionHost
-import com.ella.music.ui.components.ArtworkUsage
 import com.ella.music.ui.components.DirectionalSortModeField
 import com.ella.music.ui.components.SortDropdownMenu
 import com.ella.music.ui.components.directionalSortModeDropdownItems
-import com.ella.music.ui.components.createPlaylistOrShowDuplicateToast
 import com.ella.music.ui.components.ellaPageBackground
-import com.ella.music.ui.components.rememberSongArtworkState
-import com.ella.music.ui.components.requestPinnedEllaShortcut
+import com.ella.music.ui.components.rememberLibrarySelectionState
+import com.ella.music.ui.components.rememberSongDeleteResultHandler
 import com.ella.music.ui.folder.folderDisplayName
-import com.ella.music.ui.navigation.Screen
 import com.ella.music.ui.settings.findComponentActivity
-import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import com.ella.music.ui.components.EllaSmallTopAppBar
@@ -128,17 +85,11 @@ import top.yukonga.miuix.kmp.icon.basic.Search
 import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Delete
-import top.yukonga.miuix.kmp.icon.extended.Music
 import top.yukonga.miuix.kmp.icon.extended.Play
 import top.yukonga.miuix.kmp.icon.extended.SelectAll
-import top.yukonga.miuix.kmp.icon.extended.Sort
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.util.Locale
 
 @Composable
 fun MetadataCategoryDetailScreen(
@@ -177,14 +128,10 @@ fun MetadataCategoryDetailScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedTab by rememberSaveable(type, name) { mutableStateOf(MetadataDetailTab.Songs) }
     var actionSong by remember { mutableStateOf<com.ella.music.data.model.Song?>(null) }
-    var selectionMode by remember { mutableStateOf(false) }
-    var selectedIds by remember { mutableStateOf(setOf<Long>()) }
-    var rangeAnchorId by remember { mutableStateOf<Long?>(null) }
-    var rangeTargetId by remember { mutableStateOf<Long?>(null) }
+    val selection = rememberLibrarySelectionState<Long>()
     var playlistPickerSongs by remember { mutableStateOf<List<Song>?>(null) }
     var createPlaylistSongs by remember { mutableStateOf<List<Song>?>(null) }
     var pendingDeleteSongs by remember { mutableStateOf<List<Song>>(emptyList()) }
-    var pendingSystemDeleteSongs by remember { mutableStateOf<List<Song>>(emptyList()) }
     val detailQuery = searchQuery.trim()
     val filteredSongs = remember(songs, detailQuery) {
         if (detailQuery.isBlank()) {
@@ -199,33 +146,6 @@ fun MetadataCategoryDetailScreen(
         }
     }
     val sortedSongs = remember(filteredSongs, sortMode) { filteredSongs.sortedForMetadataDetail(sortMode) }
-    fun clearSelection() {
-        selectedIds = emptySet()
-        rangeAnchorId = null
-        rangeTargetId = null
-        selectionMode = false
-    }
-    fun updateRangeAnchorsForManualSelection(songId: Long, selectedNow: Boolean) {
-        if (selectedNow) {
-            when {
-                rangeAnchorId == null -> rangeAnchorId = songId
-                rangeAnchorId == songId -> Unit
-                else -> rangeTargetId = songId
-            }
-        } else {
-            if (rangeTargetId == songId) rangeTargetId = null
-            if (rangeAnchorId == songId) {
-                rangeAnchorId = rangeTargetId ?: selectedIds.firstOrNull { it != songId }
-                rangeTargetId = null
-            }
-        }
-    }
-    fun toggleSongSelection(songId: Long) {
-        val selecting = songId !in selectedIds
-        selectedIds = if (selecting) selectedIds + songId else selectedIds - songId
-        updateRangeAnchorsForManualSelection(songId, selecting)
-        if (selectedIds.isEmpty()) selectionMode = false
-    }
     val showAlbumTab = type == "genre" || type == "year" || type in PERSON_METADATA_CATEGORY_TYPES
     val shouldBuildAlbumTabContent = showAlbumTab && selectedTab == MetadataDetailTab.Albums
     val detailAlbums = remember(songs, libraryAlbums, shouldBuildAlbumTabContent) {
@@ -294,37 +214,7 @@ fun MetadataCategoryDetailScreen(
     val scope = rememberCoroutineScope()
     val saveScope = context.findComponentActivity()?.lifecycleScope ?: scope
     var fastScrollJob by remember { mutableStateOf<Job?>(null) }
-    val deleteRequestLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        val songsToDelete = pendingSystemDeleteSongs
-        pendingSystemDeleteSongs = emptyList()
-        if (result.resultCode == Activity.RESULT_OK && songsToDelete.isNotEmpty()) {
-            mainViewModel.removeSongsFromLibrary(songsToDelete)
-            Toast.makeText(context, context.getString(R.string.library_deleted_songs, songsToDelete.size), Toast.LENGTH_SHORT).show()
-            clearSelection()
-        } else if (songsToDelete.isNotEmpty()) {
-            Toast.makeText(context, context.getString(R.string.library_delete_cancelled), Toast.LENGTH_SHORT).show()
-        }
-    }
-    fun deleteSelectedSongs(songsToDelete: List<Song>) {
-        if (songsToDelete.isEmpty()) return
-        scope.launch {
-            val result = mainViewModel.deleteSongsResult(songsToDelete)
-            if (result.isSuccess) {
-                Toast.makeText(context, context.getString(R.string.library_deleted_songs, songsToDelete.size), Toast.LENGTH_SHORT).show()
-                clearSelection()
-                return@launch
-            }
-            val error = result.exceptionOrNull()
-            if (error is WritePermissionRequiredException) {
-                pendingSystemDeleteSongs = songsToDelete
-                deleteRequestLauncher.launch(IntentSenderRequest.Builder(error.intentSender).build())
-            } else {
-                Toast.makeText(context, error?.localizedMessage ?: context.getString(R.string.song_more_metadata_save_failed), Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
+    val deleteSelectedSongs = rememberSongDeleteResultHandler(mainViewModel) { selection.finishSelectionMode() }
     val sortedSongIndexById = remember(sortedSongs) {
         buildMap {
             sortedSongs.forEachIndexed { index, song -> put(song.id, index) }
@@ -346,54 +236,21 @@ fun MetadataCategoryDetailScreen(
     }
     fun selectedActionSongs(): List<Song> {
         return when (selectedTab) {
-            MetadataDetailTab.Songs -> sortedSongs.filter { it.id in selectedIds }
+            MetadataDetailTab.Songs -> sortedSongs.filter { it.id in selection.selectedIds }
             MetadataDetailTab.Albums -> sortedAlbums
-                .filter { it.id in selectedIds }
+                .filter { it.id in selection.selectedIds }
                 .flatMap { detailSongsByAlbumId[it.id].orEmpty() }
                 .distinctBy { it.playlistIdentityKey() }
         }
     }
-    val selectedVisibleCount = remember(selectedIds, currentSelectionIds) {
-        currentSelectionIds.count { it in selectedIds }
+    val selectedVisibleCount = remember(selection.selectedIds, currentSelectionIds) {
+        currentSelectionIds.count { it in selection.selectedIds }
     }
-    val rangeSelectionAvailable = remember(currentSelectionIndexById, selectedIds, rangeAnchorId, rangeTargetId) {
-        val anchor = rangeAnchorId
-        val target = rangeTargetId
-        anchor != null &&
-            target != null &&
-            anchor != target &&
-            anchor in selectedIds &&
-            target in selectedIds &&
-            anchor in currentSelectionIndexById &&
-            target in currentSelectionIndexById
+    val rangeSelectionAvailable = remember(currentSelectionIndexById, selection.selectedIds, selection.rangeAnchorId, selection.rangeTargetId) {
+        selection.isRangeSelectionAvailable(currentSelectionIndexById)
     }
-    fun applyRangeSelection() {
-        val anchor = rangeAnchorId ?: return
-        val target = rangeTargetId ?: return
-        val anchorIndex = currentSelectionIndexById[anchor] ?: return
-        val targetIndex = currentSelectionIndexById[target] ?: return
-        if (anchorIndex == targetIndex) return
-        val bounds = if (anchorIndex < targetIndex) anchorIndex..targetIndex else targetIndex..anchorIndex
-        selectedIds = selectedIds + bounds.map { currentSelectionIds[it] }
-        rangeAnchorId = target
-        rangeTargetId = null
-    }
-    fun toggleSelectAllVisibleItems() {
-        if (currentSelectionIds.isEmpty()) return
-        val ids = currentSelectionIds.toMutableSet()
-        if (ids.all { it in selectedIds }) {
-            selectedIds = selectedIds - ids
-            rangeAnchorId = null
-            rangeTargetId = null
-        } else {
-            selectedIds = selectedIds + ids
-            rangeAnchorId = currentSelectionIds.firstOrNull()
-            rangeTargetId = currentSelectionIds.lastOrNull()
-        }
-        selectionMode = true
-    }
-    val currentSongItemIndex = remember(sortedSongIndexById, currentSong?.id, selectedTab, selectionMode) {
-        if (selectedTab != MetadataDetailTab.Songs || selectionMode) return@remember -1
+    val currentSongItemIndex = remember(sortedSongIndexById, currentSong?.id, selectedTab, selection.selectionMode) {
+        if (selectedTab != MetadataDetailTab.Songs || selection.selectionMode) return@remember -1
         (currentSong?.id?.let { sortedSongIndexById[it] } ?: -1)
             .takeIf { it >= 0 }
             ?.plus(1)
@@ -407,10 +264,10 @@ fun MetadataCategoryDetailScreen(
             fastIndexLetters.forEachIndexed { index, letter -> putIfAbsent(letter, index + 1) }
         }
     }
-    BackHandler(enabled = selectionMode || sortExpanded || searchExpanded) {
+    BackHandler(enabled = selection.selectionMode || sortExpanded || searchExpanded) {
         when {
-            selectionMode -> {
-                clearSelection()
+            selection.selectionMode -> {
+                selection.finishSelectionMode()
             }
             searchExpanded -> {
                 searchExpanded = false
@@ -420,16 +277,16 @@ fun MetadataCategoryDetailScreen(
         }
     }
     LaunchedEffect(selectedTab) {
-        if (selectionMode) {
-            clearSelection()
+        if (selection.selectionMode) {
+            selection.finishSelectionMode()
         }
     }
-    LaunchedEffect(selectionMode, currentSelectionIds) {
-        if (!selectionMode) return@LaunchedEffect
+    LaunchedEffect(selection.selectionMode, currentSelectionIds) {
+        if (!selection.selectionMode) return@LaunchedEffect
         val visibleIds = currentSelectionIds.toMutableSet()
-        selectedIds = selectedIds.filterTo(mutableSetOf()) { it in visibleIds }
-        if (rangeAnchorId !in visibleIds) rangeAnchorId = selectedIds.firstOrNull()
-        if (rangeTargetId !in visibleIds) rangeTargetId = null
+        selection.selectedIds = selection.selectedIds.filterTo(mutableSetOf()) { it in visibleIds }
+        if (selection.rangeAnchorId !in visibleIds) selection.rangeAnchorId = selection.selectedIds.firstOrNull()
+        if (selection.rangeTargetId !in visibleIds) selection.rangeTargetId = null
     }
     LaunchedEffect(type, sortIndex) {
         LibrarySortUiState.updateMetadataCategoryDetailSongSortIndex(type, sortIndex)
@@ -461,8 +318,9 @@ fun MetadataCategoryDetailScreen(
             EllaSmallTopAppBar(
                 title = pageTitle,
                 color = pageBackground,
+                onDoubleTapTitle = { scope.launch { listState.animateScrollToItem(0) } },
                 navigationIcon = {
-                    IconButton(onClick = { if (selectionMode) clearSelection() else onBack() }) {
+                    IconButton(onClick = { if (selection.selectionMode) selection.finishSelectionMode() else onBack() }) {
                         Icon(
                             imageVector = MiuixIcons.Regular.Back,
                             contentDescription = stringResource(R.string.common_back),
@@ -472,7 +330,7 @@ fun MetadataCategoryDetailScreen(
                     }
                 },
                 actions = {
-                    if (selectionMode) {
+                    if (selection.selectionMode) {
                         IconButton(onClick = {
                             val selectedSongs = selectedActionSongs()
                             if (selectedSongs.isEmpty()) {
@@ -480,7 +338,7 @@ fun MetadataCategoryDetailScreen(
                             } else {
                                 playerViewModel.playNext(selectedSongs)
                                 Toast.makeText(context, context.getString(R.string.song_more_added_to_play_next), Toast.LENGTH_SHORT).show()
-                                clearSelection()
+                                selection.finishSelectionMode()
                             }
                         }) {
                             Icon(
@@ -522,10 +380,10 @@ fun MetadataCategoryDetailScreen(
                         }
                     } else {
                         IconButton(onClick = {
-                            selectionMode = true
-                            selectedIds = emptySet()
-                            rangeAnchorId = null
-                            rangeTargetId = null
+                            selection.selectionMode = true
+                            selection.selectedIds = emptySet()
+                            selection.rangeAnchorId = null
+                            selection.rangeTargetId = null
                         }) {
                             Icon(
                                 imageVector = MiuixIcons.Regular.SelectAll,
@@ -633,13 +491,6 @@ fun MetadataCategoryDetailScreen(
                     }
                 }
             )
-            DoubleTapScrollOverlay(
-                onDoubleTap = { scope.launch { listState.animateScrollToItem(0) } },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                endPadding = 208.dp
-            )
         }
 
         AnimatedVisibility(
@@ -722,8 +573,8 @@ fun MetadataCategoryDetailScreen(
             ) {
                 item {
                     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                        val summaryText = if (selectionMode) {
-                            stringResource(R.string.library_selected_fraction, selectedIds.size, currentSelectionIds.size)
+                        val summaryText = if (selection.selectionMode) {
+                            stringResource(R.string.library_selected_fraction, selection.selectedIds.size, currentSelectionIds.size)
                         } else if (selectedTab == MetadataDetailTab.Albums) {
                             stringResource(
                                 R.string.category_album_summary,
@@ -812,25 +663,25 @@ fun MetadataCategoryDetailScreen(
                             duration = albumDurations[album.id] ?: 0L,
                             albumArtUri = albumArtUri,
                             contextPersonName = albumArtistContextName,
-                            selectionMode = selectionMode,
-                            selected = album.id in selectedIds,
+                            selectionMode = selection.selectionMode,
+                            selected = album.id in selection.selectedIds,
                             onClick = {
-                                if (selectionMode) {
-                                    toggleSongSelection(album.id)
+                                if (selection.selectionMode) {
+                                    selection.toggleSelection(album.id)
                                 } else {
                                     onAlbumClick(album.id)
                                 }
                             },
                             onLongClick = {
-                                selectionMode = true
-                                selectedIds = selectedIds + album.id
-                                updateRangeAnchorsForManualSelection(album.id, selectedNow = true)
+                                selection.selectionMode = true
+                                selection.selectedIds = selection.selectedIds + album.id
+                                selection.updateRangeAnchorsForManualSelection(album.id, selectedNow = true)
                             }
                         )
                     }
                 } else {
                     itemsIndexed(sortedSongs, key = { _, song -> song.id }) { index, song ->
-                        val selected = song.id in selectedIds
+                        val selected = song.id in selection.selectedIds
                         val albumArtUri = remember(song.albumId) {
                             song.albumId
                                 .takeIf { it > 0L }
@@ -845,16 +696,16 @@ fun MetadataCategoryDetailScreen(
                             showPlayNextInLists = showPlayNextInLists,
                             isFavorite = song.playlistIdentityKey() in favoriteSongKeys,
                             loadSongRating = mainViewModel::getSongRating,
-                            selectionMode = selectionMode,
+                            selectionMode = selection.selectionMode,
                             selected = selected,
                             onLongClick = {
-                                selectionMode = true
-                                selectedIds = selectedIds + song.id
-                                updateRangeAnchorsForManualSelection(song.id, selectedNow = true)
+                                selection.selectionMode = true
+                                selection.selectedIds = selection.selectedIds + song.id
+                                selection.updateRangeAnchorsForManualSelection(song.id, selectedNow = true)
                             },
                             onClick = {
-                                if (selectionMode) {
-                                    toggleSongSelection(song.id)
+                                if (selection.selectionMode) {
+                                    selection.toggleSelection(song.id)
                                 } else {
                                     playerViewModel.setPlaylist(sortedSongs, index)
                                     if (openPlayerOnPlay) onNavigateToPlayer()
@@ -896,7 +747,7 @@ fun MetadataCategoryDetailScreen(
             }
 
             ShuffleAllFloatingButton(
-                visible = !selectionMode && sortedSongs.isNotEmpty(),
+                visible = !selection.selectionMode && sortedSongs.isNotEmpty(),
                 onClick = {
                     playerViewModel.setPlaylist(sortedSongs.shuffled(), 0)
                     if (openPlayerOnPlay) onNavigateToPlayer()
@@ -914,11 +765,11 @@ fun MetadataCategoryDetailScreen(
                     .padding(end = LibraryFloatingControlsEndPadding, bottom = LibraryFloatingControlsBottomPadding)
             )
             FloatingSelectionControls(
-                visible = selectionMode && currentSelectionIds.isNotEmpty(),
+                visible = selection.selectionMode && currentSelectionIds.isNotEmpty(),
                 rangeEnabled = rangeSelectionAvailable,
                 allSelected = currentSelectionIds.isNotEmpty() && selectedVisibleCount == currentSelectionIds.size,
-                onRangeSelect = ::applyRangeSelection,
-                onSelectAll = ::toggleSelectAllVisibleItems,
+                onRangeSelect = { selection.applyRangeSelection(currentSelectionIds, currentSelectionIndexById) },
+                onSelectAll = { selection.toggleSelectAll(currentSelectionIds) },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = LibraryFloatingControlsEndPadding, bottom = LibraryFloatingControlsBottomPadding)
@@ -939,8 +790,8 @@ fun MetadataCategoryDetailScreen(
                 onCreatePlaylistSongsChange = { createPlaylistSongs = it },
                 pendingDeleteSongs = pendingDeleteSongs,
                 onPendingDeleteSongsChange = { pendingDeleteSongs = it },
-                onDeleteSelectedSongs = ::deleteSelectedSongs,
-                onClearSelection = ::clearSelection
+                onDeleteSelectedSongs = deleteSelectedSongs,
+                onClearSelection = selection::finishSelectionMode
             )
         }
     }

@@ -23,8 +23,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -38,9 +38,9 @@ import com.ella.music.data.model.AudioInfo
 import com.ella.music.data.model.Song
 import com.ella.music.ui.components.PlayerQueueListIcon
 import kotlinx.coroutines.launch
+import java.util.Locale
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.icon.MiuixIcons
 
 @Composable
 internal fun LandscapeProgressRow(
@@ -58,12 +58,24 @@ internal fun LandscapeProgressRow(
             .padding(top = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = formatTime(currentPosition),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color = palette.onBackground.copy(alpha = 0.72f)
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = formatTime(currentPosition),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                // Keep the real position visible while previewing a seek target.
+                color = palette.onBackground.copy(alpha = if (previewProgress == null) 0.72f else 0.48f)
+            )
+            previewProgress?.let { progress ->
+                Text(
+                    text = formatTime((duration * progress).toLong()),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = palette.onBackground.copy(alpha = 0.82f),
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+            }
+        }
         GlowSeekBar(
             value = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f,
             onSeek = onSeek,
@@ -75,7 +87,7 @@ internal fun LandscapeProgressRow(
                 .padding(horizontal = 12.dp)
         )
         Text(
-            text = previewProgress?.let { formatTime((duration * it).toLong()) } ?: if (showTotalDuration) {
+            text = if (showTotalDuration || previewProgress != null) {
                 formatTime(duration.coerceAtLeast(0L))
             } else {
                 "-${formatTime((duration - currentPosition).coerceAtLeast(0L))}"
@@ -150,6 +162,7 @@ internal fun PlayerProgressBlock(
     onSeek: (Float) -> Unit
 ) {
     val context = LocalContext.current
+    val isTablet = LocalConfiguration.current.smallestScreenWidthDp >= 600
     val scope = rememberCoroutineScope()
     val settingsManager = remember(context) { SettingsManager.getInstance(context) }
     val savedInfoMode by settingsManager.playerProgressInfoIndex.collectAsState(initial = 0)
@@ -167,6 +180,12 @@ internal fun PlayerProgressBlock(
             }
         }.distinct()
     }
+    val replayGainLabel = audioInfo?.replayGainDb?.let { gain ->
+        stringResource(
+            R.string.player_replay_gain_badge,
+            String.format(Locale.US, "%+.2f dB", gain)
+        )
+    }
     androidx.compose.runtime.LaunchedEffect(savedInfoMode, infoLabels.size) {
         infoMode = if (infoLabels.isEmpty()) 0 else savedInfoMode % infoLabels.size
     }
@@ -180,43 +199,104 @@ internal fun PlayerProgressBlock(
             modifier = Modifier.fillMaxWidth()
         )
         Box(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = formatTime(currentPosition),
-                fontSize = 14.sp,
-                color = palette.onBackground.copy(alpha = 0.72f),
-                modifier = Modifier.align(Alignment.CenterStart)
-            )
-            if (infoLabels.isNotEmpty()) {
-                val infoText = infoLabels[infoMode % infoLabels.size]
+            Row(
+                modifier = Modifier.align(Alignment.CenterStart),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    text = infoText,
-                    fontSize = 12.sp,
-                    color = palette.onBackground.copy(alpha = 0.62f),
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(palette.onBackground.copy(alpha = 0.10f))
-                        .pointerInput(infoLabels, bluetoothDeviceName) {
-                            detectTapGestures(
-                                onTap = {
-                                    if (infoLabels.size > 1) {
-                                        val nextMode = (infoMode + 1) % infoLabels.size
-                                        infoMode = nextMode
-                                        scope.launch { settingsManager.setPlayerProgressInfoIndex(nextMode) }
-                                    }
-                                },
-                                onLongPress = {
-                                    if (!bluetoothDeviceName.isNullOrBlank()) {
-                                        openSystemOutputSwitcher(context)
-                                    }
-                                }
-                            )
-                        }
-                        .padding(horizontal = 10.dp, vertical = 3.dp)
+                    text = formatTime(currentPosition),
+                    fontSize = 14.sp,
+                    // Do not replace the current time: the adjacent label is the seek preview.
+                    color = palette.onBackground.copy(alpha = if (previewProgress == null) 0.72f else 0.48f)
                 )
+                previewProgress?.let { progress ->
+                    Text(
+                        text = formatTime((duration * progress).toLong()),
+                        fontSize = 14.sp,
+                        color = palette.onBackground.copy(alpha = 0.82f),
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isTablet && (infoLabels.isNotEmpty() || replayGainLabel != null)) {
+                    val infoText = infoLabels.getOrNull(infoMode % infoLabels.size.coerceAtLeast(1))
+                    Text(
+                        text = listOfNotNull(
+                            infoText,
+                            replayGainLabel
+                        ).joinToString(" / "),
+                        fontSize = 12.sp,
+                        color = palette.onBackground.copy(alpha = 0.62f),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(palette.onBackground.copy(alpha = 0.10f))
+                            .pointerInput(infoLabels, bluetoothDeviceName) {
+                                detectTapGestures(
+                                    onTap = {
+                                        if (infoLabels.size > 1) {
+                                            val nextMode = (infoMode + 1) % infoLabels.size
+                                            infoMode = nextMode
+                                            scope.launch { settingsManager.setPlayerProgressInfoIndex(nextMode) }
+                                        }
+                                    },
+                                    onLongPress = {
+                                        if (!bluetoothDeviceName.isNullOrBlank()) {
+                                            openSystemOutputSwitcher(context)
+                                        }
+                                    }
+                                )
+                            }
+                            .padding(horizontal = 10.dp, vertical = 3.dp)
+                    )
+                } else {
+                    if (infoLabels.isNotEmpty()) {
+                        val infoText = infoLabels[infoMode % infoLabels.size]
+                        Text(
+                            text = infoText,
+                            fontSize = 12.sp,
+                            color = palette.onBackground.copy(alpha = 0.62f),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(palette.onBackground.copy(alpha = 0.10f))
+                                .pointerInput(infoLabels, bluetoothDeviceName) {
+                                    detectTapGestures(
+                                        onTap = {
+                                            if (infoLabels.size > 1) {
+                                                val nextMode = (infoMode + 1) % infoLabels.size
+                                                infoMode = nextMode
+                                                scope.launch { settingsManager.setPlayerProgressInfoIndex(nextMode) }
+                                            }
+                                        },
+                                        onLongPress = {
+                                            if (!bluetoothDeviceName.isNullOrBlank()) {
+                                                openSystemOutputSwitcher(context)
+                                            }
+                                        }
+                                    )
+                                }
+                                .padding(horizontal = 10.dp, vertical = 3.dp)
+                        )
+                    }
+                    replayGainLabel?.let { label ->
+                    Text(
+                        text = label,
+                        fontSize = 12.sp,
+                        color = palette.onBackground.copy(alpha = 0.72f),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(palette.onBackground.copy(alpha = 0.10f))
+                            .padding(horizontal = 10.dp, vertical = 3.dp)
+                    )
+                    }
+                }
             }
             Text(
-                text = previewProgress?.let { formatTime((duration * it).toLong()) } ?: if (showTotalDuration) {
+                text = if (showTotalDuration || previewProgress != null) {
                     formatTime(duration.coerceAtLeast(0L))
                 } else {
                     "-${formatTime((duration - currentPosition).coerceAtLeast(0L))}"
@@ -252,6 +332,7 @@ internal fun PlayerTransportControls(
     onQueueSongClick: (Int) -> Unit,
     onRemoveQueueSong: (Int) -> Unit,
     onMoveQueueSong: (Int, Int) -> Unit,
+    onRandomizeQueue: () -> Unit,
     onAddQueueToPlaylist: () -> Unit,
     onClearQueue: () -> Unit,
     modifier: Modifier = Modifier
@@ -305,7 +386,7 @@ internal fun PlayerTransportControls(
             PlayerTransportIconButton(onClick = onToggleQueue) {
                 PlayerQueueListIcon(
                     color = palette.onBackground.copy(alpha = 0.92f),
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(26.dp)
                 )
             }
             PlayerQueueSheet(
@@ -324,6 +405,7 @@ internal fun PlayerTransportControls(
                 onSongClick = onQueueSongClick,
                 onRemoveSong = onRemoveQueueSong,
                 onMoveSong = onMoveQueueSong,
+                onRandomizeQueue = onRandomizeQueue,
                 onAddQueueToPlaylist = onAddQueueToPlaylist,
                 onClearQueue = onClearQueue
             )

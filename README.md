@@ -44,7 +44,7 @@
 - 支持本地歌单、收藏歌单、五星歌曲、歌单导入 / 导出、桌面快捷方式和自定义拖拽排序。
 - 专辑识别会同时考虑专辑名与专辑艺术家，避免不同艺术家的同名专辑互相合并。
 - 支持音乐库统计分析、听歌日历、播放次数排行、听歌时长排行、格式分布和音质分布。
-- 支持 Last.fm 授权、完整历史同步、自动 Scrobble 与本地 / Last.fm / 合并听歌历史视图；敏感凭据由 Android Keystore 加密且不会写入备份。
+- 支持 Last.fm 授权、完整历史同步、自动 Scrobble 与本地 / Last.fm / 合并听歌历史视图；记录可逐项删除，Last.fm 缓存记录可仅在本地隐藏；敏感凭据由 Android Keystore 加密且不会写入备份。
 - 音乐库分析支持缓存与扫描后预热，较大的本地曲库也能更快打开统计页面。
 
 ### 🖼 播放页与动态封面
@@ -60,7 +60,7 @@
 - 支持 Monet 动态取色，可从系统壁纸或当前歌曲封面生成全局强调色。
 - 非沉浸播放页可为 Hi-Res / MQ 音质歌曲显示封面角标。
 - 播放页支持跟手下拉关闭、动态背景、模糊背景、封面左右滑切歌和横屏队列封面切换；平板横屏可在底部播放条和紧凑导航条显示当前歌词。
-- 支持显示歌曲 MV；请将“歌曲文件名-MV.mp4”或“歌曲文件名_MV.mp4”放到与歌曲同目录。播放 MV 时会暂停歌曲音频并使用 MV 声音，切回歌曲后继续音乐播放；支持横屏打开 MV。
+- 支持显示歌曲 MV；请将“歌曲文件名-MV.mp4”或“歌曲文件名_MV.mp4”放到与歌曲同目录。播放页可同步静音 MV，详情页可独立播放有声 MV；支持横屏打开、截图分享、字幕与 KTV 歌词。
 - 长按播放页封面可预览原图，支持双击缩放、单指拖动、分享和保存。
 
 ### 🎤 歌词体验
@@ -73,6 +73,7 @@
 - 提供桌面歌词悬浮窗、状态栏歌词、媒体通知歌词、词幕、SuperLyricApi 和 Lyric Getter API 集成。
 - 状态栏歌词的长文本会带间隔连续循环，避免滚动结束时闪跳。
 - 支持歌词卡片分享、字体导入与系统字体选择器、歌词偏移、歌词点击跳转和副行内容配置。
+- 内置全屏歌词打轴器：支持逐行 / 逐词打点、固定底部传输控制、撤销 / 重做、V1 / V2 / V1000 对唱角色、翻译、音译、`x-bg` 背景人声，并可内嵌或导出 LRC、ELRC、TTML。
 
 ### 🌐 WebDAV、Navidrome、Emby 与 LX 在线音乐
 
@@ -86,10 +87,11 @@
 - 提供应用内软件 10 段参数均衡器，不依赖系统 Equalizer，并根据设备能力显示低音增强和虚拟化选项。
 - 支持原生 Oboe 音频输出和 USB DAC 独占模式，并提供可调时长的交叉淡入淡出播放。
 - 本地音频标签读取使用 lyrico-audiotag 主路径，支持常见音频格式的封面、基础标签、内嵌歌词和多值标签读取。
-- 内置标签编辑器支持编辑基础标签、歌词和歌曲封面。
+- 内置标签编辑器支持编辑基础标签、歌词、歌曲封面和交互式星级评分。
 - 提供系统解码、FFmpeg 解码和自动解码模式，提升 ALAC / AAC / M4A 等格式兼容性。
 - 支持 ReplayGain、随机队列恢复、音质标签展示和 24-bit / 96 kHz 等规格识别。
 - 支持 163 key 读取，可从独立 tag、Comment 和 Description 中提取并解析相关信息。
+- 提供本地音频工具，可进行格式转换、多音频流导出和 CUE 整轨分轨；内置频谱查看器也可直接跳转 Aspect Pro 或 Kaspek。
 
 ### 🎨 界面与扩展
 
@@ -254,11 +256,12 @@ Halcyon 主项目以 **Apache-2.0** 协议开源。第三方组件保留其各�
 
 - **BetterLyrics** — 为模糊封面背景和歌词展示提供视觉参考。
 - **Beautiful Lyrics** — 为动态背景、全屏歌词与歌词视觉体验提供参考。
+- **LySy** — 为内置原生 Kotlin / Compose 歌词打轴页提供交互与时间轴算法参考（MIT；不引入其 Web 源码或依赖）。
 - **Lyrico** — 为外部标签编辑器适配、歌曲标签读取和日志页面交互提供参考。
 - **LX Music Mobile** — 提供 LX Music API 兼容实现与测试参考。
-- **RawS Music** — 提供 10 段均衡器、BiQuad 参数均衡与 DSP 核心参考。
+- **RawS Music** — 为 10 段均衡器、BiQuad 参数均衡、360° 环绕 / 全景音、等响度、动态均衡/齿音抑制、Moog 梯形滤波器与峰值保护提供 Apache-2.0 的算法参考与 Kotlin 移植基础。
 - **光锥音乐** — 界面设计与功能实现参考。
-- 感谢 Halcyon 所使用的 Miuix、Media3、FFmpeg、Lyricon、SuperLyricApi、LyricGetter-API、lyrico-audiotag / Lyrico、TagLib、163KeyDecrypter、Kyant Backdrop、Coil、OkHttp、Reorderable、accompanist-lyrics-core、Beautiful Lyrics、RawS Music 以及其它开源项目。
+- 感谢 Halcyon 所使用的 Miuix、Media3、FFmpeg、Lyricon、SuperLyricApi、LyricGetter-API、lyrico-audiotag / Lyrico、TagLib、163KeyDecrypter、Kyant Backdrop、Coil、OkHttp、Reorderable、accompanist-lyrics-core、LySy、Beautiful Lyrics、RawS Music 以及其它开源项目。
 
 * 以及感谢各位群友积极的测试反馈。Halcyon 的开发与测试过程，也离不开各位群友的支持与鼓励。
 
@@ -283,7 +286,7 @@ Halcyon 主项目以 **Apache-2.0** 协议开源。第三方组件保留其各�
 ## 友情推广链接
 
 - [Lyrico](https://github.com/Replica0110/Lyrico)
-- 强大的歌曲标签编辑工具，同样使用 Miuix 构建，支持匹配歌词、封面、ReplayGain、网易云注释等。
+ 强大的歌曲标签编辑工具，同样使用 Miuix 构建，支持匹配歌词、封面、ReplayGain、网易云注释等。
 
 - [RawS Music](https://github.com/QFDY-GZC/RawS-Music)
   一个支持 USB DAC 独占，且支持EQ、环绕音效等的开源本地播放器，同样使用 Miuix 构建，推荐试试。

@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -44,7 +42,6 @@ import com.ella.music.data.PlaylistExportFormat
 import com.ella.music.ui.components.AddToPlaylistSheet
 import com.ella.music.ui.components.ConfirmDangerDialog
 import com.ella.music.ui.components.CreatePlaylistAndAddSheet
-import com.ella.music.ui.components.DoubleTapScrollOverlay
 import com.ella.music.ui.components.EllaCenteredLoadingIndicator
 import com.ella.music.ui.components.FastIndexBar
 import com.ella.music.ui.components.FloatingSelectionControls
@@ -61,6 +58,7 @@ import com.ella.music.ui.components.DirectionalSortModeField
 import com.ella.music.ui.components.directionalSortModeDropdownItems
 import com.ella.music.ui.components.createPlaylistOrShowDuplicateToast
 import com.ella.music.ui.components.ellaPageBackground
+import com.ella.music.ui.components.rememberLibrarySelectionState
 import com.ella.music.ui.components.toFastIndexSection
 import com.ella.music.viewmodel.MainViewModel
 import com.ella.music.viewmodel.PlayerViewModel
@@ -126,25 +124,24 @@ fun PlaylistDetailScreen(
     var playlistPickerSongs by remember { mutableStateOf<List<Song>?>(null) }
     var createPlaylistSongs by remember { mutableStateOf<List<Song>?>(null) }
     var manualOrder by remember(playlist?.id) { mutableStateOf(songs) }
-    var selectionMode by remember { mutableStateOf(false) }
-    var selectedSongKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val selection = rememberLibrarySelectionState<String>()
     var draggedSongKey by remember { mutableStateOf<String?>(null) }
-    var rangeAnchorSongKey by remember { mutableStateOf<String?>(null) }
-    var rangeTargetSongKey by remember { mutableStateOf<String?>(null) }
+    var pressedDragHandleSongKey by remember { mutableStateOf<String?>(null) }
     val sortedSongs = remember(songs, sortMode) { songs.sortedForPlaylistDetail(sortMode) }
     LaunchedEffect(playlist?.id, songs) {
         manualOrder = songs
     }
     LaunchedEffect(playlist?.id) {
-        selectionMode = false
-        selectedSongKeys = emptySet()
+        selection.selectionMode = false
+        selection.selectedIds = emptySet()
         draggedSongKey = null
+        pressedDragHandleSongKey = null
     }
     val reorderEnabled = !isRemoteReadOnly &&
         playlist?.isFiveStarRating != true &&
         sortMode == PlaylistSongSortMode.Custom &&
         searchQuery.isBlank()
-    val reorderHandlesVisible = selectionMode && reorderEnabled
+    val reorderHandlesVisible = selection.selectionMode && reorderEnabled
     val baseSongs = if (reorderEnabled) manualOrder else sortedSongs
     val displayedSongs by produceState(initialValue = baseSongs, baseSongs, searchQuery, ratingRevision) {
         val query = searchQuery.trim()
@@ -154,14 +151,14 @@ fun PlaylistDetailScreen(
             mainViewModel.filterSongsBySearchSnapshot(baseSongs, query)
         }
     }
-    val draggedSelectionKeys = remember(draggedSongKey, selectedSongKeys, displayedSongs) {
+    val draggedSelectionKeys = remember(draggedSongKey, selection.selectedIds, displayedSongs) {
         val draggedKey = draggedSongKey
-        if (draggedKey == null || draggedKey !in selectedSongKeys) {
+        if (draggedKey == null || draggedKey !in selection.selectedIds) {
             emptySet()
         } else {
             displayedSongs
                 .map { it.playlistIdentityKey() }
-                .filterTo(mutableSetOf()) { it in selectedSongKeys }
+                .filterTo(mutableSetOf()) { it in selection.selectedIds }
         }
     }
     // A multi-selection has one physical drag target; its hidden siblings move with it.
@@ -176,7 +173,7 @@ fun PlaylistDetailScreen(
         }
     }
     val songListHeaderCount = 2
-    val showSongSideIndex = !selectionMode &&
+    val showSongSideIndex = !selection.selectionMode &&
         searchQuery.isBlank() &&
         sortMode == PlaylistSongSortMode.Title &&
         displayedSongs.size > 30
@@ -208,59 +205,20 @@ fun PlaylistDetailScreen(
             manualOrder = manualOrder.moveSelectedItemsAsBlock(
                 from = fromSongIndex,
                 to = toSongIndex,
-                selectedKeys = selectedSongKeys,
+                selectedKeys = selection.selectedIds,
                 keyOf = { it.playlistIdentityKey() }
             )
         }
     )
     fun finishSelectionMode() {
-        selectionMode = false
-        selectedSongKeys = emptySet()
+        selection.finishSelectionMode()
         draggedSongKey = null
-        rangeAnchorSongKey = null
-        rangeTargetSongKey = null
-    }
-    fun updateRangeAnchorsForManualSelection(songKey: String, selectedNow: Boolean) {
-        if (selectedNow) {
-            when {
-                rangeAnchorSongKey == null -> rangeAnchorSongKey = songKey
-                rangeAnchorSongKey == songKey -> Unit
-                else -> rangeTargetSongKey = songKey
-            }
-        } else {
-            if (rangeTargetSongKey == songKey) rangeTargetSongKey = null
-            if (rangeAnchorSongKey == songKey) {
-                rangeAnchorSongKey = rangeTargetSongKey ?: selectedSongKeys.firstOrNull { it != songKey }
-                rangeTargetSongKey = null
-            }
-        }
-    }
-    fun toggleSelection(song: Song) {
-        val key = song.playlistIdentityKey()
-        val selecting = key !in selectedSongKeys
-        val next = if (selecting) selectedSongKeys + key else selectedSongKeys - key
-        selectedSongKeys = next
-        updateRangeAnchorsForManualSelection(key, selecting)
-        if (next.isEmpty()) selectionMode = false
-    }
-    fun selectAllDisplayedSongs() {
-        val displayedKeys = displayedSongs.mapTo(mutableSetOf()) { it.playlistIdentityKey() }
-        selectedSongKeys = if (displayedKeys.isNotEmpty() && displayedKeys.all { it in selectedSongKeys }) {
-            rangeAnchorSongKey = null
-            rangeTargetSongKey = null
-            emptySet()
-        } else {
-            rangeAnchorSongKey = displayedSongs.firstOrNull()?.playlistIdentityKey()
-            rangeTargetSongKey = displayedSongs.lastOrNull()?.playlistIdentityKey()
-            displayedKeys
-        }
-        selectionMode = true
     }
     fun selectedDisplayedSongs(): List<Song> =
-        displayedSongs.filter { it.playlistIdentityKey() in selectedSongKeys }
-    BackHandler(enabled = selectionMode || searchExpanded) {
+        displayedSongs.filter { it.playlistIdentityKey() in selection.selectedIds }
+    BackHandler(enabled = selection.selectionMode || searchExpanded) {
         when {
-            selectionMode -> finishSelectionMode()
+            selection.selectionMode -> finishSelectionMode()
             searchExpanded -> {
                 searchExpanded = false
                 searchQuery = ""
@@ -272,35 +230,16 @@ fun PlaylistDetailScreen(
             displayedSongs.forEachIndexed { index, song -> put(song.playlistIdentityKey(), index) }
         }
     }
-    val selectedVisibleSongCount = remember(displayedSongs, selectedSongKeys) {
-        displayedSongs.count { it.playlistIdentityKey() in selectedSongKeys }
+    val selectedVisibleSongCount = remember(displayedSongs, selection.selectedIds) {
+        displayedSongs.count { it.playlistIdentityKey() in selection.selectedIds }
     }
     val rangeSelectionAvailable = remember(
         displayedSongIndexByKey,
-        selectedSongKeys,
-        rangeAnchorSongKey,
-        rangeTargetSongKey
+        selection.selectedIds,
+        selection.rangeAnchorId,
+        selection.rangeTargetId
     ) {
-        val anchor = rangeAnchorSongKey
-        val target = rangeTargetSongKey
-        anchor != null &&
-            target != null &&
-            anchor != target &&
-            anchor in selectedSongKeys &&
-            target in selectedSongKeys &&
-            anchor in displayedSongIndexByKey &&
-            target in displayedSongIndexByKey
-    }
-    fun applyRangeSelection() {
-        val anchor = rangeAnchorSongKey ?: return
-        val target = rangeTargetSongKey ?: return
-        val anchorIndex = displayedSongIndexByKey[anchor] ?: return
-        val targetIndex = displayedSongIndexByKey[target] ?: return
-        if (anchorIndex == targetIndex) return
-        val bounds = if (anchorIndex < targetIndex) anchorIndex..targetIndex else targetIndex..anchorIndex
-        selectedSongKeys = selectedSongKeys + bounds.map { displayedSongs[it].playlistIdentityKey() }
-        rangeAnchorSongKey = target
-        rangeTargetSongKey = null
+        selection.isRangeSelectionAvailable(displayedSongIndexByKey)
     }
     val currentSongItemIndex = remember(displayedSongIndexByKey, currentSong?.playlistIdentityKey()) {
         (currentSong?.playlistIdentityKey()?.let { displayedSongIndexByKey[it] } ?: -1)
@@ -313,12 +252,12 @@ fun PlaylistDetailScreen(
             song.coverUrl.takeIf { it.isNotBlank() } ?: mainViewModel.getAlbumArtUri(song.albumId)
         }
     }
-    LaunchedEffect(selectionMode, displayedSongs) {
-        if (!selectionMode) return@LaunchedEffect
+    LaunchedEffect(selection.selectionMode, displayedSongs) {
+        if (!selection.selectionMode) return@LaunchedEffect
         val displayedKeys = displayedSongs.mapTo(mutableSetOf()) { it.playlistIdentityKey() }
-        selectedSongKeys = selectedSongKeys.filterTo(mutableSetOf()) { it in displayedKeys }
-        if (rangeAnchorSongKey !in displayedKeys) rangeAnchorSongKey = selectedSongKeys.firstOrNull()
-        if (rangeTargetSongKey !in displayedKeys) rangeTargetSongKey = null
+        selection.selectedIds = selection.selectedIds.filterTo(mutableSetOf()) { it in displayedKeys }
+        if (selection.rangeAnchorId !in displayedKeys) selection.rangeAnchorId = selection.selectedIds.firstOrNull()
+        if (selection.rangeTargetId !in displayedKeys) selection.rangeTargetId = null
     }
     var showExportFormatSheet by remember { mutableStateOf(false) }
     var pendingM3uExportFormat by remember { mutableStateOf<PlaylistExportFormat?>(null) }
@@ -359,67 +298,58 @@ fun PlaylistDetailScreen(
             .background(ellaPageBackground())
             .windowInsetsPadding(WindowInsets.statusBars)
     ) {
-        Box {
-            PlaylistDetailTopBar(
-                title = when {
-                    selectionMode -> stringResource(R.string.library_selected_fraction, selectedSongKeys.size, displayedSongs.size)
-                    playlist == null -> stringResource(R.string.playlist_title)
-                    listState.firstVisibleItemIndex > 0 -> playlist.name
-                    else -> stringResource(R.string.playlist_title)
-                },
-                selectionMode = selectionMode,
-                showRemoveSelected = !isFiveStarPlaylist && !isRemoteReadOnly,
-                showExport = playlist != null && !isFiveStarPlaylist,
-                onNavigationClick = {
-                    if (selectionMode) finishSelectionMode() else onBack()
-                },
-                onPlayNextSelectedClick = {
-                    val selected = selectedDisplayedSongs()
-                    if (selected.isEmpty()) {
-                        Toast.makeText(context, context.getString(R.string.library_select_songs_first), Toast.LENGTH_SHORT).show()
-                    } else {
-                        playerViewModel.playNext(selected)
-                        Toast.makeText(context, context.getString(R.string.song_more_added_to_play_next), Toast.LENGTH_SHORT).show()
-                        finishSelectionMode()
-                    }
-                },
-                onAddSelectedClick = {
-                    val selected = selectedDisplayedSongs()
-                    if (selected.isEmpty()) {
-                        Toast.makeText(context, context.getString(R.string.library_select_songs_first), Toast.LENGTH_SHORT).show()
-                    } else {
-                        playlistPickerSongs = selected
-                    }
-                },
-                onRemoveSelectedClick = {
-                    val selected = selectedDisplayedSongs()
-                    if (selected.isNotEmpty()) removeSelectedPlaylistSongs = selected
-                },
-                onSearchClick = {
-                    searchExpanded = !searchExpanded
-                    if (!searchExpanded) searchQuery = ""
-                },
-                onExportClick = { showExportFormatSheet = true },
-                onSelectionModeClick = {
-                    selectionMode = true
-                    if (selectedSongKeys.isEmpty()) {
-                        rangeAnchorSongKey = null
-                        rangeTargetSongKey = null
-                    }
+        PlaylistDetailTopBar(
+            title = when {
+                selection.selectionMode -> stringResource(R.string.library_selected_fraction, selection.selectedIds.size, displayedSongs.size)
+                playlist == null -> stringResource(R.string.playlist_title)
+                listState.firstVisibleItemIndex > 0 -> playlist.name
+                else -> stringResource(R.string.playlist_title)
+            },
+            selectionMode = selection.selectionMode,
+            showRemoveSelected = !isFiveStarPlaylist && !isRemoteReadOnly,
+            showExport = playlist != null && !isFiveStarPlaylist,
+            onNavigationClick = {
+                if (selection.selectionMode) finishSelectionMode() else onBack()
+            },
+            onPlayNextSelectedClick = {
+                val selected = selectedDisplayedSongs()
+                if (selected.isEmpty()) {
+                    Toast.makeText(context, context.getString(R.string.library_select_songs_first), Toast.LENGTH_SHORT).show()
+                } else {
+                    playerViewModel.playNext(selected)
+                    Toast.makeText(context, context.getString(R.string.song_more_added_to_play_next), Toast.LENGTH_SHORT).show()
+                    finishSelectionMode()
                 }
-            )
-            DoubleTapScrollOverlay(
-                onDoubleTap = { scope.launch { listState.animateScrollToItem(0) } },
-                onClick = { scope.launch { listState.animateScrollToItem(0) } },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                endPadding = 160.dp
-            )
-        }
+            },
+            onAddSelectedClick = {
+                val selected = selectedDisplayedSongs()
+                if (selected.isEmpty()) {
+                    Toast.makeText(context, context.getString(R.string.library_select_songs_first), Toast.LENGTH_SHORT).show()
+                } else {
+                    playlistPickerSongs = selected
+                }
+            },
+            onRemoveSelectedClick = {
+                val selected = selectedDisplayedSongs()
+                if (selected.isNotEmpty()) removeSelectedPlaylistSongs = selected
+            },
+            onSearchClick = {
+                searchExpanded = !searchExpanded
+                if (!searchExpanded) searchQuery = ""
+            },
+            onExportClick = { showExportFormatSheet = true },
+            onSelectionModeClick = {
+                selection.selectionMode = true
+                if (selection.selectedIds.isEmpty()) {
+                    selection.rangeAnchorId = null
+                    selection.rangeTargetId = null
+                }
+            },
+            onDoubleTapTitle = { scope.launch { listState.animateScrollToItem(0) } }
+        )
 
         PlaylistDetailSearchSection(
-            visible = searchExpanded && !selectionMode,
+            visible = searchExpanded && !selection.selectionMode,
             query = searchQuery,
             onQueryChange = { searchQuery = it },
             onSearch = { searchExpanded = false }
@@ -535,18 +465,17 @@ fun PlaylistDetailScreen(
                                 manualOrder.map { it.playlistIdentityKey() }
                             )
                         }
+                        val songKey = song.playlistIdentityKey()
                         val dragHandleModifier = Modifier
                             .draggableHandle(
-                                onDragStarted = { draggedSongKey = song.playlistIdentityKey() },
+                                dragGestureDetector = ImmediateOrLongPressDragGestureDetector,
+                                onDragStarted = {
+                                    pressedDragHandleSongKey = songKey
+                                    draggedSongKey = songKey
+                                },
                                 onDragStopped = {
                                     draggedSongKey = null
-                                    settleManualOrder()
-                                }
-                            )
-                            .longPressDraggableHandle(
-                                onDragStarted = { draggedSongKey = song.playlistIdentityKey() },
-                                onDragStopped = {
-                                    draggedSongKey = null
+                                    pressedDragHandleSongKey = null
                                     settleManualOrder()
                                 }
                             )
@@ -561,25 +490,25 @@ fun PlaylistDetailScreen(
                             albumArtUri = albumArtUri,
                             loadCoverArt = mainViewModel::getCoverArtBitmap,
                             loadAudioInfo = mainViewModel::getAudioInfo,
-                            selectionMode = selectionMode,
-                            selected = song.playlistIdentityKey() in selectedSongKeys,
+                            selectionMode = selection.selectionMode,
+                            selected = song.playlistIdentityKey() in selection.selectedIds,
                             isFavorite = song.playlistIdentityKey() in favoriteSongKeys,
                             loadSongRating = mainViewModel::getSongRating,
                             ratingRevision = ratingRevision,
                             showPlayNextInLists = showPlayNextInLists,
                             onClick = {
-                                if (selectionMode) {
-                                    toggleSelection(song)
+                                if (selection.selectionMode) {
+                                    selection.toggleSelection(songKey)
                                 } else {
                                     playerViewModel.setPlaylist(displayedSongs, index)
                                     if (openPlayerOnPlay) onNavigateToPlayer()
                                 }
                             },
                             onLongClick = {
-                                selectionMode = true
-                                val songKey = song.playlistIdentityKey()
-                                selectedSongKeys = selectedSongKeys + songKey
-                                updateRangeAnchorsForManualSelection(songKey, selectedNow = true)
+                                if (pressedDragHandleSongKey == songKey) return@SongItem
+                                selection.selectionMode = true
+                                selection.selectedIds = selection.selectedIds + songKey
+                                selection.updateRangeAnchorsForManualSelection(songKey, selectedNow = true)
                             },
                             onPlayNext = { playerViewModel.playNext(song) },
                             onRemove = if (playlist.isFiveStarRating || isRemoteReadOnly) null else {
@@ -634,7 +563,7 @@ fun PlaylistDetailScreen(
             }
 
             ShuffleAllFloatingButton(
-                visible = !selectionMode && displayedSongs.isNotEmpty(),
+                visible = !selection.selectionMode && displayedSongs.isNotEmpty(),
                 onClick = {
                     playerViewModel.setPlaylist(displayedSongs.shuffled(), 0)
                     if (openPlayerOnPlay) onNavigateToPlayer()
@@ -645,7 +574,7 @@ fun PlaylistDetailScreen(
             )
             LocateCurrentSongFloatingButton(
                 listState = listState,
-                currentItemIndex = if (selectionMode) -1 else currentSongItemIndex,
+                currentItemIndex = if (selection.selectionMode) -1 else currentSongItemIndex,
                 locateRequest = locateCurrentSongRequest,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -653,11 +582,11 @@ fun PlaylistDetailScreen(
             )
 
             FloatingSelectionControls(
-                visible = selectionMode && displayedSongs.isNotEmpty(),
+                visible = selection.selectionMode && displayedSongs.isNotEmpty(),
                 rangeEnabled = rangeSelectionAvailable,
                 allSelected = displayedSongs.isNotEmpty() && selectedVisibleSongCount == displayedSongs.size,
-                onRangeSelect = ::applyRangeSelection,
-                onSelectAll = ::selectAllDisplayedSongs,
+                onRangeSelect = { selection.applyRangeSelection(displayedSongs.map { it.playlistIdentityKey() }, displayedSongIndexByKey) },
+                onSelectAll = { selection.toggleSelectAll(displayedSongs.map { it.playlistIdentityKey() }) },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = LibraryFloatingControlsEndPadding, bottom = LibraryFloatingControlsBottomPadding)

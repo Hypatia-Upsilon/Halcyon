@@ -26,6 +26,7 @@ internal class PlayerScreenUiState(
     tagEditorSong: Song? = null,
     tagEditorKind: TagEditorOptionKind = TagEditorOptionKind.Metadata,
     metadataEditorSong: Song? = null,
+    lyricTimingEditorSong: Song? = null,
     dynamicCoverFailedPath: String? = null,
     lyricMatchSong: Song? = null,
     musicVideoVisible: Boolean = false
@@ -45,6 +46,7 @@ internal class PlayerScreenUiState(
     var tagEditorSong by mutableStateOf(tagEditorSong)
     var tagEditorKind by mutableStateOf(tagEditorKind)
     var metadataEditorSong by mutableStateOf(metadataEditorSong)
+    var lyricTimingEditorSong by mutableStateOf(lyricTimingEditorSong)
     var pendingWriteRetry by mutableStateOf<(suspend () -> Unit)?>(null)
     var dynamicCoverFailedPath by mutableStateOf(dynamicCoverFailedPath)
     var lyricMatchSong by mutableStateOf(lyricMatchSong)
@@ -53,7 +55,8 @@ internal class PlayerScreenUiState(
 
 internal class PlayerLandscapeUiState(
     private val expandedState: MutableState<Boolean>,
-    private val coverModeState: MutableState<Boolean>
+    private val coverModeState: MutableState<Boolean>,
+    private val openedFromMusicVideoState: MutableState<Boolean>
 ) {
     var expanded: Boolean
         get() = expandedState.value
@@ -66,6 +69,13 @@ internal class PlayerLandscapeUiState(
         set(value) {
             coverModeState.value = value
         }
+
+    /** Only the cover MV rotate action is allowed to use the MV as a landscape background. */
+    var openedFromMusicVideo: Boolean
+        get() = openedFromMusicVideoState.value
+        set(value) {
+            openedFromMusicVideoState.value = value
+        }
 }
 
 @Composable
@@ -75,7 +85,8 @@ internal fun rememberPlayerScreenUiState(): PlayerScreenUiState = remember { Pla
 internal fun rememberPlayerLandscapeUiState(): PlayerLandscapeUiState {
     val expandedState = rememberSaveable { mutableStateOf(false) }
     val coverModeState = rememberSaveable { mutableStateOf(false) }
-    return remember(expandedState, coverModeState) {
-        PlayerLandscapeUiState(expandedState, coverModeState)
+    val openedFromMusicVideoState = rememberSaveable { mutableStateOf(false) }
+    return remember(expandedState, coverModeState, openedFromMusicVideoState) {
+        PlayerLandscapeUiState(expandedState, coverModeState, openedFromMusicVideoState)
     }
 }

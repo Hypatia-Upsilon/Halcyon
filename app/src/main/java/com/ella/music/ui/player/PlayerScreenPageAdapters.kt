@@ -24,7 +24,7 @@ import com.ella.music.data.neteaseArtistUrl
 import com.ella.music.data.neteaseSongUrl
 import com.ella.music.data.repository.MusicRepository
 import com.ella.music.ui.components.TagEditorOptionKind
-import com.ella.music.ui.components.openSongSpectrumWithAspectPro
+import com.ella.music.ui.components.SpectrumViewerLauncher
 import com.ella.music.ui.components.shareLocalSong
 import com.ella.music.viewmodel.MainViewModel
 import com.ella.music.viewmodel.PlayerViewModel
@@ -46,11 +46,13 @@ internal fun CoverPageContent(
     dynamicCoverFailedPath: String?,
     dynamicCoverEnabled: Boolean,
     dynamicCoverCustomFolders: List<String>,
+    musicVideoCustomFolders: List<String>,
     musicVideoSyncEnabled: Boolean,
     musicVideoVisible: Boolean,
     onMusicVideoVisibleChange: (Boolean) -> Unit,
     onOpenMusicVideoLandscape: () -> Unit,
     immersiveAlbumCover: Boolean,
+    coverContentColor: Boolean,
     playerBackgroundEnabled: Boolean,
     playerBackgroundUri: String,
     playerBackgroundOpacity: Float,
@@ -178,6 +180,7 @@ internal fun CoverPageContent(
         dynamicCoverFailedPath = dynamicCoverFailedPath,
         dynamicCoverEnabled = dynamicCoverEnabled,
         dynamicCoverCustomFolders = dynamicCoverCustomFolders,
+        musicVideoCustomFolders = musicVideoCustomFolders,
         musicVideoSyncEnabled = musicVideoSyncEnabled,
         musicVideoVisible = musicVideoVisible,
         onToggleMusicVideo = {
@@ -185,6 +188,7 @@ internal fun CoverPageContent(
         },
         onOpenMusicVideoLandscape = onOpenMusicVideoLandscape,
         immersiveAlbumCover = immersiveAlbumCover,
+        coverContentColor = coverContentColor,
         playerBackgroundEnabled = playerBackgroundEnabled,
         playerBackgroundUri = playerBackgroundUri,
         playerBackgroundOpacity = playerBackgroundOpacity,
@@ -416,7 +420,7 @@ internal fun CoverPageContent(
             val current = song
             if (current != null) {
                 onMenuExpandedChange(false)
-                openSongSpectrumWithAspectPro(context, current)
+                context.startActivity(SpectrumViewerLauncher.createIntent(context, current))
             } else {
                 Toast.makeText(context, context.getString(R.string.player_no_song_playing), Toast.LENGTH_SHORT).show()
             }
@@ -697,7 +701,8 @@ internal fun DetailPageContent(
     openNetease: (String?) -> Unit,
     musicVideoEnabled: Boolean,
     musicVideoCustomFolders: List<String>,
-    onOpenMusicVideo: () -> Unit,
+    dynamicCoverCustomFolders: List<String>,
+    onOpenMusicVideo: (DynamicCoverSource) -> Unit,
     drawBackground: Boolean = true,
     modifier: Modifier = Modifier
 ) {
@@ -738,6 +743,7 @@ internal fun DetailPageContent(
         onNeteaseAlbum = { openNetease(neteaseInfo?.albumId?.takeIf { it.isNotBlank() }?.let(::neteaseAlbumUrl)) },
         musicVideoEnabled = musicVideoEnabled,
         musicVideoCustomFolders = musicVideoCustomFolders,
+        dynamicCoverCustomFolders = dynamicCoverCustomFolders,
         onMusicVideo = onOpenMusicVideo,
         modifier = modifier
     )

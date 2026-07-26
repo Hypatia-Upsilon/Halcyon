@@ -1,7 +1,6 @@
 package com.ella.music.ui.player
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -47,7 +46,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import androidx.media3.common.Player
 import com.ella.music.R
 import com.ella.music.data.model.Song
 import com.ella.music.data.model.playlistIdentityKey
@@ -68,6 +66,8 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Add
+import top.yukonga.miuix.kmp.icon.extended.Lock
+import top.yukonga.miuix.kmp.icon.extended.Unlock
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 private data class QueueEntry(
@@ -118,6 +118,7 @@ internal fun PlayerQueueMenu(
     onSongClick: (Int) -> Unit,
     onRemoveSong: (Int) -> Unit,
     onMoveSong: (Int, Int) -> Unit,
+    onRandomizeQueue: () -> Unit,
     onAddQueueToPlaylist: () -> Unit,
     onClearQueue: () -> Unit,
     modifier: Modifier = Modifier
@@ -198,7 +199,7 @@ internal fun PlayerQueueMenu(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_desktop_lock),
+                        imageVector = if (queueLocked) MiuixIcons.Regular.Lock else MiuixIcons.Regular.Unlock,
                         contentDescription = stringResource(
                             if (queueLocked) R.string.player_unlock_queue else R.string.player_lock_queue
                         ),
@@ -209,6 +210,22 @@ internal fun PlayerQueueMenu(
                         },
                         modifier = Modifier.size(18.dp)
                     )
+                }
+                if (!queueLocked && playlist.size > 1) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .playerNoIndicationClick(onRandomizeQueue),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_shuffle),
+                            contentDescription = stringResource(R.string.player_randomize_queue),
+                            tint = MiuixTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
                 Box(
                     modifier = Modifier

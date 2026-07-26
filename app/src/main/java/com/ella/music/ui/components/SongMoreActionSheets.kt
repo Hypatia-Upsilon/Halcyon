@@ -10,7 +10,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ella.music.R
 import com.ella.music.data.model.Song
-import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
@@ -30,6 +29,7 @@ internal fun SongMoreActionSheet(
     onAlbum: () -> Unit,
     onEditTag: (() -> Unit)?,
     onLyricTiming: (() -> Unit)?,
+    onAudioTools: (() -> Unit)?,
     onRemoveFromPlaylist: (() -> Unit)?,
     onDelete: (() -> Unit)?,
     showSpectrum: Boolean,
@@ -54,6 +54,9 @@ internal fun SongMoreActionSheet(
         }
         if (onLyricTiming != null) {
             SongMenuItem(stringResource(R.string.song_more_lyric_timing), onLyricTiming)
+        }
+        if (onAudioTools != null) {
+            SongMenuItem(stringResource(R.string.song_more_audio_tools), onAudioTools)
         }
         if (onRemoveFromPlaylist != null) {
             SongMenuItem(stringResource(R.string.playlist_remove_song_title), onRemoveFromPlaylist, danger = true)

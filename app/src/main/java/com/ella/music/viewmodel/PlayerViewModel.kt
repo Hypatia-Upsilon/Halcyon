@@ -15,7 +15,6 @@ import com.ella.music.data.model.Song
 import com.ella.music.data.model.UserPlaylist
 import com.ella.music.data.model.playlistIdentityKey
 import com.ella.music.data.model.shiftedBy
-import com.ella.music.data.parser.EllaLyricsParser
 import com.ella.music.data.remote.OpenSubsonicCollectionsStore
 import com.ella.music.data.remote.NavidromeService
 import com.ella.music.data.remote.RemoteMusicProvider
@@ -25,11 +24,9 @@ import com.ella.music.data.repository.CoverUsage
 import com.ella.music.data.repository.MusicRepository
 import com.ella.music.player.DesktopLyricBridge
 import com.ella.music.player.ExoPlayerManager
-import com.ella.music.player.isM4aOrAppleLosslessOrAAC
 import com.ella.music.player.LyricGetterBridge
 import com.ella.music.player.LyriconBridge
 import com.ella.music.player.MediaNotificationLyricPatchPolicy
-import com.ella.music.player.PlaybackOutputSettings
 import com.ella.music.player.PlaybackService
 import com.ella.music.player.SuperLyricBridge
 import com.ella.music.player.TickerBridge
@@ -51,7 +48,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 private const val LYRIC_POSITION_BACKWARD_DRIFT_TOLERANCE_MS = 600L
 // Compose lyrics interpolate between position samples on the display clock. 10 Hz is therefore
@@ -106,6 +102,13 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     )
     private val lazyOnlineQueueController = PlayerLazyOnlineQueueController(viewModelScope, playerManager)
+    private val playbackSettingsBridge = PlayerPlaybackSettingsBridge(
+        application = application,
+        scope = viewModelScope,
+        settingsManager = settingsManager,
+        playerManager = playerManager,
+        repository = repository
+    )
 
     val currentSong: StateFlow<Song?> = playerManager.currentSong
     val isPlaying: StateFlow<Boolean> = playerManager.isPlaying
@@ -232,14 +235,14 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     private var statusBarAllowPhoneticEnabled = false
     private var tickerHideNotificationEnabled = false
     private var desktopLyricHideWhenPausedEnabled = false
+    private var desktopLyricStatusBarModeEnabled = false
+    private var desktopLyricStatusBarHideWhenPausedEnabled = false
     private var superLyricTranslationEnabled = true
     private var superLyricPronunciationEnabled = false
     private var lyricSourceMode = SettingsManager.LYRIC_SOURCE_AUTO
     private var lyricOffsetOverrides = emptyMap<String, Long>()
     private var lyricBlacklistRules = emptyList<LyricBlacklistRule>()
     private var appliedDecoderMode: Int? = null
-    private var appliedAudioFocusDisabled: Boolean? = null
-    private var appliedPlaybackOutputSettings: PlaybackOutputSettings? = null
     private var appliedLyricSourceMode: Int? = null
     private var previousButtonAction = SettingsManager.PREVIOUS_BUTTON_PREVIOUS
     private var manualSeekAfterPreviousButton = false
@@ -263,20 +266,20 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         initLyricGetter()
         initLyricPageTranslation()
         initBluetoothLyric()
-        initShuffleMode()
-        initPlayNextMode()
+        playbackSettingsBridge.initShuffleMode()
+        playbackSettingsBridge.initPlayNextMode()
         initPreviousButtonAction()
-        initResumePlaybackPosition()
+        playbackSettingsBridge.initResumePlaybackPosition()
         initDecoderMode()
-        initAudioFocusMode()
-        initPlaybackOutputSettings()
-        initReplayGain()
+        playbackSettingsBridge.initAudioFocusMode()
+        playbackSettingsBridge.initPlaybackOutputSettings()
+        playbackSettingsBridge.initReplayGain()
         initLyricSourceMode()
         initLyricLineBlacklist()
         initLyricHeaderTagFilter()
         initLyricOffsetOverrides()
-        initBluetoothAutoPlay()
-        initExternalPlaybackSync()
+        playbackSettingsBridge.initBluetoothAutoPlay()
+        playbackSettingsBridge.initExternalPlaybackSync()
         lazyOnlineQueueController.observePlaybackEnd()
     }
 
@@ -378,21 +381,41 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     private fun initDesktopLyric() {
         viewModelScope.launch {
             val enabled = settingsManager.desktopLyricEnabled.first()
+            desktopLyricStatusBarModeEnabled = settingsManager.desktopLyricStatusBarMode.first()
             desktopLyricHideWhenPausedEnabled = settingsManager.desktopLyricHideWhenPaused.first()
+            desktopLyricStatusBarHideWhenPausedEnabled = settingsManager.desktopLyricStatusBarHideWhenPaused.first()
             desktopLyricBridge.setEnabled(enabled)
             if (enabled) resendDesktopLyric()
         }
         viewModelScope.launch {
             settingsManager.desktopLyricHideWhenPaused.distinctUntilChanged().collect { enabled ->
                 desktopLyricHideWhenPausedEnabled = enabled
-                if (enabled && !isPlaying.value) {
+                if (!desktopLyricStatusBarModeEnabled && enabled && !isPlaying.value) {
                     desktopLyricBridge.clearLyric()
                 } else {
                     resendDesktopLyric()
                 }
             }
         }
+        viewModelScope.launch {
+            settingsManager.desktopLyricStatusBarMode.distinctUntilChanged().collect { statusBarMode ->
+                desktopLyricStatusBarModeEnabled = statusBarMode
+                if (activeDesktopLyricHideWhenPaused() && !isPlaying.value) desktopLyricBridge.clearLyric()
+                else resendDesktopLyric()
+            }
+        }
+        viewModelScope.launch {
+            settingsManager.desktopLyricStatusBarHideWhenPaused.distinctUntilChanged().collect { enabled ->
+                desktopLyricStatusBarHideWhenPausedEnabled = enabled
+                if (desktopLyricStatusBarModeEnabled && enabled && !isPlaying.value) desktopLyricBridge.clearLyric()
+                else resendDesktopLyric()
+            }
+        }
     }
+
+    private fun activeDesktopLyricHideWhenPaused(): Boolean =
+        if (desktopLyricStatusBarModeEnabled) desktopLyricStatusBarHideWhenPausedEnabled
+        else desktopLyricHideWhenPausedEnabled
 
     private fun initSuperLyric() {
         viewModelScope.launch {
@@ -498,22 +521,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun initShuffleMode() {
-        viewModelScope.launch {
-            settingsManager.shuffleMode.distinctUntilChanged().collect { mode ->
-                playerManager.setShuffleMode(mode)
-            }
-        }
-    }
-
-    private fun initPlayNextMode() {
-        viewModelScope.launch {
-            settingsManager.playNextMode.distinctUntilChanged().collect { mode ->
-                playerManager.setPlayNextMode(mode)
-            }
-        }
-    }
-
     private fun initPreviousButtonAction() {
         viewModelScope.launch {
             settingsManager.previousButtonAction.distinctUntilChanged().collect { action ->
@@ -543,40 +550,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun initAudioFocusMode() {
-        viewModelScope.launch {
-            settingsManager.audioFocusDisabled.distinctUntilChanged().collect { disabled ->
-                if (appliedAudioFocusDisabled == null) {
-                    appliedAudioFocusDisabled = disabled
-                    return@collect
-                }
-                if (appliedAudioFocusDisabled == disabled) return@collect
-                appliedAudioFocusDisabled = disabled
-                playerManager.recreatePlaybackService()
-                AppLogStore.info(getApplication(), "PlayerDecoder", "Audio focus disabled changed to $disabled")
-            }
-        }
-    }
-
-    private fun initPlaybackOutputSettings() {
-        viewModelScope.launch {
-            settingsManager.playbackOutputSettings.distinctUntilChanged().collect { settings ->
-                if (appliedPlaybackOutputSettings == null) {
-                    appliedPlaybackOutputSettings = settings
-                    return@collect
-                }
-                if (appliedPlaybackOutputSettings == settings) return@collect
-                appliedPlaybackOutputSettings = settings
-                playerManager.recreatePlaybackService()
-                AppLogStore.info(
-                    getApplication(),
-                    "PlayerDecoder",
-                    "Playback output changed: backend=${settings.backend}, bitDepth=${settings.bitDepth}, sampleRate=${settings.sampleRate}"
-                )
-            }
-        }
-    }
-
     private fun initLyricSourceMode() {
         viewModelScope.launch {
             settingsManager.lyricSourceMode.distinctUntilChanged().collect { mode ->
@@ -594,44 +567,11 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun initReplayGain() {
-        viewModelScope.launch {
-            combine(
-                settingsManager.replayGainMode.distinctUntilChanged(),
-                currentSong
-            ) { mode, song -> mode to song }
-                .collectLatest { (mode, song) ->
-                    val volume = if (mode != SettingsManager.REPLAY_GAIN_OFF && song != null) {
-                        withContext(Dispatchers.IO) {
-                            repository.getReplayGain(song, mode)
-                        }.toReplayGainVolume()
-                    } else {
-                        1f
-                    }
-                    playerManager.setReplayGainVolume(volume)
-                }
-        }
-    }
-
     private fun initLyricOffsetOverrides() {
         viewModelScope.launch {
             settingsManager.lyricOffsetOverrides.distinctUntilChanged().collect { overrides ->
                 lyricOffsetOverrides = overrides
                 applyCurrentLyricOffset(notifyExternal = true)
-            }
-        }
-    }
-
-    private fun initBluetoothAutoPlay() {
-        viewModelScope.launch {
-            PlaybackService.bluetoothConnectEvent.collect {
-                if (currentSong.value != null && !isPlaying.value) {
-                    playerManager.play()
-                    AppLogStore.info(getApplication(), "BtAutoPlay", "Resumed existing queue on Bluetooth connect")
-                } else if (currentSong.value == null && playerManager.hasSavedQueue()) {
-                    playerManager.play()
-                    AppLogStore.info(getApplication(), "BtAutoPlay", "Restored saved queue on Bluetooth connect")
-                }
             }
         }
     }
@@ -660,25 +600,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                     return@collect
                 }
                 currentSong.value?.let { song -> reloadLyrics(song, force = true) }
-            }
-        }
-    }
-
-    private fun initExternalPlaybackSync() {
-        viewModelScope.launch {
-            PlaybackService.externalPlaybackSnapshot.collectLatest { snapshot ->
-                snapshot ?: return@collectLatest
-                playerManager.ensureConnected(refreshStateIfConnected = false)
-                playerManager.applyExternalPlaybackSnapshot(snapshot)
-            }
-        }
-        viewModelScope.launch {
-            PlaybackService.externalPlaybackModeEvent.collect { snapshot ->
-                playerManager.ensureConnected(refreshStateIfConnected = false)
-                playerManager.applyExternalPlaybackMode(
-                    shuffle = snapshot.shuffle,
-                    repeatMode = snapshot.repeatMode
-                )
             }
         }
     }
@@ -719,14 +640,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             bluetoothLyricRetryJob?.cancel()
         } else {
             scheduleBluetoothLyricRetry()
-        }
-    }
-
-    private fun initResumePlaybackPosition() {
-        viewModelScope.launch {
-            settingsManager.resumePlaybackPosition.distinctUntilChanged().collect { enabled ->
-                playerManager.setResumePlaybackPositionEnabled(enabled)
-            }
         }
     }
 
@@ -795,7 +708,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                     bluetoothLyricRetryJob?.cancel()
                     lyricGetterBridge.clearLyric()
                     tickerBridge.clearLyric()
-                    if (desktopLyricHideWhenPausedEnabled) {
+                    if (activeDesktopLyricHideWhenPaused()) {
                         desktopLyricBridge.clearLyric()
                     }
                     superLyricBridge.sendStop()
@@ -848,7 +761,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                         seekExternalLyricSyncJob?.cancel()
                         seekExternalLyricSyncJob = null
                         tickerBridge.clearLyric()
-                        if (desktopLyricHideWhenPausedEnabled) {
+                        if (activeDesktopLyricHideWhenPaused()) {
                             desktopLyricBridge.clearLyric()
                         } else {
                             resendDesktopLyric()
@@ -972,7 +885,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun resendDesktopLyric() {
         if (!desktopLyricBridge.isEnabled()) return
-        if (desktopLyricHideWhenPausedEnabled && !isPlaying.value) return
+        if (activeDesktopLyricHideWhenPaused() && !isPlaying.value) return
         val index = _currentLyricIndex.value
         val currentLyrics = _lyrics.value
         desktopLyricBridge.sendLyric(
@@ -985,7 +898,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun updateDesktopLyricFrame() {
         if (!desktopLyricBridge.isEnabled()) return
-        if (desktopLyricHideWhenPausedEnabled && !isPlaying.value) return
+        if (activeDesktopLyricHideWhenPaused() && !isPlaying.value) return
         val index = _currentLyricIndex.value
         val line = _lyrics.value.getOrNull(index) ?: return
         desktopLyricBridge.sendLyric(line, currentPosition.value, _showLyricTranslation.value, _showLyricPronunciation.value)
@@ -1078,74 +991,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     private fun List<LyricLine>.filterBlacklistedLyricLines(): List<LyricLine> =
         filterBlacklistedLyricLines(lyricBlacklistRules)
 
-    private fun LyricLine.withoutBlacklistedParts(rules: List<LyricBlacklistRule>): LyricLine? {
-        fun blocked(text: String?): Boolean =
-            text?.let {
-                EllaLyricsParser.isIgnorableRawLyricLine(it) || EllaLyricsParser.isPlaceholderOnlyLine(it)
-            } == true || rules.any { it.matches(text) }
-        val textBlocked = blocked(text)
-        val translationBlocked = blocked(translation)
-        val pronunciationBlocked = blocked(pronunciation)
-        val backgroundBlocked = blocked(backgroundText)
-        val backgroundTranslationBlocked = blocked(backgroundTranslation)
-
-        val remainingText = text.takeUnless { textBlocked }.orEmpty()
-        val remainingTranslation = translation.takeUnless { translationBlocked }
-        val remainingPronunciation = pronunciation.takeUnless { pronunciationBlocked }
-        val remainingBackgroundText = backgroundText.takeUnless { backgroundBlocked }
-        val remainingBackgroundTranslation = backgroundTranslation.takeUnless { backgroundTranslationBlocked }
-
-        val promotedText = remainingText.ifBlank {
-            remainingTranslation
-                ?.takeIf { it.isNotBlank() }
-                ?: remainingPronunciation?.takeIf { it.isNotBlank() }
-                ?: remainingBackgroundText?.takeIf { it.isNotBlank() }
-                ?: ""
-        }
-        val promotedFromTranslation = remainingText.isBlank() && promotedText == remainingTranslation
-        val promotedFromPronunciation = remainingText.isBlank() && promotedText == remainingPronunciation
-        val promotedFromBackground = remainingText.isBlank() && promotedText == remainingBackgroundText
-
-        val filtered = copy(
-            text = promotedText,
-            words = if (textBlocked || promotedText != text) emptyList() else words,
-            translation = remainingTranslation.takeUnless { promotedFromTranslation },
-            pronunciation = remainingPronunciation.takeUnless { promotedFromPronunciation },
-            pronunciationWords = if (pronunciationBlocked || promotedFromPronunciation) emptyList() else pronunciationWords,
-            backgroundText = remainingBackgroundText.takeUnless { promotedFromBackground },
-            backgroundWords = if (backgroundBlocked || promotedFromBackground) emptyList() else backgroundWords,
-            backgroundTranslation = remainingBackgroundTranslation
-        )
-        return filtered.takeIf {
-            it.text.isNotBlank() ||
-                !it.translation.isNullOrBlank() ||
-                !it.pronunciation.isNullOrBlank() ||
-                !it.backgroundText.isNullOrBlank() ||
-                !it.backgroundTranslation.isNullOrBlank()
-        }
-    }
-
     private fun List<LyricLine>.preparedForDisplay(): List<LyricLine> =
         preparedForDisplay(lyricBlacklistRules)
-
-    private fun List<LyricLine>.withImplicitLineEndTimes(): List<LyricLine> {
-        if (isEmpty()) return this
-        return mapIndexed { index, line ->
-            val nextStartMs = getOrNull(index + 1)?.timeMs
-            if (
-                !line.isTtml &&
-                line.endMs == null &&
-                nextStartMs != null &&
-                nextStartMs > line.timeMs &&
-                line.words.isEmpty() &&
-                line.backgroundWords.isEmpty()
-            ) {
-                line.copy(endMs = nextStartMs)
-            } else {
-                line
-            }
-        }
-    }
 
     private fun clearExternalLyrics(clearLyricon: Boolean, clearSuperLyricSong: Boolean) {
         externalLyricResendJob?.cancel()
@@ -1271,7 +1118,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     private fun scheduleSeekExternalLyricSync(positionMs: Long) {
         if (!lyriconBridge.isEnabled() && !superLyricBridge.isEnabled()) return
         seekExternalLyricSyncJob?.cancel()
-        seekExternalLyricSyncJob = viewModelScope.launch {
+        seekExternalLyricSyncJob = viewModelScope.launch(Dispatchers.IO) {
             delay(SEEK_EXTERNAL_LYRIC_SYNC_DEBOUNCE_MS)
             lyriconBridge.seekTo(positionMs)
             if (!isPlaying.value || !superLyricBridge.isEnabled()) return@launch
@@ -1377,6 +1224,12 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         playerManager.movePlaylistItem(fromIndex, toIndex)
     }
 
+    fun randomizePlaylistOrder(): Boolean {
+        if (queueLocked.value) return false
+        lazyOnlineQueueController.clear()
+        return playerManager.randomizePlaylistOrder()
+    }
+
     fun clearPlaylist() {
         if (queueLocked.value) return
         lazyOnlineQueueController.clear()
@@ -1456,6 +1309,11 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             playerManager.updateCurrentSongMetadata(updated)
             reloadLyrics(updated, force = true)
         }
+    }
+
+    fun reloadCurrentLyrics() {
+        val song = currentSong.value ?: return
+        viewModelScope.launch { reloadLyrics(song, force = true) }
     }
 
     fun toggleCurrentSongFavorite() {
@@ -1647,7 +1505,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             settingsManager.setDesktopLyricHideWhenPaused(enabled)
             desktopLyricHideWhenPausedEnabled = enabled
-            if (enabled && !isPlaying.value) {
+            desktopLyricBridge.applySettings()
+            if (!desktopLyricStatusBarModeEnabled && enabled && !isPlaying.value) {
                 desktopLyricBridge.clearLyric()
             } else {
                 resendDesktopLyric()

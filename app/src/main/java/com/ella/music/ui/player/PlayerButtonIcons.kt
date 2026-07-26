@@ -22,9 +22,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.ella.music.R
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Info
-import top.yukonga.miuix.kmp.icon.extended.More
 
 internal enum class PlayerHeaderActionKind {
     Favorite,
@@ -46,6 +43,7 @@ internal fun PlayerQuickActionRow(
     onTimer: () -> Unit,
     onEditMetadata: () -> Unit,
     onMore: () -> Unit,
+    accent: Color? = null,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -53,11 +51,11 @@ internal fun PlayerQuickActionRow(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        PlayerQuickAction(stringResource(R.string.player_quick_info), PlayerQuickActionKind.Info, onSongInfo)
-        PlayerQuickAction(stringResource(R.string.player_quick_share), PlayerQuickActionKind.Share, onShareSong)
-        PlayerQuickAction(stringResource(R.string.player_quick_timer), PlayerQuickActionKind.Timer, onTimer)
-        PlayerQuickAction(stringResource(R.string.player_quick_edit), PlayerQuickActionKind.Edit, onEditMetadata)
-        PlayerQuickAction(stringResource(R.string.player_quick_more), PlayerQuickActionKind.More, onMore)
+        PlayerQuickAction(stringResource(R.string.player_quick_info), PlayerQuickActionKind.Info, onSongInfo, accent)
+        PlayerQuickAction(stringResource(R.string.player_quick_share), PlayerQuickActionKind.Share, onShareSong, accent)
+        PlayerQuickAction(stringResource(R.string.player_quick_timer), PlayerQuickActionKind.Timer, onTimer, accent)
+        PlayerQuickAction(stringResource(R.string.player_quick_edit), PlayerQuickActionKind.Edit, onEditMetadata, accent)
+        PlayerQuickAction(stringResource(R.string.player_quick_more), PlayerQuickActionKind.More, onMore, accent)
     }
 }
 
@@ -77,7 +75,8 @@ internal enum class PlayerQuickActionKind {
 internal fun PlayerQuickAction(
     label: String,
     kind: PlayerQuickActionKind,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    accent: Color? = null
 ) {
     Box(
         contentAlignment = Alignment.Center,
@@ -93,7 +92,7 @@ internal fun PlayerQuickAction(
         ) {
             QuickActionIcon(
                 kind = kind,
-                color = LocalPlayerContentColor.current.copy(alpha = 0.9f),
+                color = accent ?: LocalPlayerContentColor.current.copy(alpha = 0.9f),
                 modifier = Modifier.size(19.dp)
             )
         }
@@ -106,20 +105,6 @@ internal fun QuickActionIcon(
     color: Color,
     modifier: Modifier = Modifier
 ) {
-    val miuixIcon = when (kind) {
-        PlayerQuickActionKind.Info -> MiuixIcons.Demibold.Info
-        PlayerQuickActionKind.More -> MiuixIcons.Demibold.More
-        else -> null
-    }
-    if (miuixIcon != null) {
-        Icon(
-            imageVector = miuixIcon,
-            contentDescription = null,
-            tint = color,
-            modifier = modifier
-        )
-        return
-    }
     Canvas(modifier = modifier) {
         val stroke = size.minDimension * 0.10f
         val cx = size.width / 2f
@@ -148,8 +133,8 @@ internal fun QuickActionIcon(
                 drawLine(color, Offset(size.width * 0.22f, size.height * 0.78f), Offset(size.width * 0.40f, size.height * 0.72f), stroke, cap = StrokeCap.Round)
             }
             PlayerQuickActionKind.More -> {
-                listOf(0.25f, 0.5f, 0.75f).forEach { x ->
-                    drawCircle(color = color, radius = stroke * 0.95f, center = Offset(size.width * x, cy))
+                listOf(0.25f, 0.5f, 0.75f).forEach { y ->
+                    drawCircle(color = color, radius = stroke * 0.95f, center = Offset(cx, size.height * y))
                 }
             }
             PlayerQuickActionKind.Add -> {

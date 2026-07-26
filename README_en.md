@@ -44,7 +44,7 @@ It focuses on local music and lyrics, with a MIUI / HyperOS-inspired interface, 
 - Supports local playlists, favorites, five-star songs, playlist import / export, desktop shortcuts, and custom drag sorting.
 - Album grouping uses both album name and album artist to avoid merging same-name albums from different artists.
 - Includes library analytics, listening calendar, play-count ranking, listening-duration ranking, format distribution, and quality distribution.
-- Supports Last.fm authorization, full-history sync, automatic scrobbling, and Local / Last.fm / combined listening-history views. Sensitive credentials are encrypted with Android Keystore and excluded from backups.
+- Supports Last.fm authorization, full-history sync, automatic scrobbling, and Local / Last.fm / combined listening-history views. Records can be deleted individually, while cached Last.fm entries can be hidden locally. Sensitive credentials are encrypted with Android Keystore and excluded from backups.
 - Library analytics are cached and prewarmed after scanning, so larger local libraries can open the statistics page faster.
 
 ### 🖼 Player UI & Dynamic Covers
@@ -60,7 +60,7 @@ It focuses on local music and lyrics, with a MIUI / HyperOS-inspired interface, 
 - Supports Monet dynamic color derived from the system wallpaper or the current song cover.
 - Non-immersive player covers can show a Hi-Res / MQ badge.
 - The player supports pull-down dismissal, dynamic backgrounds, blurred cover backgrounds, cover swipe-to-skip, and landscape queue-cover switching; tablet landscape docks can show the current lyric.
-- Supports displaying a song's music video (MV). Place "SongFileName-MV.mp4" or "SongFileName_MV.mp4" beside the song. Playing an MV pauses the music track and uses the MV audio; switching back resumes the song. MVs can also be opened in landscape.
+- Supports displaying a song's music video (MV). Place "SongFileName-MV.mp4" or "SongFileName_MV.mp4" beside the song. The player can synchronize a silent MV while the detail page plays an audible MV independently; landscape playback, screenshot sharing, subtitles, and KTV lyrics are supported.
 - Long-press player artwork to preview the original cover, with double-tap zoom, one-finger panning, sharing, and saving.
 
 ### 🎤 Lyrics
@@ -73,6 +73,7 @@ It focuses on local music and lyrics, with a MIUI / HyperOS-inspired interface, 
 - Provides floating desktop lyrics, status-bar lyrics, media notification lyrics, lyric barrage, SuperLyricApi, and Lyric Getter API integration.
 - Long status-bar lyrics loop continuously with a gap instead of visibly jumping back to the start.
 - Supports lyric card sharing, font import with a system-font picker, lyric offset, tap-to-seek, and secondary-line configuration.
+- Includes a dedicated full-screen lyric timing editor with line/word timing, fixed transport controls, undo/redo, V1/V2/V1000 vocal roles, translation, romanization, `x-bg` backing vocals, and embedded or exported LRC, ELRC, and TTML.
 
 ### 🌐 WebDAV, Navidrome, Emby & LX Online Music
 
@@ -86,10 +87,11 @@ It focuses on local music and lyrics, with a MIUI / HyperOS-inspired interface, 
 - Includes an in-app software 10-band parametric equalizer that does not depend on the system Equalizer, with bass boost and virtualizer shown based on device capability.
 - Supports the native Oboe output backend and USB DAC exclusive mode, plus configurable crossfade playback.
 - Uses lyrico-audiotag as the primary local metadata path, supporting artwork, basic tags, embedded lyrics, and multi-value tags for common audio formats.
-- The built-in tag editor supports editing basic tags, lyrics, and embedded artwork.
+- The built-in tag editor supports editing basic tags, lyrics, embedded artwork, and interactive star ratings.
 - Provides system, FFmpeg, and automatic decoding modes for better ALAC / AAC / M4A compatibility.
 - Supports ReplayGain, shuffle queue restoration, quality labels, and 24-bit / 96 kHz recognition.
 - Supports 163 key reading from standalone tags, Comment, and Description fields.
+- Provides local audio tools for format conversion, multi-stream audio export, and CUE album splitting; the built-in spectrum viewer can also launch Aspect Pro or Kaspek directly.
 
 ### 🎨 UI & Integrations
 
@@ -254,11 +256,12 @@ The Halcyon main project is licensed under **Apache-2.0**. Third-party component
 
 - **BetterLyrics** — Visual reference for blurred cover backgrounds and lyric display.
 - **Beautiful Lyrics** — Reference for dynamic backgrounds, fullscreen lyrics, and lyric visual experience.
+- **LySy** — Interaction and timeline-algorithm reference for the built-in native Kotlin / Compose lyric-timing screen (MIT; its Web source code and dependencies are not bundled).
 - **Lyrico** — Reference for external tag editor adaptation and log page interaction.
 - **LX Music Mobile** — Provides LX Music API compatibility implementation and testing reference.
-- **RawS Music** — Reference for the 10-band equalizer, BiQuad parametric EQ, and DSP core.
+- **RawS Music** — Apache-2.0 reference and Kotlin-port foundation for the 10-band EQ, BiQuad parametric EQ, 360-degree surround / panoramic audio, loudness processing, dynamic EQ/de-essing, Moog ladder filtering, and peak protection.
 - **Light Cone Music** — Interface design and feature implementation reference.
-- Thanks to Miuix, Media3, FFmpeg, Lyricon, SuperLyricApi, LyricGetter-API, lyrico-audiotag / Lyrico, TagLib, 163KeyDecrypter, Kyant Backdrop, Coil, OkHttp, Reorderable, accompanist-lyrics-core, Beautiful Lyrics, RawS Music, and other open source projects used by Halcyon.
+- Thanks to Miuix, Media3, FFmpeg, Lyricon, SuperLyricApi, LyricGetter-API, lyrico-audiotag / Lyrico, TagLib, 163KeyDecrypter, Kyant Backdrop, Coil, OkHttp, Reorderable, accompanist-lyrics-core, LySy, Beautiful Lyrics, RawS Music, and other open source projects used by Halcyon.
 
 ---
 

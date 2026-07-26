@@ -1,12 +1,7 @@
 package com.ella.music.ui.folder
 
-import android.content.Intent
-import android.provider.DocumentsContract
-import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -36,7 +31,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,7 +43,6 @@ import com.ella.music.ui.LibrarySortUiState
 import com.ella.music.ui.settings.findComponentActivity
 import androidx.lifecycle.lifecycleScope
 import com.ella.music.data.tagIdentityKey
-import com.ella.music.ui.components.DoubleTapScrollOverlay
 import com.ella.music.ui.components.DirectionalSortField
 import com.ella.music.ui.components.AddToPlaylistSheet
 import com.ella.music.ui.components.CreatePlaylistAndAddSheet
@@ -81,9 +74,7 @@ import top.yukonga.miuix.kmp.icon.basic.Search
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Folder
 import top.yukonga.miuix.kmp.icon.extended.Settings
-import top.yukonga.miuix.kmp.icon.extended.Sort
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import java.util.Locale
 
 @Composable
 fun FolderScreen(
@@ -109,8 +100,14 @@ fun FolderScreen(
     val pinnedFolderPaths by mainViewModel.settingsManager.pinnedKeysFlow("folder").collectAsState(initial = emptyList())
     val folderSortIndex by mainViewModel.settingsManager.folderListSortIndex.collectAsState(initial = LibrarySortUiState.folderListSortIndex)
     val folderSortMode = FolderListSortMode.entries.getOrElse(folderSortIndex) { FolderListSortMode.Name }
+    val folderDetailSongSortIndex by mainViewModel.settingsManager.folderDetailSongSortIndex.collectAsState(
+        initial = LibrarySortUiState.folderDetailSongSortIndex
+    )
     LaunchedEffect(folderSortIndex) {
         LibrarySortUiState.folderListSortIndex = folderSortIndex
+    }
+    LaunchedEffect(folderDetailSongSortIndex) {
+        LibrarySortUiState.folderDetailSongSortIndex = folderDetailSongSortIndex
     }
     var folderToBlock by remember { mutableStateOf<String?>(null) }
     var folderMenuTarget by remember { mutableStateOf<FolderTreeEntry?>(null) }
@@ -125,7 +122,11 @@ fun FolderScreen(
     val rootSongs = songs
     val rootChildFolders = remember(songs, rootFolderPath) { songs.childFoldersOf(context, rootFolderPath) }
     fun songsForFolder(folder: FolderTreeEntry): List<com.ella.music.data.model.Song> =
-        songs.recursiveSongsInFolder(folder.path)
+        songs.recursiveSongsInFolder(folder.path).sortedForFolderDetail(
+            FolderSongSortMode.entries.getOrElse(
+                folderDetailSongSortIndex
+            ) { FolderSongSortMode.Title }
+        )
 
     BackHandler(enabled = sortExpanded || searchExpanded || folderToBlock != null || folderMenuTarget != null) {
         when {
@@ -172,6 +173,7 @@ fun FolderScreen(
                     }
                 },
                 titleStartPadding = if (showBackButton) 64.dp else 20.dp,
+                onDoubleTapTitle = { scrollToTopRequest++ },
                 actions = {
                     IconButton(onClick = onNavigateToScanSettings) {
                         Icon(
@@ -220,13 +222,6 @@ fun FolderScreen(
                         }
                     )
                 }
-            )
-            DoubleTapScrollOverlay(
-                onDoubleTap = { scrollToTopRequest++ },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                endPadding = 160.dp
             )
         }
 

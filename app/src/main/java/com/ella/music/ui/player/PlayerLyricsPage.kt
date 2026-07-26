@@ -22,7 +22,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -217,7 +216,7 @@ internal fun LyricsPlayerPage(
             isPlaying = isPlaying,
             positionMs = currentPositionMs,
             opacity = visualizerOpacity,
-            accent = Color.White.copy(alpha = 0.86f),
+            accent = palette.onBackground.copy(alpha = 0.86f),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()

@@ -21,7 +21,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -72,7 +71,8 @@ internal fun PlayerDetailPage(
     onNeteaseAlbum: () -> Unit,
     musicVideoEnabled: Boolean = false,
     musicVideoCustomFolders: List<String> = emptyList(),
-    onMusicVideo: () -> Unit = {},
+    dynamicCoverCustomFolders: List<String> = emptyList(),
+    onMusicVideo: (DynamicCoverSource) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -164,10 +164,17 @@ internal fun PlayerDetailPage(
         initialValue = null,
         song?.dynamicCoverResolutionKey(),
         musicVideoEnabled,
-        musicVideoCustomFolders
+        musicVideoCustomFolders,
+        dynamicCoverCustomFolders
     ) {
         value = if (musicVideoEnabled && song != null) {
-            withContext(Dispatchers.IO) { song.musicVideoSource(context, musicVideoCustomFolders) }
+            withContext(Dispatchers.IO) {
+                song.musicVideoSource(
+                    context,
+                    customRootPaths = dynamicCoverCustomFolders,
+                    musicVideoCustomFolders = musicVideoCustomFolders
+                )
+            }
         } else {
             null
         }
@@ -179,6 +186,14 @@ internal fun PlayerDetailPage(
         value = musicVideoSource?.let { source ->
             withContext(Dispatchers.IO) { context.readMusicVideoDurationMs(source.uri) }
         } ?: 0L
+    }
+    val musicVideoPreviewFrame by produceState<Bitmap?>(
+        initialValue = null,
+        musicVideoSource?.failureKey
+    ) {
+        value = musicVideoSource?.let { source ->
+            withContext(Dispatchers.IO) { context.readMusicVideoPreviewFrame(source.uri) }
+        }
     }
 
     if (showNeteaseArtistPicker) {
@@ -294,8 +309,11 @@ internal fun PlayerDetailPage(
                                 song?.artist.orEmpty().ifBlank { stringResource(R.string.player_unknown_artist) },
                                 musicVideoDurationMs.formatPlaybackDuration()
                             ).joinToString(" · "),
-                            coverModel = source.uri,
-                            onClick = onMusicVideo
+                            // Video stills are deliberately shown in a wide frame, rather than
+                            // pretending the MV is square album artwork.
+                            coverModel = musicVideoPreviewFrame ?: source.uri,
+                            coverAspectRatio = 16f / 9f,
+                            onClick = { onMusicVideo(source) }
                         )
                     }
                 }

@@ -2,6 +2,8 @@
  * Additional software DSP effects for Halcyon's Media3 audio pipeline, in the spirit of the
  * RawS-Music DSP engine (https://github.com/QFDY-GZC/RawS-Music, Apache-2.0): a bass/treble shelf,
  * a feed-forward dynamics compressor, and a stereo widener. See THIRD_PARTY_LICENSES.md.
+ * Further RawS-Music-derived effects live in DspToneEffects.kt, DspOutputEffects.kt, and
+ * DspSurroundEffects.kt.
  */
 package com.ella.music.dsp
 

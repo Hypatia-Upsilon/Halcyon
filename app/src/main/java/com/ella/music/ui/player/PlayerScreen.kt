@@ -1,63 +1,17 @@
 package com.ella.music.ui.player
 
-import android.content.Context
 import android.app.Activity
 import android.Manifest
 import android.content.pm.PackageManager
-import android.media.AudioManager
-import android.content.Intent
-import android.content.ContextWrapper
-import android.content.pm.ActivityInfo
 import android.os.Build
-import android.os.Environment
-import android.provider.Settings
-import android.util.Log
-import android.view.View
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.background
-import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -65,49 +19,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
-import androidx.compose.ui.zIndex
-import androidx.core.view.WindowCompat
 import com.ella.music.R
 import com.ella.music.data.SettingsManager
 import com.ella.music.data.normalizedAudioFormat
@@ -122,7 +42,6 @@ import com.ella.music.data.model.playlistIdentityKey
 import com.ella.music.player.PlaybackAudioSession
 import com.ella.music.ui.components.LyricVideoProgress
 import com.ella.music.ui.components.LyricVideoShareProgressOverlay
-import com.ella.music.ui.components.TagEditorOptionKind
 import com.ella.music.ui.components.generateLyricVideo
 import com.ella.music.ui.components.shareLyricCard
 import com.ella.music.ui.components.shareLyricVideoFile
@@ -130,24 +49,8 @@ import com.ella.music.viewmodel.MainViewModel
 import com.ella.music.viewmodel.PlayerViewModel
 import com.ella.music.ui.settings.rememberMusicVideoSyncPermissionLauncher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.ln
-import kotlin.math.sqrt
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
-import top.yukonga.miuix.kmp.icon.extended.Music
-import top.yukonga.miuix.kmp.icon.extended.Photos
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
@@ -237,7 +140,9 @@ fun PlayerScreen(
     val dynamicCoverEnabled = playerSettings.dynamicCoverEnabled
     val musicVideoSyncEnabled = playerSettings.musicVideoSyncEnabled
     val dynamicCoverCustomFolders = playerSettings.dynamicCoverCustomFolders
+    val musicVideoCustomFolders = playerSettings.musicVideoCustomFolders
     val immersiveAlbumCover = playerSettings.immersiveAlbumCover
+    val coverContentColor = playerSettings.coverContentColor
     val playerBackgroundEnabled = playerSettings.playerBackgroundEnabled
     val playerBackgroundUri = playerSettings.playerBackgroundUri
     val playerBackgroundOpacity = playerSettings.playerBackgroundOpacity / 100f
@@ -325,12 +230,10 @@ fun PlayerScreen(
         uiState.deleteConfirmSong = targetSong
     }
     val playerBackgroundTheme by settingsManager.playerBackgroundTheme
-        .collectAsState(initial = SettingsManager.PLAYER_BG_THEME_FOLLOW_SYSTEM)
+        .collectAsState(initial = SettingsManager.PLAYER_BG_THEME_DARK)
     val playerLight = when (playerBackgroundTheme) {
         SettingsManager.PLAYER_BG_THEME_LIGHT -> true
         SettingsManager.PLAYER_BG_THEME_DARK -> false
-        // Follow the app's effective theme (which itself follows the system or an in-app override),
-        // not the raw OS dark mode, so the player tracks an in-app light/dark switch too.
         else -> MiuixTheme.colorScheme.background.luminance() >= 0.5f
     }
     val songPresentation = rememberPlayerSongPresentationState(
@@ -341,8 +244,16 @@ fun PlayerScreen(
     )
     val embeddedCover = songPresentation.embeddedCover
     val paletteBitmap = songPresentation.paletteBitmap
-    val palette = songPresentation.palette
-    val lyricPalette = songPresentation.lyricPalette
+    val palette = if (coverContentColor) {
+        songPresentation.palette.withCoverContentColor()
+    } else {
+        songPresentation.palette
+    }
+    val lyricPalette = if (coverContentColor) {
+        songPresentation.lyricPalette.withCoverContentColor()
+    } else {
+        songPresentation.lyricPalette
+    }
     val audioInfo = songPresentation.audioInfo
     val tagInfo = songPresentation.tagInfo
     val songAnnotation = songPresentation.annotation
@@ -485,6 +396,9 @@ fun PlayerScreen(
     ) { dismissingPlayer ->
         Box(modifier = Modifier.fillMaxSize()) {
           CompositionLocalProvider(
+              // With cover colouring off, palette is the neutral variant: dark content on a
+              // light player background, white on a dark one (the pre-1.2.3 behaviour). A
+              // hardcoded white fallback made light backgrounds unreadable.
               LocalPlayerContentColor provides palette.onBackground,
               LocalPlayerSurfaceActive provides playerVisible
           ) {
@@ -506,7 +420,6 @@ fun PlayerScreen(
                 useBlurBackground = false,
                 modifier = Modifier.fillMaxSize()
             )
-
             PlayerScreenPageHost(
                 immersiveAlbumCover = immersiveAlbumCover,
                 showLyrics = showLyrics,
@@ -534,8 +447,11 @@ fun PlayerScreen(
                         dynamicCoverFailedPath = uiState.dynamicCoverFailedPath,
                         dynamicCoverEnabled = dynamicCoverEnabled,
                         dynamicCoverCustomFolders = dynamicCoverCustomFolders,
+                        musicVideoCustomFolders = musicVideoCustomFolders,
                         musicVideoSyncEnabled = musicVideoSyncEnabled,
-                        musicVideoVisible = uiState.musicVideoVisible,
+                        // The landscape host owns its MV decoder while expanded. Keeping the
+                        // portrait surface composed underneath created a second video pipeline.
+                        musicVideoVisible = uiState.musicVideoVisible && !landscapeState.expanded,
                         onMusicVideoVisibleChange = { visible ->
                             if (!musicVideoSyncEnabled) {
                                 uiState.musicVideoVisible = false
@@ -550,10 +466,12 @@ fun PlayerScreen(
                             if (musicVideoSyncEnabled) {
                                 uiState.musicVideoVisible = true
                                 landscapeState.coverMode = true
+                                landscapeState.openedFromMusicVideo = true
                                 landscapeState.expanded = true
                             }
                         },
                         immersiveAlbumCover = immersiveAlbumCover,
+                        coverContentColor = coverContentColor,
                         playerBackgroundEnabled = playerBackgroundEnabled,
                         playerBackgroundUri = playerBackgroundUri,
                         playerBackgroundOpacity = playerBackgroundOpacity,
@@ -639,7 +557,14 @@ fun PlayerScreen(
                         onPlaylistPickerSongChange = { uiState.playlistPickerSong = it },
                         onPlaylistPickerSongsChange = { uiState.playlistPickerSongs = it },
                         onLandscapeCoverModeChange = { landscapeState.coverMode = it },
-                        onLandscapeExpandedChange = { landscapeState.expanded = it },
+                        onLandscapeExpandedChange = {
+                            // The More-menu landscape action is a cover player, never an MV.
+                            if (it) {
+                                uiState.musicVideoVisible = false
+                                landscapeState.openedFromMusicVideo = false
+                            }
+                            landscapeState.expanded = it
+                        },
                         onSongInfoExpandedChange = { uiState.songInfoExpanded = it },
                         onRatingSheetSongChange = { uiState.ratingSheetSong = it },
                         onAiSheetSongChange = { uiState.aiSheetSong = it },
@@ -737,11 +662,15 @@ fun PlayerScreen(
                         onNavigateToArtist = onNavigateToArtist,
                         onNavigateToMetadataCategory = onNavigateToMetadataCategory,
                         openNetease = ::openNetease,
-                        musicVideoEnabled = musicVideoSyncEnabled,
-                        musicVideoCustomFolders = dynamicCoverCustomFolders,
-                        onOpenMusicVideo = {
-                            uiState.musicVideoVisible = true
-                            scope.launch { playerPagerState.animateScrollToPage(PLAYER_PAGE_COVER) }
+                        // Detail-page MVs are an independent, audible player. The sync switch
+                        // only controls the silent MV surface on the main playback page.
+                        musicVideoEnabled = dynamicCoverEnabled,
+                        musicVideoCustomFolders = musicVideoCustomFolders,
+                        dynamicCoverCustomFolders = dynamicCoverCustomFolders,
+                        onOpenMusicVideo = { source ->
+                            uiState.musicVideoVisible = false
+                            playerViewModel.pauseForMusicVideo()
+                            com.ella.music.MusicVideoLauncher.open(context, song, source)
                         },
                         drawBackground = false,
                         modifier = pageModifier
@@ -757,8 +686,10 @@ fun PlayerScreen(
                 coverMode = landscapeState.coverMode,
                 dynamicCoverEnabled = dynamicCoverEnabled,
                 dynamicCoverCustomFolders = dynamicCoverCustomFolders,
+                musicVideoCustomFolders = musicVideoCustomFolders,
                 musicVideoEnabled = musicVideoSyncEnabled,
                 musicVideoVisible = uiState.musicVideoVisible,
+                hideNeighborCoversInitially = landscapeState.openedFromMusicVideo,
                 song = song,
                 embeddedCover = embeddedCover,
                 paletteBitmap = paletteBitmap,
@@ -839,6 +770,7 @@ fun PlayerScreen(
                 onDismiss = {
                     landscapeState.expanded = false
                     landscapeState.coverMode = false
+                    landscapeState.openedFromMusicVideo = false
                 }
             )
           }
@@ -873,6 +805,8 @@ fun PlayerScreen(
                 lyricTimingEditorId = lyricTimingEditorId,
                 metadataEditorSong = uiState.metadataEditorSong,
                 onMetadataEditorSongChange = { uiState.metadataEditorSong = it },
+                lyricTimingEditorSong = uiState.lyricTimingEditorSong,
+                onLyricTimingEditorSongChange = { uiState.lyricTimingEditorSong = it },
                 onWritePermissionRequired = { error, retry ->
                     uiState.pendingWriteRetry = retry
                     deletePermissionLauncher.launch(

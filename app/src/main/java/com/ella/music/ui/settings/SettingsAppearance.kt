@@ -1,47 +1,22 @@
 package com.ella.music.ui.settings
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.ella.music.R
 import com.ella.music.data.BottomBarGlassEffect
 import com.ella.music.data.SettingsManager
-import com.ella.music.ui.components.EllaMiuixBottomSheet
-import com.ella.music.ui.player.LocalPlayerContentColor
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.Button
-import top.yukonga.miuix.kmp.basic.ColorPicker
-import top.yukonga.miuix.kmp.basic.ColorSpace
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
@@ -85,10 +60,13 @@ internal fun SettingsAppearanceSection(
     val homeCardOpacity by settingsManager.homeCardOpacity.collectAsState(initial = 58)
     val dynamicCoverEnabled by settingsManager.dynamicCoverEnabled.collectAsState(initial = false)
     val musicVideoSyncEnabled by settingsManager.musicVideoSyncEnabled.collectAsState(initial = false)
+    val musicVideoCaptureSubtitles by settingsManager.musicVideoCaptureSubtitles.collectAsState(initial = false)
     val dynamicCoverCustomFolders by settingsManager.dynamicCoverCustomFoldersRaw.collectAsState(initial = "")
+    val musicVideoCustomFolders by settingsManager.musicVideoCustomFoldersRaw.collectAsState(initial = "")
     val hiResLogoEnabled by settingsManager.hiResLogoEnabled.collectAsState(initial = false)
     val hiResLogoUri by settingsManager.hiResLogoUri.collectAsState(initial = "")
     val playerImmersiveCover by settingsManager.playerImmersiveCover.collectAsState(initial = false)
+    val playerCoverContentColor by settingsManager.playerCoverContentColor.collectAsState(initial = false)
     val transportButtonOutlines by settingsManager.transportButtonOutlines.collectAsState(initial = false)
     val playerTapSeekEnabled by settingsManager.playerTapSeekEnabled.collectAsState(initial = true)
     val playerShowTotalDuration by settingsManager.playerShowTotalDuration.collectAsState(initial = false)
@@ -103,7 +81,7 @@ internal fun SettingsAppearanceSection(
     val autoShowSearchKeyboard by settingsManager.autoShowSearchKeyboard.collectAsState(initial = true)
     val openPlayerOnPlay by settingsManager.openPlayerOnPlay.collectAsState(initial = false)
     val categoryGridColumns by settingsManager.categoryGridColumns.collectAsState(initial = 2)
-    val playerBgTheme by settingsManager.playerBackgroundTheme.collectAsState(initial = SettingsManager.PLAYER_BG_THEME_FOLLOW_SYSTEM)
+    val playerBgTheme by settingsManager.playerBackgroundTheme.collectAsState(initial = SettingsManager.PLAYER_BG_THEME_DARK)
     val beautifulLyricsBackgroundLabels = listOf(
         stringResource(R.string.settings_beautiful_lyrics_background_static),
         stringResource(R.string.settings_beautiful_lyrics_background_dynamic)
@@ -277,6 +255,10 @@ internal fun SettingsAppearanceSection(
     val musicVideoSyncPermissionLauncher = rememberMusicVideoSyncPermissionLauncher(settingsManager)
     val dynamicCoverFolderPicker = rememberDynamicCoverFolderPicker(
         currentFolders = dynamicCoverCustomFolders,
+        settingsManager = settingsManager
+    )
+    val musicVideoFolderPicker = rememberMusicVideoFolderPicker(
+        currentFolders = musicVideoCustomFolders,
         settingsManager = settingsManager
     )
 
@@ -637,6 +619,35 @@ internal fun SettingsAppearanceSection(
                     setMusicVideoSyncEnabled(context, scope, settingsManager, musicVideoSyncPermissionLauncher, it)
                 }
             )
+            SwitchPreference(
+                title = stringResource(R.string.settings_music_video_capture_subtitles),
+                summary = stringResource(R.string.settings_music_video_capture_subtitles_summary),
+                checked = musicVideoCaptureSubtitles,
+                onCheckedChange = {
+                    scope.launch { settingsManager.setMusicVideoCaptureSubtitles(it) }
+                }
+            )
+            ArrowPreference(
+                title = stringResource(R.string.settings_music_video_custom_folders),
+                summary = if (musicVideoCustomFolders.isBlank()) {
+                    stringResource(R.string.settings_music_video_custom_folders_summary)
+                } else {
+                    stringResource(
+                        R.string.settings_music_video_custom_folders_selected,
+                        musicVideoCustomFolders.lineSequence().filter { it.isNotBlank() }.count()
+                    )
+                },
+                onClick = { musicVideoFolderPicker.launch(null) }
+            )
+            if (musicVideoCustomFolders.isNotBlank()) {
+                ArrowPreference(
+                    title = stringResource(R.string.settings_music_video_custom_folders_remove),
+                    summary = stringResource(R.string.settings_music_video_custom_folders_remove_summary),
+                    onClick = {
+                        scope.launch { settingsManager.setMusicVideoCustomFolders("") }
+                    }
+                )
+            }
             ArrowPreference(
                 title = stringResource(R.string.settings_dynamic_cover_custom_folders),
                 summary = if (dynamicCoverCustomFolders.isBlank()) {
@@ -693,6 +704,14 @@ internal fun SettingsAppearanceSection(
                 checked = playerImmersiveCover,
                 onCheckedChange = {
                     scope.launch { settingsManager.setPlayerImmersiveCover(it) }
+                }
+            )
+            SwitchPreference(
+                title = stringResource(R.string.settings_player_cover_content_color),
+                summary = stringResource(R.string.settings_player_cover_content_color_summary),
+                checked = playerCoverContentColor,
+                onCheckedChange = {
+                    scope.launch { settingsManager.setPlayerCoverContentColor(it) }
                 }
             )
             WindowSpinnerPreference(
