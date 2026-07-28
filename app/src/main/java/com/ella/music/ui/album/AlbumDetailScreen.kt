@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -109,6 +110,7 @@ fun AlbumDetailScreen(
     onNavigateToPlayer: () -> Unit
 ) {
     val albums by mainViewModel.albums.collectAsState()
+    val librarySongs by mainViewModel.songs.collectAsState()
     val libraryCacheLoaded by mainViewModel.libraryCacheLoaded.collectAsState()
     val playlists by mainViewModel.playlists.collectAsState()
     val context = LocalContext.current
@@ -131,6 +133,7 @@ fun AlbumDetailScreen(
     var createPlaylistSongs by remember { mutableStateOf<List<Song>?>(null) }
     var pendingDeleteSongs by remember { mutableStateOf<List<Song>>(emptyList()) }
     var albumArtistChoices by remember { mutableStateOf<List<String>>(emptyList()) }
+    var showIntroduction by rememberSaveable(albumId) { mutableStateOf(false) }
     val requestDeleteSongs = rememberSongDeleteRequester(mainViewModel)
     val album = albums.find { it.id == albumId }
     val albumSongs = mainViewModel.getSongsForAlbum(albumId)
@@ -273,36 +276,39 @@ fun AlbumDetailScreen(
             )
         }
     }
-    val composerDisplayItems = remember(participatingComposers, albumSongs) {
+    val composerDisplayItems = remember(participatingComposers, albumSongs, librarySongs) {
         participatingComposers.map { composer ->
             buildAlbumMetadataDisplayItem(
                 name = composer,
                 songs = mainViewModel.getSongsForMetadataCategory("composer", composer),
                 mainViewModel = mainViewModel,
                 fallbackSong = albumSongs.firstOrNull(),
-                categoryType = "composer"
+                categoryType = "composer",
+                coverCandidates = librarySongs
             )
         }
     }
-    val arrangerDisplayItems = remember(participatingArrangers, albumSongs) {
+    val arrangerDisplayItems = remember(participatingArrangers, albumSongs, librarySongs) {
         participatingArrangers.map { arranger ->
             buildAlbumMetadataDisplayItem(
                 name = arranger,
                 songs = mainViewModel.getSongsForMetadataCategory("arranger", arranger),
                 mainViewModel = mainViewModel,
                 fallbackSong = albumSongs.firstOrNull(),
-                categoryType = "arranger"
+                categoryType = "arranger",
+                coverCandidates = librarySongs
             )
         }
     }
-    val lyricistDisplayItems = remember(participatingLyricists, albumSongs) {
+    val lyricistDisplayItems = remember(participatingLyricists, albumSongs, librarySongs) {
         participatingLyricists.map { lyricist ->
             buildAlbumMetadataDisplayItem(
                 name = lyricist,
                 songs = mainViewModel.getSongsForMetadataCategory("lyricist", lyricist),
                 mainViewModel = mainViewModel,
                 fallbackSong = albumSongs.firstOrNull(),
-                categoryType = "lyricist"
+                categoryType = "lyricist",
+                coverCandidates = librarySongs
             )
         }
     }
@@ -351,6 +357,17 @@ fun AlbumDetailScreen(
             }
             2 + discHeaderCount + songIndex
         }
+    }
+
+    if (showIntroduction) {
+        AlbumIntroductionScreen(
+            album = album,
+            songs = albumSongs,
+            coverModel = albumPreviewModel,
+            releaseDate = albumReleaseDate,
+            onBack = { showIntroduction = false }
+        )
+        return
     }
 
     // Keep the explicit album-list restoration path for every system-back route.  Previously
@@ -418,6 +435,7 @@ fun AlbumDetailScreen(
                             onNavigateToMetadataCategory("year", year.toString())
                         }
                     },
+                    onIntroductionClick = { showIntroduction = true },
                     onCoverClick = { coverPreviewVisible = true },
                     onPlayAll = {
                         if (sortedAlbumSongs.isNotEmpty()) {
@@ -960,10 +978,11 @@ private fun buildAlbumMetadataDisplayItem(
     mainViewModel: MainViewModel,
     fallbackSong: Song?,
     categoryType: String? = null,
+    coverCandidates: List<Song> = songs,
     artistCoverName: String? = null,
     artistCoverSong: Song? = null
 ): AlbumMetadataDisplayItem {
-    val representativeSong = categoryType?.let { selectMetadataCategoryCoverSong(songs, it, name) }
+    val representativeSong = categoryType?.let { selectMetadataCategoryCoverSong(coverCandidates, it, name) }
         ?: songs.firstOrNull()
         ?: fallbackSong
     return AlbumMetadataDisplayItem(

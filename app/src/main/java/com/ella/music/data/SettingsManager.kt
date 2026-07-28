@@ -67,6 +67,7 @@ class SettingsManager(private val context: Context) :
         val KEY_PLAYER_BACKGROUND_THEME = intPreferencesKey("player_background_theme")
         val KEY_APP_LANGUAGE = stringPreferencesKey("app_language")
         val KEY_APP_ICON_STYLE = stringPreferencesKey("app_icon_style")
+        val KEY_WIDGET_SAFE_LAYOUT = booleanPreferencesKey("widget_safe_layout")
         val KEY_LIBRARY_SOURCE = stringPreferencesKey("library_source")
         val KEY_BOTTOM_BAR_GLASS_EFFECT = stringPreferencesKey("bottom_bar_glass_effect")
         val KEY_BOTTOM_DOCK_ITEMS = stringPreferencesKey("bottom_dock_items")
@@ -197,6 +198,7 @@ class SettingsManager(private val context: Context) :
         val KEY_DYNAMIC_COVER_ENABLED = booleanPreferencesKey("dynamic_cover_enabled")
         val KEY_MUSIC_VIDEO_SYNC_ENABLED = booleanPreferencesKey("music_video_sync_enabled")
         val KEY_MUSIC_VIDEO_CAPTURE_SUBTITLES = booleanPreferencesKey("music_video_capture_subtitles")
+        val KEY_MUSIC_VIDEO_OFFSETS_JSON = stringPreferencesKey("music_video_offsets_json")
         val KEY_DYNAMIC_COVER_CUSTOM_FOLDERS = stringPreferencesKey("dynamic_cover_custom_folders")
         val KEY_MUSIC_VIDEO_CUSTOM_FOLDERS = stringPreferencesKey("music_video_custom_folders")
         val KEY_ARTIST_COVER_FOLDER_URI = stringPreferencesKey("artist_cover_folder_uri")
@@ -237,6 +239,7 @@ class SettingsManager(private val context: Context) :
         val KEY_SHOW_ALBUM_ARTISTS = booleanPreferencesKey("show_album_artists")
         val KEY_METADATA_EDITOR_ID = stringPreferencesKey("metadata_editor_id")
         val KEY_LYRIC_TIMING_EDITOR_ID = stringPreferencesKey("lyric_timing_editor_id")
+        val KEY_SPECTRUM_VIEWER_ID = stringPreferencesKey("spectrum_viewer_id")
         val KEY_SLEEP_TIMER_CUSTOM_MINUTES = intPreferencesKey("sleep_timer_custom_minutes")
         val KEY_SLEEP_TIMER_STOP_AFTER_CURRENT = booleanPreferencesKey("sleep_timer_stop_after_current")
         val KEY_SHORTCUT_LIBRARY_LABEL = stringPreferencesKey("shortcut_library_label")
@@ -444,6 +447,10 @@ class SettingsManager(private val context: Context) :
         const val PLAYER_BG_THEME_FOLLOW_SYSTEM = 0
         const val PLAYER_BG_THEME_LIGHT = 1
         const val PLAYER_BG_THEME_DARK = 2
+        const val DEFAULT_PLAYER_DYNAMIC_FLOW_ENABLED = true
+        const val DEFAULT_TRANSPORT_BUTTON_OUTLINES = true
+        const val DEFAULT_PLAYER_SHOW_TOTAL_DURATION = true
+        const val DEFAULT_MUSIC_VIDEO_SYNC_ENABLED = true
 
         const val LYRIC_SOURCE_AUTO = 0
         const val LYRIC_SOURCE_EXTERNAL = 1
@@ -823,6 +830,7 @@ class SettingsManager(private val context: Context) :
             setBoolean(KEY_PLAYER_HDR_GLOW)
             setBoolean(KEY_PLAYER_IMMERSIVE_COVER)
             setBoolean(KEY_PLAYER_COVER_CONTENT_COLOR)
+            setBoolean(KEY_WIDGET_SAFE_LAYOUT)
             setBoolean(KEY_HIDE_SYSTEM_BARS)
             setBoolean(KEY_PLAYER_DYNAMIC_FLOW_ENABLED)
             setBoolean(KEY_AUDIO_VISUALIZER_ENABLED)
@@ -1090,10 +1098,12 @@ class SettingsManager(private val context: Context) :
             setString(KEY_EQ_BANDS)
             setString(KEY_DYNAMIC_COVER_CUSTOM_FOLDERS)
             setString(KEY_MUSIC_VIDEO_CUSTOM_FOLDERS)
+            setString(KEY_MUSIC_VIDEO_OFFSETS_JSON)
             setString(KEY_ARTIST_COVER_FOLDER_URI)
             setString(KEY_COVER_EXPORT_FOLDER_URI)
             setString(KEY_SEARCH_ALL_CATEGORY_TYPES)
             setString(KEY_SEARCH_ALL_SONG_MATCH_TYPES)
+            setString(KEY_SPECTRUM_VIEWER_ID)
 
             fun clearMissingCustomImage(
                 enabledKey: Preferences.Key<Boolean>,

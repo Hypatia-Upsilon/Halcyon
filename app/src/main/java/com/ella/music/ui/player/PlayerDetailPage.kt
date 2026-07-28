@@ -36,7 +36,10 @@ import com.ella.music.data.model.albumIdentityId
 import com.ella.music.data.model.formatPlaybackDuration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.ella.music.ui.artist.rememberArtistCoverModel
+import com.ella.music.ui.artist.selectArtistCoverSong
 import com.ella.music.ui.components.ExplicitSongTitle
+import com.ella.music.viewmodel.MainViewModel
 import top.yukonga.miuix.kmp.basic.Text
 
 @Composable
@@ -48,6 +51,8 @@ internal fun PlayerDetailPage(
     neteaseInfo: NeteaseKeyInfo?,
     librarySongs: List<Song>,
     albumArtForAlbum: (Long) -> Any?,
+    artistCoverFolderUri: String,
+    mainViewModel: MainViewModel,
     palette: PlayerPalette,
     currentPositionMs: Long,
     isPlaying: Boolean,
@@ -67,6 +72,7 @@ internal fun PlayerDetailPage(
     onYear: (String) -> Unit,
     onGenre: (String) -> Unit,
     onNeteaseSong: () -> Unit,
+    onNeteaseMusicVideo: () -> Unit,
     onNeteaseArtist: (String) -> Unit,
     onNeteaseAlbum: () -> Unit,
     musicVideoEnabled: Boolean = false,
@@ -271,12 +277,19 @@ internal fun PlayerDetailPage(
                 item {
                     PlayerDetailGroupCard(title = stringResource(R.string.player_detail_artist_label)) {
                         artistDetails.forEach { detail ->
-                            val representativeSong = detail.songs.firstOrNull()
+                            val representativeSong = remember(effectiveLibrarySongs, detail.name) {
+                                selectArtistCoverSong(effectiveLibrarySongs, detail.name)
+                            }
+                            val artistCoverModel = rememberArtistCoverModel(
+                                artistName = detail.name,
+                                representativeSong = representativeSong,
+                                folderLocation = artistCoverFolderUri,
+                                mainViewModel = mainViewModel
+                            )
                             PlayerDetailGroupedActionRow(
                                 title = detail.name,
                                 summary = detail.songs.stats().personSummary(),
-                                coverModel = representativeSong?.coverUrl?.takeIf { it.isNotBlank() }
-                                    ?: representativeSong?.albumId?.let(albumArtForAlbum),
+                                coverModel = artistCoverModel,
                                 circularCover = true,
                                 onClick = { onArtist(detail.name) }
                             )
@@ -304,11 +317,14 @@ internal fun PlayerDetailPage(
                 item {
                     PlayerDetailGroupCard(title = stringResource(R.string.player_detail_music_video)) {
                         PlayerDetailGroupedActionRow(
-                            title = song?.title.orEmpty(),
+                            title = stringResource(R.string.player_local_music_video),
                             summary = listOf(
-                                song?.artist.orEmpty().ifBlank { stringResource(R.string.player_unknown_artist) },
+                                song?.title.orEmpty(),
+                                song?.artist.orEmpty().ifBlank {
+                                    stringResource(R.string.player_unknown_artist)
+                                },
                                 musicVideoDurationMs.formatPlaybackDuration()
-                            ).joinToString(" · "),
+                            ).filter(String::isNotBlank).joinToString(" · "),
                             // Video stills are deliberately shown in a wide frame, rather than
                             // pretending the MV is square album artwork.
                             coverModel = musicVideoPreviewFrame ?: source.uri,
@@ -408,6 +424,13 @@ internal fun PlayerDetailPage(
                                 title = stringResource(R.string.player_netease_album_page),
                                 summary = neteaseInfo.albumName.ifBlank { neteaseInfo.albumId },
                                 onClick = onNeteaseAlbum
+                            )
+                        }
+                        neteaseInfo.mvId.takeIf(String::isNotBlank)?.let { mvId ->
+                            PlayerDetailGroupedActionRow(
+                                title = stringResource(R.string.player_netease_music_video),
+                                summary = neteaseInfo.musicName.ifBlank { mvId },
+                                onClick = onNeteaseMusicVideo
                             )
                         }
                     }
