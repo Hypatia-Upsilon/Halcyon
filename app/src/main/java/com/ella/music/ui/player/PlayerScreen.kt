@@ -79,6 +79,7 @@ fun PlayerScreen(
     val coverSwipeEnabled = playerSettings.coverSwipeEnabled
     val lyricParserEngine = playerSettings.lyricParserEngine
     val playerTitlePosition = playerSettings.playerTitlePosition
+    val playerLandscapeStyle = playerSettings.playerLandscapeStyle
     val playerKeepScreenOn = playerSettings.playerKeepScreenOn
     val lyricSourceMode = playerSettings.lyricSourceMode
     val lyricFontState = rememberPlayerLyricFontState(context, settingsManager)
@@ -185,6 +186,18 @@ fun PlayerScreen(
     val uiState = rememberPlayerScreenUiState()
     val musicVideoPermissionLauncher = rememberMusicVideoSyncPermissionLauncher(settingsManager)
     val landscapeState = rememberPlayerLandscapeUiState()
+    val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
+    LaunchedEffect(openToken, playerVisible, isLandscape, playerLandscapeStyle) {
+        if (!playerVisible) {
+            landscapeState.expanded = false
+        } else if (isLandscape) {
+            // A permanently-landscape device (for example an in-car display) never performs the
+            // portrait-to-landscape rotation that used to open this host. Apply the user's chosen
+            // landscape presentation as soon as the player page itself opens instead.
+            landscapeState.expanded =
+                playerLandscapeStyle != SettingsManager.PLAYER_LANDSCAPE_STYLE_WIDE
+        }
+    }
     val visualizerPermissionState = rememberPlayerVisualizerPermissionState(
         context = context,
         scope = scope,
@@ -435,6 +448,11 @@ fun PlayerScreen(
                     scope.launch { playerPagerState.animateScrollToPage(PLAYER_PAGE_COVER) }
                 },
                 coverPage = { onShowLyrics, pageModifier ->
+                    val videoPlaybackActive = if (immersiveAlbumCover) {
+                        !showLyrics
+                    } else {
+                        playerPagerState.currentPage == PLAYER_PAGE_COVER
+                    }
                     CoverPageContent(
                         context = context,
                         mainViewModel = mainViewModel,
@@ -453,6 +471,7 @@ fun PlayerScreen(
                         // The landscape host owns its MV decoder while expanded. Keeping the
                         // portrait surface composed underneath created a second video pipeline.
                         musicVideoVisible = uiState.musicVideoVisible && !landscapeState.expanded,
+                        videoPlaybackActive = videoPlaybackActive,
                         onMusicVideoVisibleChange = { visible ->
                             if (!musicVideoSyncEnabled) {
                                 uiState.musicVideoVisible = false
@@ -466,8 +485,6 @@ fun PlayerScreen(
                         onOpenMusicVideoLandscape = {
                             if (musicVideoSyncEnabled) {
                                 uiState.musicVideoVisible = true
-                                landscapeState.coverMode = true
-                                landscapeState.openedFromMusicVideo = true
                                 landscapeState.expanded = true
                             }
                         },
@@ -557,12 +574,12 @@ fun PlayerScreen(
                         onDynamicCoverSheetSongChange = { uiState.dynamicCoverSheetSong = it },
                         onPlaylistPickerSongChange = { uiState.playlistPickerSong = it },
                         onPlaylistPickerSongsChange = { uiState.playlistPickerSongs = it },
-                        onLandscapeCoverModeChange = { landscapeState.coverMode = it },
                         onLandscapeExpandedChange = {
-                            // The More-menu landscape action is a cover player, never an MV.
                             if (it) {
-                                uiState.musicVideoVisible = false
-                                landscapeState.openedFromMusicVideo = false
+                                val useMusicVideo =
+                                    playerLandscapeStyle ==
+                                        SettingsManager.PLAYER_LANDSCAPE_STYLE_MUSIC_VIDEO
+                                uiState.musicVideoVisible = useMusicVideo && musicVideoSyncEnabled
                             }
                             landscapeState.expanded = it
                         },
@@ -686,13 +703,11 @@ fun PlayerScreen(
             PlayerLandscapeOverlayHost(
                 context = context,
                 expanded = landscapeState.expanded,
-                coverMode = landscapeState.coverMode,
+                layoutStyle = playerLandscapeStyle,
                 dynamicCoverEnabled = dynamicCoverEnabled,
                 dynamicCoverCustomFolders = dynamicCoverCustomFolders,
                 musicVideoCustomFolders = musicVideoCustomFolders,
                 musicVideoEnabled = musicVideoSyncEnabled,
-                musicVideoVisible = uiState.musicVideoVisible,
-                hideNeighborCoversInitially = landscapeState.openedFromMusicVideo,
                 song = song,
                 embeddedCover = embeddedCover,
                 paletteBitmap = paletteBitmap,
@@ -704,13 +719,11 @@ fun PlayerScreen(
                 shuffleEnabled = shuffleEnabled,
                 repeatMode = repeatMode,
                 audioInfo = audioInfo,
-                palette = if (landscapeState.coverMode) palette else lyricPalette,
+                palette = palette,
                 lyrics = lyrics,
-                lyricsLoading = lyricsLoading,
                 currentLyricIndex = currentLyricIndex,
                 showTranslation = showLyricTranslation,
                 showPronunciation = showLyricPronunciation,
-                appleMusicWordLiftEnabled = appleMusicLyricsWordLift,
                 fontFamily = lyricFontFamily,
                 translationFontFamily = lyricTranslationFontFamily,
                 fontPath = effectiveLyricFontPath,
@@ -719,9 +732,6 @@ fun PlayerScreen(
                 secondaryFontScale = lyricSecondaryFontScale,
                 primaryTextSizeSp = lyricPrimaryTextSizeSp,
                 secondaryTextSizeSp = lyricSecondaryTextSizeSp,
-                lyricTextAlign = playerLyricTextAlign,
-                lyricPerspectiveEffect = lyricPerspectiveEffect,
-                lyricPerspectiveYAngle = lyricPerspectiveYAngle,
                 showTotalDuration = playerShowTotalDuration,
                 queueExpanded = uiState.queueExpanded,
                 playlist = playlist,
@@ -739,8 +749,6 @@ fun PlayerScreen(
                 onToggleFavorite = { playerViewModel.toggleCurrentSongFavorite() },
                 onToggleQueue = { uiState.queueExpanded = !uiState.queueExpanded },
                 onDismissQueue = { uiState.queueExpanded = false },
-                onShowLyrics = { landscapeState.coverMode = false },
-                onShowCoverPlayer = { landscapeState.coverMode = true },
                 onLyricLineClick = { line -> playerViewModel.seekTo(line.timeMs) },
                 onLyricLineLongClick = ::openLyricSharePicker,
                 onSeekProgress = { progress ->
@@ -772,8 +780,6 @@ fun PlayerScreen(
                 },
                 onDismiss = {
                     landscapeState.expanded = false
-                    landscapeState.coverMode = false
-                    landscapeState.openedFromMusicVideo = false
                 }
             )
           }

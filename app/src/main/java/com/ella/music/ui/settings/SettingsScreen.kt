@@ -51,6 +51,7 @@ fun SettingsScreen(
     onNavigateToAudioSettings: () -> Unit,
     onNavigateToBackupSettings: () -> Unit,
     onNavigateToLogs: () -> Unit,
+    onNavigateToBottomNavigationSettings: () -> Unit = onNavigateToAppearanceSettings,
     onNavigateToHomeDisplaySettings: (String) -> Unit = { onNavigateToAppearanceSettings() },
     onNavigateToScanFolders: () -> Unit = onNavigateToLibrarySettings,
     onNavigateToHighlightedScanFolders: (String) -> Unit = { onNavigateToScanFolders() },
@@ -76,6 +77,7 @@ fun SettingsScreen(
     val pageBackground = if (isDark) Color(0xFF101014) else Color(0xFFF4F4F7)
     val searchEntries = settingsSearchEntries(
         onNavigateToAppearanceSettings = onNavigateToAppearanceSettings,
+        onNavigateToBottomNavigationSettings = onNavigateToBottomNavigationSettings,
         onNavigateToHomeDisplaySettings = onNavigateToHomeDisplaySettings,
         onNavigateToLibrarySettings = onNavigateToLibrarySettings,
         onNavigateToScanFolders = onNavigateToScanFolders,
@@ -288,6 +290,7 @@ private data class SettingsSearchEntry(
 @Composable
 private fun settingsSearchEntries(
     onNavigateToAppearanceSettings: () -> Unit,
+    onNavigateToBottomNavigationSettings: () -> Unit,
     onNavigateToHomeDisplaySettings: (String) -> Unit,
     onNavigateToLibrarySettings: () -> Unit,
     onNavigateToScanFolders: () -> Unit,
@@ -314,6 +317,7 @@ private fun settingsSearchEntries(
 
     return listOf(
         entry(stringResource(R.string.settings_appearance_home), stringResource(R.string.settings_appearance_home_summary), "主题 深色 浅色 跟随系统 语言 图标 壁纸 启动画面 底栏 沉浸 播放页 背景") { onNavigateToHighlightedAppearanceSettings("appearance") },
+        entry(stringResource(R.string.settings_bottom_dock_items), stringResource(R.string.settings_bottom_dock_items_summary), "底栏 底部导航 导航栏 入口 顺序 预览 搜索") { onNavigateToBottomNavigationSettings() },
         entry(stringResource(R.string.settings_home_display), stringResource(R.string.settings_home_display_items_summary), "首页 功能块 宫格 顺序 隐藏 二级页") { onNavigateToHomeDisplaySettings("home_sections") },
         entry(stringResource(R.string.settings_home_tile_colors_title), stringResource(R.string.settings_home_tile_colors_summary), "首页 功能块 颜色 卡片 透明度") { onNavigateToHomeDisplaySettings("home_tile_colors") },
         entry(stringResource(R.string.settings_auto_show_search_keyboard), stringResource(R.string.settings_auto_show_search_keyboard_summary), "搜索 输入法 键盘 自动弹出") { onNavigateToHighlightedAppearanceSettings("appearance") },
@@ -323,6 +327,8 @@ private fun settingsSearchEntries(
         entry(stringResource(R.string.settings_player_tap_seek), stringResource(R.string.settings_player_tap_seek_summary), "进度条 点击 跳转 拖动") { onNavigateToHighlightedAppearanceSettings("appearance") },
         entry(stringResource(R.string.settings_transport_button_outlines), stringResource(R.string.settings_transport_button_outlines_summary), "播放页 控制 按钮 轮廓 外框 描边") { onNavigateToHighlightedAppearanceSettings("appearance") },
         entry(stringResource(R.string.settings_player_immersive_cover), stringResource(R.string.settings_player_immersive_cover_summary), "沉浸 播放页 封面 全屏") { onNavigateToHighlightedAppearanceSettings("appearance") },
+        entry(stringResource(R.string.settings_system_bars_mode), stringResource(R.string.settings_system_bars_mode_summary, ""), "沉浸模式 全屏 状态栏 导航栏 隐藏 显示 车机") { onNavigateToHighlightedAppearanceSettings("appearance") },
+        entry(stringResource(R.string.settings_player_landscape_style), stringResource(R.string.settings_player_landscape_style_summary, ""), "横屏播放 宽屏 歌词 CoverFlow MV 流光") { onNavigateToHighlightedAppearanceSettings("appearance") },
         entry(stringResource(R.string.settings_beautiful_lyrics_background), stringResource(R.string.settings_beautiful_lyrics_background_summary), "Apple Music 动态背景 歌词页 流光 取色") { onNavigateToHighlightedAppearanceSettings("appearance") },
         entry(stringResource(R.string.settings_library_source), stringResource(R.string.settings_library_source_summary), "音乐来源 音乐库来源 本地 Navidrome Emby 远程 曲库") { onNavigateToHighlightedLibrarySettings("library_source") },
         entry(stringResource(R.string.settings_library_scan), stringResource(R.string.settings_library_scan_summary), "音乐库 扫描 标签 全标签 搜索 分隔符 艺术家 歌手") { onNavigateToHighlightedLibrarySettings("scan") },
@@ -351,6 +357,7 @@ private fun settingsSearchEntries(
         entry(stringResource(R.string.equalizer_surround_360_enable), stringResource(R.string.equalizer_surround_360_summary), "360 环绕音 空间音频 spatial 音场 强度 旋转") { onNavigateToHighlightedEqualizer("equalizer") },
         entry(stringResource(R.string.settings_integrations), stringResource(R.string.settings_integrations_summary), "AI OpenAI MCP Last.fm 集成 API") { onNavigateToHighlightedIntegrationSettings("ai") },
         entry(stringResource(R.string.settings_mcp_server), stringResource(R.string.settings_mcp_server_summary), "MCP 服务 本地 端口 集成") { onNavigateToHighlightedIntegrationSettings("mcp") },
+        entry(stringResource(R.string.web_music_beta_title), stringResource(R.string.web_music_beta_summary), "Web 网页 局域网 上传 播放 Beta") { onNavigateToHighlightedIntegrationSettings("web_music") },
         entry(stringResource(R.string.settings_backup), stringResource(R.string.settings_backup_summary), "备份 恢复 WebDAV 自动备份 播放记录 设置") { onNavigateToHighlightedBackupSettings("backup_settings") },
         entry(stringResource(R.string.settings_logs), stringResource(R.string.settings_logs_summary), "日志 logcat 崩溃 警告") { onNavigateToLogs() },
         entry(stringResource(R.string.about), BuildConfig.VERSION_NAME, "版本 更新 关于") { onNavigateToAbout() }
@@ -448,6 +455,8 @@ private fun settingsSearchAliases(
     entry(stringResource(R.string.settings_app_wallpaper), stringResource(R.string.settings_app_wallpaper_summary), "壁纸 图片 背景 模糊 毛玻璃 透明") { onAppearance("wallpaper") },
     entry(stringResource(R.string.settings_app_icon), stringResource(R.string.settings_app_icon_summary), "图标 启动器 图标包 anime loli") { onAppearance("app_icon") },
     entry(stringResource(R.string.settings_player_immersive_cover), stringResource(R.string.settings_player_immersive_cover_summary), "沉浸播放页 封面取色 文字 图标 背景 动态背景") { onAppearance("player_immersive") },
+    entry(stringResource(R.string.settings_system_bars_mode), stringResource(R.string.settings_system_bars_mode_summary, ""), "沉浸模式 全屏 状态栏 导航栏 隐藏 显示 车机") { onAppearance("appearance") },
+    entry(stringResource(R.string.settings_player_landscape_style), stringResource(R.string.settings_player_landscape_style_summary, ""), "横屏播放 宽屏 歌词 CoverFlow MV 流光") { onAppearance("player_immersive") },
     entry(stringResource(R.string.settings_dynamic_cover), stringResource(R.string.settings_dynamic_cover_summary), "动态封面 视频封面 MV mp4") { onAppearance("dynamic_cover") },
     entry(stringResource(R.string.settings_home_display), stringResource(R.string.settings_home_display_items_summary), "首页 显示 项目 排序 隐藏 宫格") { onHome("home_sections") },
     entry(stringResource(R.string.settings_home_tile_colors_title), stringResource(R.string.settings_home_tile_colors_summary), "首页 卡片 颜色 渐变 置顶") { onHome("home_tile_colors") },
@@ -476,6 +485,7 @@ private fun settingsSearchAliases(
     entry(stringResource(R.string.equalizer_compressor_enable), "压缩器动态范围控制", "压缩器 compressor 阈值 比率") { onEqualizer("equalizer") },
     entry(stringResource(R.string.settings_openai_model), stringResource(R.string.settings_openai_model_summary), "OpenAI AI 模型 GPT API") { onIntegration("ai") },
     entry(stringResource(R.string.settings_mcp_server), stringResource(R.string.settings_mcp_server_summary), "MCP 服务 本地 端口") { onIntegration("mcp") },
+    entry(stringResource(R.string.web_music_beta_title), stringResource(R.string.web_music_beta_summary), "Web 网页 局域网 上传 播放 Beta") { onIntegration("web_music") },
     entry(stringResource(R.string.settings_lastfm), stringResource(R.string.settings_lastfm_summary), "Last.fm scrobble 听歌记录") { onIntegration("lastfm") },
     entry(stringResource(R.string.settings_backup), stringResource(R.string.settings_backup_summary), "备份 恢复 WebDAV 自动备份") { onBackup("backup_settings") },
     entry(stringResource(R.string.settings_logs), stringResource(R.string.settings_logs_summary), "日志 崩溃 调试 logcat") { onLogs() },

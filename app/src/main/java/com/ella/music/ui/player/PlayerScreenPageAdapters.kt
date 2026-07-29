@@ -50,6 +50,7 @@ internal fun CoverPageContent(
     musicVideoCustomFolders: List<String>,
     musicVideoSyncEnabled: Boolean,
     musicVideoVisible: Boolean,
+    videoPlaybackActive: Boolean,
     onMusicVideoVisibleChange: (Boolean) -> Unit,
     onOpenMusicVideoLandscape: () -> Unit,
     immersiveAlbumCover: Boolean,
@@ -129,7 +130,6 @@ internal fun CoverPageContent(
     onDynamicCoverSheetSongChange: (Song?) -> Unit,
     onPlaylistPickerSongChange: (Song?) -> Unit,
     onPlaylistPickerSongsChange: (List<Song>?) -> Unit,
-    onLandscapeCoverModeChange: (Boolean) -> Unit,
     onLandscapeExpandedChange: (Boolean) -> Unit,
     onSongInfoExpandedChange: (Boolean) -> Unit,
     onRatingSheetSongChange: (Song?) -> Unit,
@@ -184,6 +184,7 @@ internal fun CoverPageContent(
         musicVideoCustomFolders = musicVideoCustomFolders,
         musicVideoSyncEnabled = musicVideoSyncEnabled,
         musicVideoVisible = musicVideoVisible,
+        videoPlaybackActive = videoPlaybackActive,
         onToggleMusicVideo = {
             onMusicVideoVisibleChange(!musicVideoVisible)
         },
@@ -358,7 +359,6 @@ internal fun CoverPageContent(
         },
         onLandscape = {
             onMenuExpandedChange(false)
-            onLandscapeCoverModeChange(true)
             onLandscapeExpandedChange(true)
         },
         onSongInfo = {

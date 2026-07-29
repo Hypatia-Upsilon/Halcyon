@@ -22,6 +22,7 @@ import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.ella.music.data.DesktopLyricSettings
 import com.ella.music.data.SettingsManager
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
@@ -551,7 +552,14 @@ class DesktopLyricService : Service() {
         dp(if (statusBarSecondaryMode == SettingsManager.DESKTOP_LYRIC_STATUS_SECONDARY_OFF) 6 else 4)
 
     private fun statusBarLyricWidth(): Int =
-        (resources.displayMetrics.widthPixels * statusBarWidthPercent.coerceIn(40, 100) / 100f)
+        (
+            resources.displayMetrics.widthPixels *
+                statusBarWidthPercent.coerceIn(
+                    DesktopLyricSettings.MIN_WIDTH_PERCENT,
+                    DesktopLyricSettings.MAX_WIDTH_PERCENT,
+                ) /
+                100f
+            )
             .roundToInt()
             .coerceIn(dp(160), resources.displayMetrics.widthPixels - dp(16))
 
@@ -564,7 +572,14 @@ class DesktopLyricService : Service() {
 
     private fun desktopLyricWidth(): Int {
         val metrics = resources.displayMetrics
-        val requestedWidth = (metrics.widthPixels * desktopLyricWidthPercent.coerceIn(40, 100) / 100f).roundToInt()
+        val requestedWidth = (
+            metrics.widthPixels *
+                desktopLyricWidthPercent.coerceIn(
+                    DesktopLyricSettings.MIN_WIDTH_PERCENT,
+                    DesktopLyricSettings.MAX_WIDTH_PERCENT,
+                ) /
+                100f
+            ).roundToInt()
         val maxWidth = if (isTabletDevice()) {
             metrics.widthPixels - dp(16)
         } else {
@@ -642,10 +657,32 @@ class DesktopLyricService : Service() {
         statusBarSecondaryMode = settingsManager.desktopLyricStatusBarSecondary.first(),
         statusBarSecondaryOpacity = settingsManager.desktopLyricStatusBarSecondaryOpacity.first(),
         statusBarMergeSecondary = settingsManager.desktopLyricStatusBarMergeSecondary.first(),
-        fontScale = settingsManager.desktopLyricFontScale.first().coerceIn(80, 220) / 100f,
-        translationScale = settingsManager.desktopLyricTranslationScale.first().coerceIn(80, 220) / 100f,
-        opacityPercent = settingsManager.desktopLyricOpacity.first().coerceIn(35, 100),
-        lyricTextColor = settingsManager.desktopLyricTextColor.first(),
+        fontScale = (
+            if (currentStatusBarMode) {
+                settingsManager.desktopLyricStatusBarFontScale.first()
+            } else {
+                settingsManager.desktopLyricFontScale.first()
+            }
+            ).coerceIn(80, 220) / 100f,
+        translationScale = (
+            if (currentStatusBarMode) {
+                settingsManager.desktopLyricStatusBarTranslationScale.first()
+            } else {
+                settingsManager.desktopLyricTranslationScale.first()
+            }
+            ).coerceIn(80, 220) / 100f,
+        opacityPercent = (
+            if (currentStatusBarMode) {
+                settingsManager.desktopLyricStatusBarOpacity.first()
+            } else {
+                settingsManager.desktopLyricOpacity.first()
+            }
+            ).coerceIn(35, 100),
+        lyricTextColor = if (currentStatusBarMode) {
+            settingsManager.desktopLyricStatusBarTextColor.first()
+        } else {
+            settingsManager.desktopLyricTextColor.first()
+        },
         // When "apply font to desktop lyric" is off, pass an empty path so the lyric view falls
         // back to the system default typeface instead of the custom lyric font.
         lyricFontPath = if (settingsManager.lyricFontApplyToDesktop.first()) {

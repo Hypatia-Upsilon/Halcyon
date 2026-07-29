@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.ella.music.R
+import com.ella.music.data.DesktopLyricSettings
 import com.ella.music.data.SettingsManager
 import com.ella.music.player.DesktopLyricService
 import com.ella.music.ui.components.EllaMiuixBottomSheet
@@ -133,6 +134,10 @@ internal fun SettingsDesktopLyricControls(
     }
 
     fun applyDesktopLyricSettings() {
+        context.startService(
+            Intent(context, DesktopLyricService::class.java)
+                .setAction(DesktopLyricService.ACTION_APPLY_SETTINGS)
+        )
         playerViewModel?.applyDesktopLyricSettings()
     }
 
@@ -239,8 +244,8 @@ internal fun SettingsDesktopLyricControls(
         title = stringResource(R.string.settings_desktop_lyric_width_value, desktopLyricWidth),
         summary = stringResource(R.string.settings_desktop_lyric_width_summary),
         value = desktopLyricWidth,
-        valueRange = 40..100,
-        valueText = "${desktopLyricWidth.coerceIn(40, 100)}%",
+        valueRange = DesktopLyricSettings.MIN_WIDTH_PERCENT..DesktopLyricSettings.MAX_WIDTH_PERCENT,
+        valueText = "${desktopLyricWidth.coerceIn(DesktopLyricSettings.MIN_WIDTH_PERCENT, DesktopLyricSettings.MAX_WIDTH_PERCENT)}%",
         enabled = desktopLyricEnabled && !desktopLyricStatusBarMode,
         onValueChange = { width ->
             scope.launch {
@@ -271,8 +276,8 @@ internal fun SettingsDesktopLyricControls(
         title = stringResource(R.string.settings_status_lyric_width_value, desktopLyricStatusBarWidth),
         summary = stringResource(R.string.settings_status_lyric_width_summary),
         value = desktopLyricStatusBarWidth,
-        valueRange = 40..100,
-        valueText = "${desktopLyricStatusBarWidth.coerceIn(40, 100)}%",
+        valueRange = DesktopLyricSettings.MIN_WIDTH_PERCENT..DesktopLyricSettings.MAX_WIDTH_PERCENT,
+        valueText = "${desktopLyricStatusBarWidth.coerceIn(DesktopLyricSettings.MIN_WIDTH_PERCENT, DesktopLyricSettings.MAX_WIDTH_PERCENT)}%",
         enabled = desktopLyricEnabled && desktopLyricStatusBarMode,
         onValueChange = { width ->
             scope.launch {
