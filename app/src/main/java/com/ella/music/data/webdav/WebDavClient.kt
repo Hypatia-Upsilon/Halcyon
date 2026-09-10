@@ -177,13 +177,24 @@ enum class WebDavAuthMode {
     DIGEST
 }
 
+data class WebDavHeader(
+    val name: String,
+    val value: String
+)
+
 data class WebDavConfig(
     val url: String,
     val username: String,
     val password: String,
-    val authMode: WebDavAuthMode = WebDavAuthMode.AUTO
+    val authMode: WebDavAuthMode = WebDavAuthMode.AUTO,
+    val customHeaders: List<WebDavHeader> = emptyList()
 ) {
     val isConfigured: Boolean get() = url.trim().isNotBlank()
+
+    fun normalizedCustomHeaders(): List<WebDavHeader> =
+        customHeaders
+            .map { WebDavHeader(it.name.trim(), it.value) }
+            .filter { it.name.isNotBlank() }
 }
 
 data class WebDavItem(
@@ -237,6 +248,14 @@ object WebDavClient {
             }
         }
         .build()
+
+    private val fileTransferClient by lazy {
+        httpClient.newBuilder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            .build()
+    }
 
     fun newAuthenticatedOkHttpClient(configProvider: () -> WebDavConfig): OkHttpClient {
         return OkHttpClient.Builder()
@@ -435,7 +454,7 @@ object WebDavClient {
             .apply { applyPreemptiveBasicAuth(config) }
             .build()
 
-        httpClient.newCall(request).execute().use { response ->
+        fileTransferClient.newCall(request).execute().use { response ->
             if (response.code !in 200..399) {
                 throw WebDavException(WebDavResponse(response.code, response.body?.string().orEmpty()).toFriendlyMessage(ctx))
             }
@@ -478,7 +497,7 @@ object WebDavClient {
             .apply { applyPreemptiveBasicAuth(config) }
             .build()
 
-        httpClient.newCall(request).execute().use { response ->
+        fileTransferClient.newCall(request).execute().use { response ->
             if (response.code !in 200..399) {
                 throw WebDavException(WebDavResponse(response.code, response.body?.string().orEmpty()).toFriendlyMessage(ctx))
             }
@@ -1176,6 +1195,14 @@ object WebDavClient {
         if ((config.username.isNotBlank() || config.password.isNotBlank()) && config.authMode != WebDavAuthMode.DIGEST) {
             header("Authorization", Credentials.basic(config.username, config.password, Charsets.UTF_8))
         }
+        applyCustomHeaders(config)
+    }
+
+    private fun Request.Builder.applyCustomHeaders(config: WebDavConfig) {
+        config.normalizedCustomHeaders().forEach { header ->
+            // Use header() so duplicates replace rather than accumulate across retries.
+            header(header.name, header.value)
+        }
     }
 
     private fun authenticate(response: Response, config: WebDavConfig): Request? {
@@ -1234,6 +1261,7 @@ object WebDavClient {
         Log.i(TAG, "WebDAV using Basic auth: ${request.url.toString().safeLogUrl()}")
         return request.newBuilder()
             .header("Authorization", Credentials.basic(config.username, config.password, Charsets.UTF_8))
+            .apply { applyCustomHeaders(config) }
             .build()
     }
 
@@ -1283,6 +1311,7 @@ object WebDavClient {
             Log.i(TAG, "WebDAV using Digest auth: ${request.url.toString().safeLogUrl()} algorithm=$algorithm")
             request.newBuilder()
                 .header("Authorization", authValue)
+                .apply { applyCustomHeaders(config) }
                 .build()
         }.getOrElse { error ->
             Log.w(TAG, "WebDAV Digest auth failed", error)

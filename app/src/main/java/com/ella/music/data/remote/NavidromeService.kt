@@ -5,6 +5,7 @@ import com.ella.music.R
 import com.ella.music.data.AppNetworkLoggingInterceptor
 import com.ella.music.data.model.Song
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
@@ -50,7 +51,11 @@ class NavidromeService(private val context: Context) {
             .filter { it.remoteId.isNotBlank() }
     }
 
-    suspend fun listSongs(config: RemoteMusicSourceConfig, limit: Int = Int.MAX_VALUE): List<RemoteOnlineSong> = withContext(Dispatchers.IO) {
+    suspend fun listSongs(
+        config: RemoteMusicSourceConfig,
+        limit: Int = Int.MAX_VALUE,
+        onPage: ((List<RemoteOnlineSong>) -> Unit)? = null
+    ): List<RemoteOnlineSong> = withContext(Dispatchers.IO) {
         val targetCount = normalizeRemoteFetchLimit(limit)
         val songs = mutableListOf<RemoteOnlineSong>()
         val seenSongIds = LinkedHashSet<String>()
@@ -78,6 +83,11 @@ class NavidromeService(private val context: Context) {
                 songs += song
                 if (songs.size >= targetCount) return@withContext songs
             }
+
+            // Cooperative cancel so leaving the Navidrome settings screen / killing the
+            // scan job does not keep downloading a multi-TB catalogue in the background.
+            ensureActive()
+            onPage?.invoke(songs.toList())
 
             if (page.rawCount < pageSize) break
             songOffset += page.rawCount

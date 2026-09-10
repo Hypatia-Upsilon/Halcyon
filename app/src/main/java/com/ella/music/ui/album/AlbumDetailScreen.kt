@@ -1,5 +1,6 @@
 package com.ella.music.ui.album
 
+import android.widget.Toast
 import com.ella.music.ui.components.EllaMiuixBottomSheet
 
 import androidx.activity.compose.BackHandler
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import com.ella.music.R
 import com.ella.music.data.model.FAVORITES_PLAYLIST_ID
 import com.ella.music.data.model.Song
+import com.ella.music.data.repository.RemoteAudioCache
 import com.ella.music.data.model.UserPlaylist
 import com.ella.music.data.model.formatPlaybackDuration
 import com.ella.music.data.model.albumIdentityId
@@ -72,12 +74,15 @@ import com.ella.music.ui.components.LibraryFloatingControlsEndPadding
 import com.ella.music.ui.components.LazyListScrollIndicator
 import com.ella.music.ui.components.RestoreListScrollAfterSearch
 import com.ella.music.ui.components.LocateCurrentSongFloatingButton
-import com.ella.music.ui.components.ShuffleAllSummaryButton
 import com.ella.music.ui.components.SongMoreActionHost
 import com.ella.music.ui.components.DirectionalSortModeField
 import com.ella.music.ui.components.SortDropdownMenu
 import com.ella.music.ui.components.directionalSortModeDropdownItems
 import com.ella.music.ui.components.ellaPageBackground
+import com.ella.music.ui.player.buildDynamicCoverNameIndex
+import com.ella.music.ui.player.dynamicCoverSource
+import com.ella.music.ui.player.hasSearchableDynamicCover
+import com.ella.music.ui.player.matchesDynamicCoverIndex
 import com.ella.music.ui.components.rememberLibrarySelectionState
 import com.ella.music.ui.components.rememberSongDeleteRequester
 import com.ella.music.ui.components.selectMetadataCategoryCoverSong
@@ -93,6 +98,7 @@ import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.AddFolder
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.icon.extended.Download
 import top.yukonga.miuix.kmp.icon.extended.Forward
 import top.yukonga.miuix.kmp.icon.extended.Play
 import top.yukonga.miuix.kmp.icon.extended.SelectAll
@@ -164,7 +170,25 @@ fun AlbumDetailScreen(
             }
         }
     }
-    val sortedAlbumSongs = remember(filteredAlbumSongs, sortMode) { filteredAlbumSongs.sortedForAlbumDetail(sortMode) }
+    val sortedAlbumSongs = remember(filteredAlbumSongs, sortMode, com.ella.music.ui.LibrarySortUiState.randomSortSeed) { filteredAlbumSongs.sortedForAlbumDetail(sortMode) }
+    fun shuffleAlbumAndStart() {
+        val queueSongs = if (sortMode == AlbumDetailSongSortMode.Random) {
+            val seed = LibrarySortUiState.reshuffleRandomSort()
+            scope.launch { mainViewModel.settingsManager.setRandomSortSeed(seed) }
+            LibrarySortUiState.randomizedSongs(filteredAlbumSongs, seed)
+        } else {
+            filteredAlbumSongs.shuffled()
+        }
+        if (queueSongs.isNotEmpty()) {
+            playerViewModel.setShuffledPlaylist(
+                queueSongs,
+                0,
+                resumeCategoryKey = com.ella.music.data.CategoryResumeKeys.album(albumId),
+                preserveOrder = true
+            )
+            if (openPlayerOnPlay) onNavigateToPlayer()
+        }
+    }
     val sortedAlbumSongIndexById = remember(sortedAlbumSongs) {
         buildMap {
             sortedAlbumSongs.forEachIndexed { index, song -> put(song.id, index) }
@@ -190,14 +214,66 @@ fun AlbumDetailScreen(
     ) {
         value = withContext(Dispatchers.IO) {
             albumSongs.asSequence()
-                .mapNotNull { song ->
-                    mainViewModel.getAlbumCoverArtBitmap(song)
-                        ?: mainViewModel.getOriginalCoverModel(song)
-                }
+                .mapNotNull { song -> mainViewModel.getOriginalCoverModel(song) }
                 .firstOrNull()
         }
     }
     var coverPreviewVisible by remember(albumPreviewModel) { mutableStateOf(false) }
+    val dynamicCoverEnabled by mainViewModel.settingsManager.dynamicCoverEnabled.collectAsState(initial = false)
+    val dynamicCoverCustomFolders by mainViewModel.settingsManager.dynamicCoverCustomFolders.collectAsState(initial = emptyList())
+    // Prefer nav-time sidecar hint; fall back to a cheap sync sidecar probe on album songs.
+    // Custom-folder matches still resolve async — those stay compact until source != null.
+    val navDynamicHint = remember(albumId) { AlbumDetailLayoutHint.consume(albumId) }
+    val syncSidecarDynamic = remember(albumArtworkRevision, dynamicCoverEnabled) {
+        dynamicCoverEnabled && albumSongs.any { it.hasSearchableDynamicCover() }
+    }
+    val confirmedDynamicBeforeResolve = when {
+        !dynamicCoverEnabled -> false
+        navDynamicHint != null -> navDynamicHint
+        else -> syncSidecarDynamic
+    }
+    val albumDynamicMatch by produceState(
+        initialValue = Pair(
+            confirmedDynamicBeforeResolve,
+            null as com.ella.music.ui.player.DynamicCoverSource?
+        ),
+        albumArtworkRevision,
+        dynamicCoverEnabled,
+        dynamicCoverCustomFolders,
+        album?.name,
+        album?.albumArtist,
+        confirmedDynamicBeforeResolve
+    ) {
+        value = withContext(Dispatchers.IO) {
+            if (!dynamicCoverEnabled || albumSongs.isEmpty()) {
+                false to null
+            } else {
+                val tokens = buildDynamicCoverNameIndex(context, dynamicCoverCustomFolders)
+                // Name-index is only a prefilter. Immersive requires a resolved source —
+                // (hasMatch || source != null) previously forced full-bleed immersive on
+                // static covers that merely token-matched a folder video name.
+                val hasMatch = albumSongs.any { it.matchesDynamicCoverIndex(tokens) }
+                val source = if (hasMatch || confirmedDynamicBeforeResolve) {
+                    albumSongs.asSequence()
+                        .mapNotNull { song ->
+                            song.dynamicCoverSource(
+                                context = context,
+                                includeExternalFiles = true,
+                                customRootPaths = dynamicCoverCustomFolders
+                            )
+                        }
+                        .firstOrNull()
+                } else {
+                    null
+                }
+                (source != null) to source
+            }
+        }
+    }
+    val albumDynamicCoverSource = albumDynamicMatch.second
+    // produceState initial uses confirmed sidecar hint; after IO, first == (source != null).
+    // So: sidecar albums start immersive; token-only false positives never do.
+    val albumUsesImmersiveHeader = albumDynamicMatch.first
     val neteaseAlbumUrl by produceState<String?>(initialValue = null, albumId, albumSongs) {
         value = mainViewModel.getNeteaseAlbumUrlForAlbum(albumId)
     }
@@ -239,6 +315,12 @@ fun AlbumDetailScreen(
         }
     }
     val albumRecordedYear = remember(albumReleaseDate) { albumReleaseDate?.extractReleaseYear() }
+    val albumHeaderYearText = remember(albumRecordedYear, album?.year) {
+        albumRecordedYear?.takeIf { it.isNotBlank() }
+            ?: album?.year?.takeIf { it.isNotBlank() }?.let { raw ->
+                Regex("""\d{4}""").find(raw)?.value ?: raw.trim()
+            }
+    }
     val albumGenres = remember(albumSongs) {
         albumSongs
             .flatMap { splitGenreNames(it.genre) }
@@ -320,7 +402,9 @@ fun AlbumDetailScreen(
                 mainViewModel = mainViewModel,
                 fallbackSong = albumSongs.firstOrNull(),
                 categoryType = "composer",
-                coverCandidates = librarySongs
+                coverCandidates = librarySongs,
+                artistCoverName = composer,
+                artistCoverSong = selectMetadataCategoryCoverSong(librarySongs, "composer", composer) ?: selectArtistCoverSong(librarySongs, composer)
             )
         }
     }
@@ -332,7 +416,9 @@ fun AlbumDetailScreen(
                 mainViewModel = mainViewModel,
                 fallbackSong = albumSongs.firstOrNull(),
                 categoryType = "arranger",
-                coverCandidates = librarySongs
+                coverCandidates = librarySongs,
+                artistCoverName = arranger,
+                artistCoverSong = selectMetadataCategoryCoverSong(librarySongs, "arranger", arranger) ?: selectArtistCoverSong(librarySongs, arranger)
             )
         }
     }
@@ -344,7 +430,9 @@ fun AlbumDetailScreen(
                 mainViewModel = mainViewModel,
                 fallbackSong = albumSongs.firstOrNull(),
                 categoryType = "lyricist",
-                coverCandidates = librarySongs
+                coverCandidates = librarySongs,
+                artistCoverName = lyricist,
+                artistCoverSong = selectMetadataCategoryCoverSong(librarySongs, "lyricist", lyricist) ?: selectArtistCoverSong(librarySongs, lyricist)
             )
         }
     }
@@ -419,6 +507,7 @@ fun AlbumDetailScreen(
             songs = albumSongs,
             coverModel = albumPreviewModel,
             releaseDate = albumReleaseDate,
+            neteaseAlbumUrl = neteaseAlbumUrl,
             onBack = { showIntroduction = false }
         )
         return
@@ -473,10 +562,7 @@ fun AlbumDetailScreen(
             item {
                 AlbumHeader(
                     album = album,
-                    releaseDate = albumReleaseDate,
                     albumCoverModel = albumPreviewModel,
-                    songCount = sortedAlbumSongs.size,
-                    duration = albumDuration,
                     hasNeteaseAlbum = !neteaseAlbumUrl.isNullOrBlank(),
                     onNeteaseAlbumClick = { openUrl(context, neteaseAlbumUrl.orEmpty()) },
                     onAlbumArtistClick = {
@@ -489,23 +575,36 @@ fun AlbumDetailScreen(
                             albumArtistChoices = artists
                         }
                     },
-                    onReleaseYearClick = {
-                        album?.yearInt?.takeIf { it > 0 }?.let { year ->
-                            onNavigateToMetadataCategory("year", year.toString())
-                        }
-                    },
                     onIntroductionClick = { showIntroduction = true },
                     onCoverClick = { coverPreviewVisible = true },
                     onPlayAll = {
                         if (sortedAlbumSongs.isNotEmpty()) {
-                            playerViewModel.setPlaylist(
-                                sortedAlbumSongs,
-                                0,
-                                resumeCategoryKey = com.ella.music.data.CategoryResumeKeys.album(albumId)
-                            )
+                            if (sortMode == AlbumDetailSongSortMode.Random) {
+                                playerViewModel.setShuffledPlaylist(
+                                    sortedAlbumSongs,
+                                    0,
+                                    resumeCategoryKey = com.ella.music.data.CategoryResumeKeys.album(albumId),
+                                    preserveOrder = true
+                                )
+                            } else {
+                                playerViewModel.setPlaylist(
+                                    sortedAlbumSongs,
+                                    0,
+                                    resumeCategoryKey = com.ella.music.data.CategoryResumeKeys.album(albumId)
+                                )
+                            }
                             if (openPlayerOnPlay) onNavigateToPlayer()
                         }
-                    }
+                    },
+                    onShuffle = { shuffleAlbumAndStart() },
+                    onAddToPlaylist = {
+                        if (sortedAlbumSongs.isNotEmpty()) {
+                            playlistPickerSongs = sortedAlbumSongs
+                        }
+                    },
+                    yearText = albumHeaderYearText,
+                    immersiveDynamicCover = albumUsesImmersiveHeader,
+                    dynamicCoverSource = albumDynamicCoverSource
                 )
             }
 
@@ -517,19 +616,6 @@ fun AlbumDetailScreen(
                         albumDuration.formatPlaybackDuration(),
                         com.ella.music.ui.components.sortLabel(sortMode.labelRes, sortMode.isDescending())
                     ),
-                    leadingContent = {
-                        ShuffleAllSummaryButton(
-                            visible = !selection.selectionMode && sortedAlbumSongs.isNotEmpty(),
-                            onClick = {
-                                playerViewModel.setShuffledPlaylist(
-                                    sortedAlbumSongs,
-                                    0,
-                                    resumeCategoryKey = com.ella.music.data.CategoryResumeKeys.album(albumId)
-                                )
-                                if (openPlayerOnPlay) onNavigateToPlayer()
-                            }
-                        )
-                    }
                 )
             }
 
@@ -540,11 +626,20 @@ fun AlbumDetailScreen(
                     playbackStats = playbackStats,
                     currentSong = currentSong,
                     onContinue = { index ->
-                        playerViewModel.setPlaylist(
-                            sortedAlbumSongs,
-                            index,
-                            resumeCategoryKey = com.ella.music.data.CategoryResumeKeys.album(albumId)
-                        )
+                        if (sortMode == AlbumDetailSongSortMode.Random) {
+                            playerViewModel.setShuffledPlaylist(
+                                sortedAlbumSongs,
+                                index,
+                                resumeCategoryKey = com.ella.music.data.CategoryResumeKeys.album(albumId),
+                                preserveOrder = true
+                            )
+                        } else {
+                            playerViewModel.setPlaylist(
+                                sortedAlbumSongs,
+                                index,
+                                resumeCategoryKey = com.ella.music.data.CategoryResumeKeys.album(albumId)
+                            )
+                        }
                         if (openPlayerOnPlay) onNavigateToPlayer()
                     }
                 )
@@ -588,7 +683,8 @@ fun AlbumDetailScreen(
                                     sortMode == AlbumDetailSongSortMode.FileNameDesc
                             ) {
                                 song.fileName.ifBlank { song.path.substringAfterLast('/') }
-                            } else null
+                            } else null,
+                            isRandomSort = sortMode == AlbumDetailSongSortMode.Random
                         )
                     }
                 }
@@ -622,24 +718,30 @@ fun AlbumDetailScreen(
                                 sortMode == AlbumDetailSongSortMode.FileNameDesc
                         ) {
                             song.fileName.ifBlank { song.path.substringAfterLast('/') }
-                        } else null
+                        } else null,
+                        isRandomSort = sortMode == AlbumDetailSongSortMode.Random
                     )
                 }
             }
+            // Compact shows year under title → omit footer 发行日期/year. Immersive keeps it.
+            val showFooterReleaseDate =
+                albumUsesImmersiveHeader || albumHeaderYearText.isNullOrBlank()
             if (
                 albumCopyright.isNotBlank() ||
                 albumPublisher.isNotBlank() ||
+                (showFooterReleaseDate && !albumReleaseDate.isNullOrBlank()) ||
                 albumGenres.isNotEmpty() ||
                 participatingArtists.isNotEmpty() ||
                 participatingComposers.isNotEmpty() ||
                 participatingArrangers.isNotEmpty() ||
                 participatingLyricists.isNotEmpty() ||
-                albumRecordedYear != null
+                (showFooterReleaseDate && albumRecordedYear != null)
             ) {
                 item(key = "album-extra-info") {
                     AlbumCopyrightFooter(
                         copyright = albumCopyright,
                         publisher = albumPublisher,
+                        releaseDate = albumReleaseDate,
                         genres = genreDisplayItems,
                         artists = artistDisplayItems,
                         composers = composerDisplayItems,
@@ -653,7 +755,8 @@ fun AlbumDetailScreen(
                         onComposerClick = { composer -> onNavigateToMetadataCategory("composer", composer) },
                         onArrangerClick = { arranger -> onNavigateToMetadataCategory("arranger", arranger) },
                         onLyricistClick = { lyricist -> onNavigateToMetadataCategory("lyricist", lyricist) },
-                        onYearClick = { year -> onNavigateToMetadataCategory("year", year) }
+                        onYearClick = { year -> onNavigateToMetadataCategory("year", year) },
+                        showReleaseDateSection = showFooterReleaseDate
                     )
                 }
             }
@@ -682,6 +785,7 @@ fun AlbumDetailScreen(
             )
         }
 
+        val albumChromeTint = if (albumUsesImmersiveHeader) Color.White else MiuixTheme.colorScheme.onSurface
         EllaSmallTopAppBar(
             title = if (selection.selectionMode) {
                 stringResource(R.string.library_selected_fraction, selection.selectedIds.size, sortedAlbumSongs.size)
@@ -689,6 +793,7 @@ fun AlbumDetailScreen(
                 ""
             },
             color = Color.Transparent,
+            titleColor = albumChromeTint,
             titleStartPadding = 64.dp,
             titleEndPadding = 160.dp,
             modifier = Modifier.align(Alignment.TopCenter),
@@ -698,7 +803,7 @@ fun AlbumDetailScreen(
                     Icon(
                         imageVector = MiuixIcons.Regular.Back,
                         contentDescription = stringResource(R.string.common_back),
-                        tint = MiuixTheme.colorScheme.onSurface,
+                        tint = albumChromeTint,
                         modifier = Modifier.size(26.dp)
                     )
                 }
@@ -706,13 +811,33 @@ fun AlbumDetailScreen(
             actions = {
                 if (selection.selectionMode) {
                     IconButton(onClick = {
+                        val cacheable = selectedSongs().filter(RemoteAudioCache::isCacheableRemoteSong)
+                        if (cacheable.isEmpty()) {
+                            Toast.makeText(context, R.string.library_cache_nothing, Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.library_cache_started, cacheable.size),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            mainViewModel.cacheSongsToLocal(cacheable)
+                        }
+                    }) {
+                        Icon(
+                            imageVector = MiuixIcons.Regular.Download,
+                            contentDescription = stringResource(R.string.library_cache_to_local),
+                            tint = albumChromeTint,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    IconButton(onClick = {
                         val selected = selectedSongs()
                         if (selected.isNotEmpty()) playlistPickerSongs = selected
                     }) {
                         Icon(
                             painter = painterResource(R.drawable.ic_playlist_add),
                             contentDescription = stringResource(R.string.player_add_to_playlist),
-                            tint = MiuixTheme.colorScheme.primary,
+                            tint = albumChromeTint,
                             modifier = Modifier.size(27.dp)
                         )
                     }
@@ -726,7 +851,7 @@ fun AlbumDetailScreen(
                         Icon(
                             painter = painterResource(R.drawable.ic_play_next_add),
                             contentDescription = stringResource(R.string.song_more_play_next),
-                            tint = MiuixTheme.colorScheme.primary,
+                            tint = albumChromeTint,
                             modifier = Modifier.size(27.dp)
                         )
                     }
@@ -751,7 +876,7 @@ fun AlbumDetailScreen(
                         Icon(
                             imageVector = MiuixIcons.Regular.SelectAll,
                             contentDescription = stringResource(R.string.common_multi_select),
-                            tint = MiuixTheme.colorScheme.onSurface,
+                            tint = albumChromeTint,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -762,11 +887,12 @@ fun AlbumDetailScreen(
                         Icon(
                             imageVector = MiuixIcons.Basic.Search,
                             contentDescription = stringResource(R.string.common_search),
-                            tint = MiuixTheme.colorScheme.onSurface,
+                            tint = albumChromeTint,
                             modifier = Modifier.size(24.dp)
                         )
                     }
                     SortDropdownMenu(
+                        tint = albumChromeTint,
                     items = directionalSortModeDropdownItems(
                         fields = listOf(
                             DirectionalSortModeField(
@@ -806,6 +932,15 @@ fun AlbumDetailScreen(
                             scope.launch { mainViewModel.settingsManager.setAlbumDetailSongSortIndex(mode.ordinal) }
                             scrollToTopRequest++
                         }
+                    ) + listOf(
+                        com.ella.music.ui.components.randomSortDropdownItem(
+                            selected = sortMode == AlbumDetailSongSortMode.Random,
+                            onSelect = {
+                                LibrarySortUiState.albumDetailSongSortIndex = AlbumDetailSongSortMode.Random.ordinal
+                                scope.launch { mainViewModel.settingsManager.setAlbumDetailSongSortIndex(AlbumDetailSongSortMode.Random.ordinal) }
+                                scrollToTopRequest++
+                            }
+                        )
                     )
                     )
                 }
