@@ -131,6 +131,7 @@
     <string name="unsupported_system_folder_path">이 시스템 폴더 경로는 지원되지 않습니다</string>
     <string name="scan_folder_added">폴더가 추가되었습니다. 수동으로 스캔하여 새 콘텐츠를 찾을 수 있습니다.</string>
     <string name="scan_folder_unselected">폴더 선택이 해제되었습니다. 수동으로 스캔하여 라이브러리를 업데이트할 수 있습니다.</string>
+    <string name="scan_folder_removed">폴더를 제거했습니다. 수동으로 스캔하여 라이브러리를 업데이트할 수 있습니다.</string>
     <string name="initial_scan_title">곡 없음</string>
     <string name="initial_scan_message">아직 곡이 없습니다. 지금 음악을 스캔하시겠습니까?</string>
     <string name="local_playlist_scan_title">로컬 재생목록 파일 스캔</string>
@@ -321,6 +322,8 @@
     <string name="settings_bottom_dock_preview">탐색 모음 미리보기</string>
     <string name="settings_bottom_dock_startup">시작 시 열기</string>
     <string name="settings_bottom_dock_startup_summary">앱 시작 시 열 구성된 하단 바 항목을 선택합니다. 기본값은 홈입니다.</string>
+    <string name="settings_startup_open_player">실행 시 재생 화면 열기</string>
+    <string name="settings_startup_open_player_summary">앱을 열면 시작 페이지 대신 재생 화면으로 바로 이동합니다</string>
     <string name="settings_bottom_dock_startup_selected">시작 페이지</string>
     <string name="settings_bottom_dock_selected">선택한 항목 및 순서</string>
     <string name="settings_bottom_dock_available">사용 가능한 항목</string>
@@ -1875,6 +1878,7 @@
     <string name="remote_source_invalid_response">Unexpected server response</string>
     <string name="remote_source_request_failed">Remote source request failed</string>
     <string name="remote_source_url_invalid">Invalid server URL</string>
+    <string name="remote_server_http_warning">암호화되지 않은 HTTP 연결입니다. 계정과 재생 데이터가 도청될 수 있습니다</string>
     <string name="settings_beautiful_lyrics_speed">Beautiful Lyrics animation speed</string>
     <string name="settings_beautiful_lyrics_speed_summary">Higher values make the circular background texture move faster</string>
     <string name="settings_beautiful_lyrics_blur">Beautiful Lyrics background blur</string>
@@ -2929,7 +2933,7 @@
     <string name="settings_lyric_hdr_highlight">Lyric HDR highlight (sustained notes)</string>
     <string name="settings_lyric_hdr_highlight_summary">노래방 하이라이트, 긴 음 발광, 글로우 진행 막대를 밝게 합니다. HDR 화면(Android 14+)에서는 일반 흰색보다 밝아지고, 다른 기기에서는 SDR로 밝게 합니다. 기본값 끔</string>
     <string name="settings_lyric_rainbow">Rainbow lyrics</string>
-    <string name="settings_lyric_rainbow_summary">Active karaoke highlight uses a seven-color spectrum gradient (red, orange, yellow, green, cyan, blue, violet); other lines stay normal</string>
+    <string name="settings_lyric_rainbow_summary">The highlighted lyric line uses one seven-color spectrum gradient (red, orange, yellow, green, cyan, blue, violet); other lines stay normal</string>
     <string name="settings_usb_dac_exclusive_active">Exclusive: %1$s · %2$d Hz · %3$d ch</string>
     <string name="settings_usb_dac_exclusive_failed">Routed to %1$s, but Exclusive was refused (shared)</string>
     <string name="settings_usb_dac_routing_only">Routed to %1$s — waiting for exclusive open…</string>

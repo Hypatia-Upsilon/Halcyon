@@ -135,6 +135,7 @@
     <string name="unsupported_system_folder_path">暂不支持该系统目录路径</string>
     <string name="scan_folder_added">已添加文件夹，可手动扫描新增内容</string>
     <string name="scan_folder_unselected">已取消选择文件夹，可手动扫描更新音乐库</string>
+    <string name="scan_folder_removed">已移除扫描目录，可手动扫描更新音乐库</string>
     <string name="initial_scan_title">无歌曲</string>
     <string name="initial_scan_message">当前没有歌曲，是否现在扫描歌曲？</string>
     <string name="full_tag_search_prompt_title">启用全字段搜索？</string>
@@ -379,6 +380,8 @@
     <string name="settings_bottom_dock_preview">导航栏预览</string>
     <string name="settings_bottom_dock_startup">启动时打开</string>
     <string name="settings_bottom_dock_startup_summary">打开应用时直接进入已配置的底栏入口。默认保持首页。</string>
+    <string name="settings_startup_open_player">打开应用进入播放界面</string>
+    <string name="settings_startup_open_player_summary">打开应用后直接进入当前播放界面，而不是启动页</string>
     <string name="settings_bottom_dock_startup_selected">启动页</string>
     <string name="settings_bottom_dock_selected">已选入口与顺序</string>
     <string name="settings_bottom_dock_available">可选入口</string>
@@ -2416,6 +2419,7 @@
     <string name="remote_source_invalid_response">服务器响应格式异常</string>
     <string name="remote_source_request_failed">远程源请求失败</string>
     <string name="remote_source_url_invalid">服务器地址无效</string>
+    <string name="remote_server_http_warning">当前使用未加密的 HTTP 连接，账号与播放数据可能在网络中被窃听</string>
 
     <!-- i18n: AI data-layer errors -->
     <string name="error_library_empty">曲库为空，请先扫描本地歌曲</string>
@@ -2616,7 +2620,7 @@
     <string name="settings_apple_music_lyrics_word_lift">歌词逐词上浮</string>
     <string name="settings_apple_music_lyrics_word_lift_summary">演唱时让当前单词轻微上浮；关闭后仍保留逐字羽化与长音发光</string>
     <string name="settings_lyric_rainbow">彩虹色歌词</string>
-    <string name="settings_lyric_rainbow_summary">当前逐字高亮使用七彩光谱渐变（赤橙黄绿青蓝紫）；非当前行保持原色</string>
+    <string name="settings_lyric_rainbow_summary">当前高亮歌词整句使用七彩光谱渐变（赤橙黄绿青蓝紫）；非当前行保持原色</string>
     <string name="player_enable_lyrics_word_lift">开启歌词逐词上浮</string>
     <string name="player_disable_lyrics_word_lift">关闭歌词逐词上浮</string>
     <string name="player_lyrics_sustain_threshold">拉长音触发阈值</string>

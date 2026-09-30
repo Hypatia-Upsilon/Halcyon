@@ -1,3 +1,47 @@
+# 1.2.10
+
+From `1.2.9` to `1.2.10` — 小修复版本 / small fixes.
+
+中文更新日志
+
+### 歌词
+
+- 彩虹色歌词改为整句渐变：当前高亮行共用一条七彩光谱，每个字只取自己所在位置的色段，逐字不再各自循环一遍彩虹，长时间观看不再晃眼睛。
+
+### 音乐库与扫描
+
+- 从「本地扫描目录」移除文件夹只保存设置并提示，不再自动触发扫描（与勾选行为保持一致，需要更新音乐库时手动扫描即可）。
+
+### 设置与界面
+
+- 新增「打开应用进入播放界面」（设置 → 外观 → 底栏入口 → 启动时打开）：开启后打开应用直接进入当前播放界面，而不是启动页。
+
+### 远程曲库
+
+- 自建的 Navidrome / OpenSubsonic / Emby / WebDAV 服务器可以直接填写 `http://` 明文地址（含公网 IPv6），不再强制 HTTPS；只有在地址里内嵌账号密码时才会拒绝，并且 HTTPS 请求不会被允许跳转到 HTTP。使用 HTTP 时服务器编辑页会提示数据可能在网络中被窃听。
+
+English Changelog
+
+### Lyrics
+
+- Rainbow lyrics now paint one gradient per line: the highlighted line shares a single seven-color spectrum and each character only shows its own slice, instead of every character sweeping the whole rainbow.
+
+### Library and scanning
+
+- Removing a folder from Local scan directories only saves the selection and shows a hint; it no longer starts a scan on its own (matching the row checkbox). Run a manual scan when the change should apply.
+
+### Settings and interface
+
+- New "Open the player on launch" switch (Settings → Appearance → Bottom bar entries → Startup destination): opening the app goes straight to the now-playing screen instead of the startup page.
+
+### Remote libraries
+
+- Self-hosted Navidrome / OpenSubsonic / Emby / WebDAV servers may use a plain `http://` address (including a public IPv6 one) instead of requiring HTTPS. Credentials embedded in the address stay rejected and an HTTPS origin is never allowed to redirect down to HTTP; the server editor warns that HTTP traffic can be intercepted.
+
+Version
+- Version name: `1.2.10`
+- Version code: `40`
+
 # 1.2.9
 
 From `1.2.8` to `1.2.9`.

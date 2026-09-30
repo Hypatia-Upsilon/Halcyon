@@ -191,7 +191,8 @@ fun EllaApp(
                 appNowPlayingFlowBackground = settingsManager.appNowPlayingFlowBackground.first(),
                 startupPosterEnabled = settingsManager.startupPosterEnabled.first(),
                 startupPosterUri = settingsManager.startupPosterUri.first(),
-                startupPosterDurationMs = settingsManager.startupPosterDurationMs.first()
+                startupPosterDurationMs = settingsManager.startupPosterDurationMs.first(),
+                startupOpenPlayer = settingsManager.startupOpenPlayer.first()
             )
         }
     }
@@ -213,10 +214,14 @@ fun EllaApp(
                 it.getBooleanExtra(MainActivity.EXTRA_OPEN_PLAYER_FROM_NOTIFICATION, false)
         } == true
     }
-    var showPlayerOverlay by remember { mutableStateOf(initialNotificationPlayer) }
+    // 打开应用自动进入播放界面 (设置 → 底部导航 → 启动页): the now-playing surface is part of the very
+    // first frame, exactly like a media-notification tap, so a cold start lands on the player
+    // instead of Home. The preference is read before composition, so no open animation runs at boot.
+    val startupPlayerOpen = initialUiSettings.startupOpenPlayer
+    var showPlayerOverlay by remember { mutableStateOf(initialNotificationPlayer || startupPlayerOpen) }
     var playerDismissProgress by remember { mutableFloatStateOf(0f) }
     var playerOverlayOpenToken by remember { mutableIntStateOf(0) }
-    var snapPlayerOverlay by remember { mutableStateOf(initialNotificationPlayer) }
+    var snapPlayerOverlay by remember { mutableStateOf(initialNotificationPlayer || startupPlayerOpen) }
     var handledNotificationIntent by remember { mutableStateOf(if (initialNotificationPlayer) currentProcessingIntent.value else null) }
     val incomingPlayerIntent = currentProcessingIntent.value
     if (incomingPlayerIntent !== handledNotificationIntent &&
@@ -330,10 +335,12 @@ fun EllaApp(
     // Drive the surface/artwork morph instead of adding/removing the whole
     // (very heavy) PlayerScreen each time. This removes the first-composition cost that used
     // to land on the slide-in animation frames and caused a stutter on every open.
-    var playerEverShown by remember { mutableStateOf(initialNotificationPlayer) }
+    var playerEverShown by remember { mutableStateOf(initialNotificationPlayer || startupPlayerOpen) }
     val playerResident = showPlayerOverlay || playerEverShown
     // 0f = expanded player, 1f = collapsed mini-player.
-    val playerOpenAnim = remember { Animatable(if (initialNotificationPlayer) 0f else 1f) }
+    val playerOpenAnim = remember {
+        Animatable(if (initialNotificationPlayer || startupPlayerOpen) 0f else 1f)
+    }
     val playerMorph = remember { PlayerMorphState {
         if (!showPlayerOverlay && snapPlayerOverlay) 0f
         else (1f - playerOpenAnim.value) * (1f - playerDismissProgress)
@@ -1349,4 +1356,5 @@ private data class EllaInitialUiSettings(
     val startupPosterEnabled: Boolean,
     val startupPosterUri: String,
     val startupPosterDurationMs: Int,
+    val startupOpenPlayer: Boolean,
 )

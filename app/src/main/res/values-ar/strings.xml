@@ -133,6 +133,7 @@
     <string name="unsupported_system_folder_path">مسار مجلد النظام هذا غير مدعوم</string>
     <string name="scan_folder_added">تمت إضافة المجلد. يمكنك الفحص يدويًا للعثور على محتوى جديد.</string>
     <string name="scan_folder_unselected">تم إلغاء تحديد المجلد. يمكنك الفحص يدويًا لتحديث مكتبة الموسيقى.</string>
+    <string name="scan_folder_removed">تمت إزالة المجلد. يمكنك الفحص يدويًا لتحديث مكتبة الموسيقى.</string>
     <string name="initial_scan_title">لا توجد أغانٍ</string>
     <string name="initial_scan_message">لا توجد أغانٍ بعد. هل تريد فحص الموسيقى الآن؟</string>
     <string name="full_tag_search_prompt_title">تفعيل البحث في كافة الحقول؟</string>
@@ -374,6 +375,8 @@
     <string name="settings_bottom_dock_preview">معاينة شريط التنقل</string>
     <string name="settings_bottom_dock_startup">وجهة بدء التشغيل</string>
     <string name="settings_bottom_dock_startup_summary">اختر عنصر الشريط السفلي الذي يُفتح عند بدء تشغيل التطبيق. تظل الصفحة الرئيسية هي الافتراضية.</string>
+    <string name="settings_startup_open_player">فتح المشغل عند بدء التشغيل</string>
+    <string name="settings_startup_open_player_summary">عند فتح التطبيق يتم الانتقال مباشرة إلى شاشة التشغيل بدلاً من صفحة البدء</string>
     <string name="settings_bottom_dock_startup_selected">صفحة البدء</string>
     <string name="settings_bottom_dock_selected">العناصر المحددة والترتيب</string>
     <string name="settings_bottom_dock_available">العناصر المتاحة</string>
@@ -2354,6 +2357,7 @@
     <string name="remote_source_invalid_response">استجابة غير متوقعة من الخادم</string>
     <string name="remote_source_request_failed">فشل طلب المصدر البعيد</string>
     <string name="remote_source_url_invalid">عنوان URL للخادم غير صالح</string>
+    <string name="remote_server_http_warning">اتصال HTTP غير مشفّر: قد تُعترض بيانات الحساب والتشغيل على الشبكة</string>
     <string name="error_library_empty">المكتبة فارغة. يرجى فحص الأغاني المحلية أولاً.</string>
     <string name="error_ai_no_playable_songs">لم يرجع الذكاء الاصطناعي أي أغانٍ قابلة للتشغيل</string>
     <string name="ai_default_playlist_title">قائمة تشغيل مقترحة بالذكاء الاصطناعي</string>
@@ -2889,7 +2893,7 @@
     <string name="settings_lyric_hdr_highlight">Lyric HDR highlight (sustained notes)</string>
     <string name="settings_lyric_hdr_highlight_summary">يزيد سطوع تمييز الكاريوكي وتوهج النغمات الطويلة وشريط التقدم المتوهج. على شاشات HDR ‏(Android 14+) يتجاوز الأبيض العادي، وعلى الأجهزة الأخرى تعزيز SDR. متوقف افتراضيًا</string>
     <string name="settings_lyric_rainbow">Rainbow lyrics</string>
-    <string name="settings_lyric_rainbow_summary">Active karaoke highlight uses a seven-color spectrum gradient (red, orange, yellow, green, cyan, blue, violet); other lines stay normal</string>
+    <string name="settings_lyric_rainbow_summary">The highlighted lyric line uses one seven-color spectrum gradient (red, orange, yellow, green, cyan, blue, violet); other lines stay normal</string>
     <string name="settings_usb_dac_exclusive_active">Exclusive: %1$s · %2$d Hz · %3$d ch</string>
     <string name="settings_usb_dac_exclusive_failed">Routed to %1$s, but Exclusive was refused (shared)</string>
     <string name="settings_usb_dac_routing_only">Routed to %1$s — waiting for exclusive open…</string>

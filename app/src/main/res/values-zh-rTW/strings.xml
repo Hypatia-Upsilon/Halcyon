@@ -125,6 +125,7 @@
     <string name="unsupported_system_folder_path">不支援此系統資料夾路徑</string>
     <string name="scan_folder_added">已新增資料夾，可手動掃描新增內容</string>
     <string name="scan_folder_unselected">已取消選取資料夾，可手動掃描更新音樂庫</string>
+    <string name="scan_folder_removed">已移除掃描目錄，可手動掃描更新音樂庫</string>
     <string name="initial_scan_title">沒有歌曲</string>
     <string name="initial_scan_message">目前沒有歌曲，要現在掃描嗎？</string>
     <string name="local_playlist_scan_title">掃描本機播放清單檔案</string>
@@ -347,6 +348,8 @@
     <string name="settings_bottom_dock_preview">導覽列預覽</string>
     <string name="settings_bottom_dock_startup">啟動時開啟</string>
     <string name="settings_bottom_dock_startup_summary">選擇開啟應用程式時直接進入的底部導覽項目，預設維持首頁。</string>
+    <string name="settings_startup_open_player">開啟應用程式進入播放介面</string>
+    <string name="settings_startup_open_player_summary">開啟應用程式後直接進入目前播放介面，而不是啟動頁</string>
     <string name="settings_bottom_dock_startup_selected">啟動頁面</string>
     <string name="settings_bottom_dock_selected">已選入口與順序</string>
     <string name="settings_bottom_dock_available">可選入口</string>
@@ -1935,6 +1938,7 @@
     <string name="remote_source_invalid_response">Unexpected server response</string>
     <string name="remote_source_request_failed">Remote source request failed</string>
     <string name="remote_source_url_invalid">Invalid server URL</string>
+    <string name="remote_server_http_warning">目前使用未加密的 HTTP 連線，帳號與播放資料可能在網路上被竊聽</string>
     <string name="settings_beautiful_lyrics_speed">Beautiful Lyrics animation speed</string>
     <string name="settings_beautiful_lyrics_speed_summary">Higher values make the circular background texture move faster</string>
     <string name="settings_beautiful_lyrics_blur">Beautiful Lyrics background blur</string>
@@ -2168,7 +2172,7 @@
     <string name="settings_apple_music_lyrics_word_lift">歌詞逐詞上浮</string>
     <string name="settings_apple_music_lyrics_word_lift_summary">演唱時讓目前單詞輕微上浮；關閉後仍保留逐字羽化與長音發光</string>
     <string name="settings_lyric_rainbow">彩虹色歌詞</string>
-    <string name="settings_lyric_rainbow_summary">目前逐字高亮使用七彩光譜漸層（赤橙黃綠青藍紫）；非目前行保持原色</string>
+    <string name="settings_lyric_rainbow_summary">目前高亮歌詞整句使用七彩光譜漸層（赤橙黃綠青藍紫）；非目前行保持原色</string>
     <string name="folder_playlist_detail_summary_sorted">%1$d 首歌曲 · %2$d 個關聯資料夾 · %3$s</string>
     <string name="folder_playlist_list_summary_sorted">%1$d 個資料夾播放清單 · %2$s</string>
     <string name="folder_playlist_selected_playlists">已選擇 %1$d 個資料夾播放清單</string>

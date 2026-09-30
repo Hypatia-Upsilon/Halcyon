@@ -16,7 +16,7 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
 }
 
-val appVersionName = "1.2.9"
+val appVersionName = "1.2.10"
 val supportedAbis = listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
 val configuredAbis = providers.gradleProperty("ellaAbi")
     .orNull
@@ -125,7 +125,7 @@ android {
         applicationId = "com.ella.music"
         minSdk = 29
         targetSdk = 37
-        versionCode = 39
+        versionCode = 40
         versionName = appVersionName
         externalNativeBuild {
             cmake {

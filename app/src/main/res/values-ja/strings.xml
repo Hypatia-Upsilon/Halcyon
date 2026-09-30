@@ -131,6 +131,7 @@
     <string name="unsupported_system_folder_path">このシステムフォルダのパスはサポートされていません</string>
     <string name="scan_folder_added">フォルダを追加しました。手動スキャンで新しいコンテンツを検索できます。</string>
     <string name="scan_folder_unselected">フォルダの選択を解除しました。手動スキャンでライブラリを更新できます。</string>
+    <string name="scan_folder_removed">フォルダを削除しました。手動スキャンでライブラリを更新できます。</string>
     <string name="initial_scan_title">曲なし</string>
     <string name="initial_scan_message">まだ曲がありません。今からスキャンしますか？</string>
     <string name="local_playlist_scan_title">ローカルプレイリストファイルをスキャン</string>
@@ -321,6 +322,8 @@
     <string name="settings_bottom_dock_preview">ナビゲーションプレビュー</string>
     <string name="settings_bottom_dock_startup">起動時に開くページ</string>
     <string name="settings_bottom_dock_startup_summary">アプリ起動時に開く、設定済みのボトムバー項目を選択します。初期値はホームです。</string>
+    <string name="settings_startup_open_player">起動時に再生画面を開く</string>
+    <string name="settings_startup_open_player_summary">アプリ起動時にスタートページではなく再生画面を直接開きます</string>
     <string name="settings_bottom_dock_startup_selected">起動ページ</string>
     <string name="settings_bottom_dock_selected">選択済み項目と順序</string>
     <string name="settings_bottom_dock_available">選択可能な項目</string>
@@ -1875,6 +1878,7 @@
     <string name="remote_source_invalid_response">Unexpected server response</string>
     <string name="remote_source_request_failed">Remote source request failed</string>
     <string name="remote_source_url_invalid">Invalid server URL</string>
+    <string name="remote_server_http_warning">暗号化されていない HTTP 接続です。アカウントと再生データが傍受される可能性があります</string>
     <string name="settings_beautiful_lyrics_speed">Beautiful Lyrics animation speed</string>
     <string name="settings_beautiful_lyrics_speed_summary">Higher values make the circular background texture move faster</string>
     <string name="settings_beautiful_lyrics_blur">Beautiful Lyrics background blur</string>
@@ -2929,7 +2933,7 @@
     <string name="settings_lyric_hdr_highlight">Lyric HDR highlight (sustained notes)</string>
     <string name="settings_lyric_hdr_highlight_summary">カラオケのハイライト、長音の発光、グロー進捗バーを明るくします。HDR 対応画面（Android 14+）では通常の白を超える明るさになり、その他の端末では SDR で明るくします。既定はオフ</string>
     <string name="settings_lyric_rainbow">Rainbow lyrics</string>
-    <string name="settings_lyric_rainbow_summary">Active karaoke highlight uses a seven-color spectrum gradient (red, orange, yellow, green, cyan, blue, violet); other lines stay normal</string>
+    <string name="settings_lyric_rainbow_summary">The highlighted lyric line uses one seven-color spectrum gradient (red, orange, yellow, green, cyan, blue, violet); other lines stay normal</string>
     <string name="settings_usb_dac_exclusive_active">Exclusive: %1$s · %2$d Hz · %3$d ch</string>
     <string name="settings_usb_dac_exclusive_failed">Routed to %1$s, but Exclusive was refused (shared)</string>
     <string name="settings_usb_dac_routing_only">Routed to %1$s — waiting for exclusive open…</string>

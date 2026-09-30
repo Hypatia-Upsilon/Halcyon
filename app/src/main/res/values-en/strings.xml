@@ -135,6 +135,7 @@
     <string name="unsupported_system_folder_path">This system folder path is not supported</string>
     <string name="scan_folder_added">Folder added. Scan manually to find new content.</string>
     <string name="scan_folder_unselected">Folder deselected. Scan manually to update your library.</string>
+    <string name="scan_folder_removed">Scan folder removed. Scan manually to update your library.</string>
     <string name="initial_scan_title">No songs</string>
     <string name="initial_scan_message">There are no songs yet. Scan music now?</string>
     <string name="local_playlist_scan_title">Scan local playlist files</string>
@@ -377,6 +378,8 @@
     <string name="settings_bottom_dock_preview">Navigation preview</string>
     <string name="settings_bottom_dock_startup">Startup destination</string>
     <string name="settings_bottom_dock_startup_summary">Choose which configured bottom-bar entry opens when the app starts. Home remains the default.</string>
+    <string name="settings_startup_open_player">Open the player on launch</string>
+    <string name="settings_startup_open_player_summary">Opening the app goes straight to the now-playing screen instead of the startup page</string>
     <string name="settings_bottom_dock_startup_selected">Startup page</string>
     <string name="settings_bottom_dock_selected">Selected entries and order</string>
     <string name="settings_bottom_dock_available">Available entries</string>
@@ -2217,6 +2220,7 @@
     <string name="remote_source_invalid_response">Unexpected server response</string>
     <string name="remote_source_request_failed">Remote source request failed</string>
     <string name="remote_source_url_invalid">Invalid server URL</string>
+    <string name="remote_server_http_warning">Unencrypted HTTP: account and playback data can be intercepted on the network</string>
     <string name="settings_beautiful_lyrics_speed">Dynamic background animation speed</string>
     <string name="settings_beautiful_lyrics_speed_summary">Higher values make the circular background texture move faster</string>
     <string name="settings_beautiful_lyrics_blur">Dynamic background blur amount</string>
@@ -2951,7 +2955,7 @@
     <string name="recent_playback_type_arranger">Arranger: %1$s</string>
     <string name="recent_playback_type_lyricist">Lyricist: %1$s</string>
     <string name="settings_lyric_rainbow">Rainbow lyrics</string>
-    <string name="settings_lyric_rainbow_summary">Active karaoke highlight uses a seven-color spectrum gradient (red, orange, yellow, green, cyan, blue, violet); other lines stay normal</string>
+    <string name="settings_lyric_rainbow_summary">The highlighted lyric line uses one seven-color spectrum gradient (red, orange, yellow, green, cyan, blue, violet); other lines stay normal</string>
     <string name="settings_lyric_hdr_highlight">Lyric HDR highlight (sustained notes)</string>
     <string name="settings_lyric_hdr_highlight_summary">Brightens karaoke highlight, sustain glow, and the glow progress bar. On HDR screens (Android 14+) it goes beyond normal white; other devices use an SDR boost. Off by default</string>
 

@@ -133,6 +133,7 @@
     <string name="unsupported_system_folder_path">Bu sistem klasörü yolu desteklenmiyor</string>
     <string name="scan_folder_added">Klasör eklendi. Yeni içerik bulmak için elle tarama yapabilirsiniz.</string>
     <string name="scan_folder_unselected">Klasör seçimi kaldırıldı. Kitaplığı güncellemek için elle tarama yapabilirsiniz.</string>
+    <string name="scan_folder_removed">Klasör kaldırıldı. Kitaplığı güncellemek için elle tarama yapabilirsiniz.</string>
     <string name="initial_scan_title">Şarkı yok</string>
     <string name="initial_scan_message">Henüz hiç şarkı yok. Müzikler şimdi taransın mı?</string>
     <string name="full_tag_search_prompt_title">Tüm alanlarda arama etkinleştirilsin mi?</string>
@@ -374,6 +375,8 @@
     <string name="settings_bottom_dock_preview">Gezinti önizlemesi</string>
     <string name="settings_bottom_dock_startup">Başlangıç hedefi</string>
     <string name="settings_bottom_dock_startup_summary">Uygulama başladığında yapılandırılan hangi alt çubuk ögesinin açılacağını seçin. Varsayılan olarak Ana Sayfa kalır.</string>
+    <string name="settings_startup_open_player">Başlangıçta oynatıcıyı aç</string>
+    <string name="settings_startup_open_player_summary">Uygulama başlatıldığında başlangıç sayfası yerine oynatma ekranı açılır</string>
     <string name="settings_bottom_dock_startup_selected">Başlangıç sayfası</string>
     <string name="settings_bottom_dock_selected">Seçilen ögeler ve sıralama</string>
     <string name="settings_bottom_dock_available">Kullanılabilir ögeler</string>
@@ -2354,6 +2357,7 @@
     <string name="remote_source_invalid_response">Beklenmeyen sunucu yanıtı</string>
     <string name="remote_source_request_failed">Uzak kaynak isteği başarısız oldu</string>
     <string name="remote_source_url_invalid">Geçersiz sunucu URL\'si</string>
+    <string name="remote_server_http_warning">Şifrelenmemiş HTTP: hesap ve oynatma verileri ağda dinlenebilir</string>
     <string name="error_library_empty">Kitaplık boş. Lütfen önce yerel şarkıları tarayın.</string>
     <string name="error_ai_no_playable_songs">Yapay zekâ çalınabilir herhangi bir şarkı döndürmedi</string>
     <string name="ai_default_playlist_title">Yapay zekâ önerilen çalma listesi</string>
@@ -2889,7 +2893,7 @@
     <string name="settings_lyric_hdr_highlight">Lyric HDR highlight (sustained notes)</string>
     <string name="settings_lyric_hdr_highlight_summary">Karaoke vurgusunu, uzun nota parıltısını ve parlayan ilerleme çubuğunu aydınlatır. HDR ekranlarda (Android 14+) normal beyazın ötesine geçer, diğer cihazlarda SDR aydınlatma kullanılır. Varsayılan olarak kapalı</string>
     <string name="settings_lyric_rainbow">Rainbow lyrics</string>
-    <string name="settings_lyric_rainbow_summary">Active karaoke highlight uses a seven-color spectrum gradient (red, orange, yellow, green, cyan, blue, violet); other lines stay normal</string>
+    <string name="settings_lyric_rainbow_summary">The highlighted lyric line uses one seven-color spectrum gradient (red, orange, yellow, green, cyan, blue, violet); other lines stay normal</string>
     <string name="settings_usb_dac_exclusive_active">Exclusive: %1$s · %2$d Hz · %3$d ch</string>
     <string name="settings_usb_dac_exclusive_failed">Routed to %1$s, but Exclusive was refused (shared)</string>
     <string name="settings_usb_dac_routing_only">Routed to %1$s — waiting for exclusive open…</string>

@@ -131,6 +131,7 @@
     <string name="unsupported_system_folder_path">Dieser Systemordnerpfad wird nicht unterstützt</string>
     <string name="scan_folder_added">Ordner hinzugefügt. Manuell scannen, um neue Inhalte zu finden.</string>
     <string name="scan_folder_unselected">Ordner abgewählt. Manuell scannen, um die Musikbibliothek zu aktualisieren.</string>
+    <string name="scan_folder_removed">Ordner entfernt. Manuell scannen, um die Musikbibliothek zu aktualisieren.</string>
     <string name="initial_scan_title">Keine Titel</string>
     <string name="initial_scan_message">Es gibt noch keine Titel. Musik jetzt scannen?</string>
     <string name="local_playlist_scan_title">Lokale Playlist-Dateien scannen</string>
@@ -321,6 +322,8 @@
     <string name="settings_bottom_dock_preview">Navigationsvorschau</string>
     <string name="settings_bottom_dock_startup">Beim Start öffnen</string>
     <string name="settings_bottom_dock_startup_summary">Wähle den konfigurierten Eintrag, der beim Start der App geöffnet wird. Standardmäßig bleibt es die Startseite.</string>
+    <string name="settings_startup_open_player">Player beim Start öffnen</string>
+    <string name="settings_startup_open_player_summary">Die App öffnet direkt den Wiedergabebildschirm statt der Startseite</string>
     <string name="settings_bottom_dock_startup_selected">Startseite</string>
     <string name="settings_bottom_dock_selected">Ausgewählte Einträge und Reihenfolge</string>
     <string name="settings_bottom_dock_available">Verfügbare Einträge</string>
@@ -1875,6 +1878,7 @@
     <string name="remote_source_invalid_response">Unexpected server response</string>
     <string name="remote_source_request_failed">Remote source request failed</string>
     <string name="remote_source_url_invalid">Invalid server URL</string>
+    <string name="remote_server_http_warning">Unverschlüsseltes HTTP: Konto- und Wiedergabedaten können im Netz abgefangen werden</string>
     <string name="settings_beautiful_lyrics_speed">Beautiful Lyrics animation speed</string>
     <string name="settings_beautiful_lyrics_speed_summary">Higher values make the circular background texture move faster</string>
     <string name="settings_beautiful_lyrics_blur">Beautiful Lyrics background blur</string>
@@ -2929,7 +2933,7 @@
     <string name="settings_lyric_hdr_highlight">Lyric HDR highlight (sustained notes)</string>
     <string name="settings_lyric_hdr_highlight_summary">Hellt Karaoke-Hervorhebung, Halteton-Leuchten und die Glow-Fortschrittsleiste auf. Auf HDR-Bildschirmen (Android 14+) heller als normales Weiß, sonst SDR-Aufhellung. Standardmäßig aus</string>
     <string name="settings_lyric_rainbow">Rainbow lyrics</string>
-    <string name="settings_lyric_rainbow_summary">Active karaoke highlight uses a seven-color spectrum gradient (red, orange, yellow, green, cyan, blue, violet); other lines stay normal</string>
+    <string name="settings_lyric_rainbow_summary">The highlighted lyric line uses one seven-color spectrum gradient (red, orange, yellow, green, cyan, blue, violet); other lines stay normal</string>
     <string name="settings_usb_dac_exclusive_active">Exclusive: %1$s · %2$d Hz · %3$d ch</string>
     <string name="settings_usb_dac_exclusive_failed">Routed to %1$s, but Exclusive was refused (shared)</string>
     <string name="settings_usb_dac_routing_only">Routed to %1$s — waiting for exclusive open…</string>
