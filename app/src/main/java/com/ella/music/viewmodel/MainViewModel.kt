@@ -24,7 +24,6 @@ import com.ella.music.data.ArtistCoverAsset
 import com.ella.music.data.ArtistImageRepository
 import com.ella.music.data.matchesArtistName
 import com.ella.music.data.model.Album
-import com.ella.music.data.model.Artist
 import com.ella.music.data.model.AudioInfo
 import com.ella.music.data.model.Song
 import com.ella.music.data.repository.RemoteAudioCache
@@ -52,7 +51,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
@@ -222,7 +221,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     @Volatile private var incrementalRescanPending = false
     private val metadataCategoryItemsCache = ConcurrentHashMap<String, MetadataCategoryItemsCacheEntry>()
 
+    val metadataBatchEditor = MetadataCategoryBatchEditor(viewModelScope,
+        write = repository::writeCategoryTagForBatch, publish = repository::publishCategoryTagEdits)
+
     init {
+        viewModelScope.launch {
+            combine(settingsManager.customMetadataCategories, songs) { categories, library ->
+                categories.isNotEmpty() && library.any { !it.customTagsLoaded &&
+                    (it.path.startsWith("/") || it.path.startsWith("content://") || it.path.startsWith("file://")) }
+            }.distinctUntilChanged().collect { needed -> if (needed) repository.hydrateCustomCategoryTags() }
+        }
         viewModelScope.launchNameSplitConfigObservers(
             settingsManager = settingsManager,
             onNameSplitConfigChanged = { metadataCategoryItemsCache.clear() },
@@ -233,10 +241,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         // collections once and then visibly rebuilt them from cache.
         loadCachedLibrary()
         scanMusicIfAutoEnabled()
-    }
-
-    fun selectTab(index: Int) {
-        _selectedTab.value = index
     }
 
     fun scanMusic(
@@ -281,7 +285,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun setLibrarySource(source: String) {
+    fun setLibrarySource(source: String, forceRefresh: Boolean = false) {
         val requestedSource = SettingsManager.normalizeLibrarySource(source)
         val switchGeneration = librarySourceSwitchGeneration.incrementAndGet()
         scanJob?.cancel()
@@ -304,7 +308,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     repository.loadCachedLibrary()
                     scanFromCurrentSettings(fullRescan = false, deepRescan = false)
                 } else {
-                    loadRemoteLibrarySource(requestedSource, forceRefresh = false)
+                    loadRemoteLibrarySource(requestedSource, forceRefresh = forceRefresh)
                 }
                 if (switchGeneration == librarySourceSwitchGeneration.get()) {
                     _libraryCacheLoaded.value = true
@@ -319,6 +323,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val ownerJob = currentCoroutineContext()[Job]
         repository.startScanning()
         val summary = try {
+            if (source == SettingsManager.LIBRARY_SOURCE_SMB) withContext(Dispatchers.IO) {
+                com.ella.music.data.smb.SmbMetadataCache.trim(getApplication())
+            }
             repository.loadRemoteLibrary(source, forceRefresh = forceRefresh)
         } finally {
             if (scanJob === ownerJob) {
@@ -342,34 +349,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun startWebDavMetadataHydrationIfNeeded(source: String) {
         webDavMetadataHydrationJob?.cancel()
         webDavMetadataHydrationJob = null
-        if (source != SettingsManager.LIBRARY_SOURCE_WEBDAV) return
-        val initialSongs = repository.songs.value
-        if (initialSongs.isEmpty()) return
-        webDavMetadataHydrationJob = viewModelScope.launch {
-            repository.hydrateWebDavMetadata(initialSongs)
-            // Hydration can create the remote cache without changing filename-derived Song
-            // fields. Invalidate artwork models so embedded covers are resolved immediately.
-            clearArtworkModelMemoryCache()
+        if (source !in setOf(SettingsManager.LIBRARY_SOURCE_WEBDAV, SettingsManager.LIBRARY_SOURCE_SMB,
+                SettingsManager.LIBRARY_SOURCE_FTP, SettingsManager.LIBRARY_SOURCE_SFTP)) return
+        webDavMetadataHydrationJob = viewModelScope.launch(Dispatchers.IO) {
+            repository.trimRemoteMetadataCaches()
         }
     }
 
     fun fullRescanMusic() {
         scanMusic(fullRescan = true, deepRescan = true)
-    }
-
-    fun scanMusicForFolders(folders: List<String>, fullRescan: Boolean = false, deepRescan: Boolean = fullRescan) {
-        if (scanJob?.isActive == true || isScanning.value) return
-        val includeFolders = folders.map { it.trim() }.filter { it.isNotBlank() }.distinct()
-        if (includeFolders.isEmpty()) return
-        scanJob = viewModelScope.launch {
-            awaitCachedLibraryRestoreBeforeScanning()
-            scanWithIncludeFolders(
-                includeFolders = includeFolders,
-                preferExplicitFolders = true,
-                fullRescan = fullRescan,
-                deepRescan = deepRescan
-            )
-        }
     }
 
     /**
@@ -437,11 +425,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      */
     private suspend fun awaitCachedLibraryRestoreBeforeScanning() {
         cachedLibraryLoadJob?.takeIf { it.isActive }?.join()
-    }
-
-    /** Wait until the persisted library snapshot is ready for the very first app frame. */
-    suspend fun awaitInitialLibraryRestore() {
-        cachedLibraryLoadJob?.join()
     }
 
     private suspend fun scanFromCurrentSettings(
@@ -589,24 +572,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return repository.getSongsForAlbum(albumId)
     }
 
-    fun getArtists(includeAlbumArtists: Boolean = false): List<Artist> {
-        return buildArtists(
-            songs = songs.value,
-            albums = albums.value,
-            includeAlbumArtists = includeAlbumArtists
-        )
-    }
-
     fun getSongsForArtist(artistName: String, includeAlbumArtist: Boolean = false): List<Song> {
         return filterSongsForArtist(
             songs = songs.value,
             artistName = artistName,
             includeAlbumArtist = includeAlbumArtist
         )
-    }
-
-    fun getAlbumsForArtist(artistName: String): List<Album> {
-        return getParticipatedAlbumsForArtist(artistName)
     }
 
     fun getParticipatedAlbumsForArtist(artistName: String): List<Album> {
@@ -641,10 +612,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         metadataCategoryItemsCache.entries.removeIf { (key, _) -> key.startsWith("$type:") && key != cacheKey }
         metadataCategoryItemsCache[cacheKey] = MetadataCategoryItemsCacheEntry(items)
         return items
-    }
-
-    fun getMetadataCategoryCount(type: String): Int {
-        return countMetadataCategories(songs.value, type)
     }
 
     fun getMetadataCategoryCounts(types: Collection<String>): Map<String, Int> {
@@ -688,11 +655,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun getArtistCoverModel(song: Song): Any? = repository.getArtistCoverModel(song)
 
-    fun getMetadataEditorCoverArtBitmap(song: Song) = repository.getCoverArtBitmap(song, 1600, CoverUsage.Player)
-
     fun getReplayGain(song: Song): Float? {
         return repository.getReplayGain(song)
     }
+
+    fun getAudioQualityInfo(song: Song): AudioInfo = repository.getAudioQualityInfo(song)
+    val audioQualityRevision: Long get() = repository.audioQualityRevision
 
     fun getAudioInfo(song: Song): AudioInfo {
         return repository.getAudioInfo(song)
@@ -748,14 +716,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun interpretSongWithOpenAi(song: Song): String =
         aiCoordinator.interpretSong(song)
 
-    suspend fun recommendPlaylistWithOpenAi(maxItems: Int = 30): AiPlaylistRecommendationResult =
-        aiCoordinator.recommendPlaylist(
-            librarySongs = songs.value,
-            playbackStats = playbackStats.value,
-            playbackHistory = playbackHistory.value,
-            maxItems = maxItems
-        )
-
     suspend fun chatWithOpenAiLibraryAssistant(
         message: String,
         conversationHistory: List<Pair<String, String>> = emptyList(),
@@ -803,18 +763,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun cancelRemoteAudioCache() {
-        RemoteAudioCache.cancel()
-    }
-
     val remoteAudioCacheProgress = RemoteAudioCache.progress
 
     suspend fun clearDownloadedArtistImageCache() {
         ArtistImageRepository.clearDownloadedCache(getApplication())
-    }
-
-    suspend fun prefetchWebDavMetadataHeaders(songs: List<Song>, maxItems: Int = 80) {
-        repository.prefetchWebDavMetadataHeaders(songs, maxItems)
     }
 
     suspend fun resolveSongForPlayback(song: Song): Song =
@@ -841,6 +793,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun playlistSongs(playlist: UserPlaylist): List<Song> {
         return playlistCoordinator.playlistSongs(playlist)
     }
+
+    fun playlistSongsById(playlists: List<UserPlaylist>): Map<String, List<Song>> =
+        playlistCoordinator.playlistSongsById(playlists)
 
     fun createPlaylist(name: String, onCreated: (UserPlaylist?) -> Unit = {}) {
         playlistCoordinator.createPlaylist(name, onCreated)

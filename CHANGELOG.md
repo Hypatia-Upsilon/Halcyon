@@ -1,3 +1,114 @@
+# 1.3.0
+
+From `1.2.9` to `1.3.0` — 播放、歌词与曲库更新 / playback, lyrics, and library updates.
+
+中文更新日志
+
+### 歌词
+
+- 立体歌词与边缘虚化改用单一图层的原生图像滤镜，移除递归录制歌词内容的多层渲染链，修复图层树递归导致的 RenderThread 栈溢出风险。
+- 多选列表支持长按后连续拖选，覆盖歌曲、专辑、艺术家、分类、歌单、文件夹歌单、搜索和最近播放；支持边缘自动滚动与回拉收缩范围，保留此前选择与排序把手。
+- 多选界面、歌词分享、备份类型和模块排序等选择面板增加反选；仅反转当前可选范围，保留其他范围的选择及数量上限。
+- 绘光主歌词唱完后保持正常排版，装饰词片沿光场缓慢漂移并在有限时间内淡出，避免长期散落堆积在一侧。
+- #716：恢复原有底栏交互，页面左右滑动完成后及时同步气泡位置，不再触发模拟按压放大；底栏拖动仍在松手后切换页面。
+- 平板首页默认显示 8 个快捷按钮，功能块排除快捷区已有项目；保留手动配置。海报卡片修正标题分隔符，左右切歌复用已加载封面并避免旧播放状态覆盖新卡片。
+- 艺术家传记增加名称匹配替换规则，可单独开关并指定数据源；按别名、原名、繁转简名称依次匹配，接入备份恢复。
+- 液态底栏从 Miuix 0.9.4 的 Apache-2.0 示例重新适配，替换旧 GPL 动画与手势文件，保留外观设置与电视交互；增加来源与许可证检查。
+
+- 海报墙点击封面只展开卡片，暂停时滑动切歌仍保持暂停；隐藏底部迷你播放条。堆叠布局缓存几何数据，弹窗与滑动使用稳定布局的图层动画，降低重复排版和解码开销。
+- 凝彩、绘光、回环和商籁补齐逐字羽化扫光；凝彩黑白字按实际背景区域反转，回环保留英文词间空格，商籁保持歌词正常阅读角度，时计相邻歌词支持换行。
+- 自定义分类条目使用卡片，删除按钮与箭头垂直对齐。
+- SMB、WebDAV、FTP / FTPS 和 SFTP 音乐库扫描只建立目录索引，按需读取当前歌曲元数据；SMB / FTP / SFTP 播放流增加 256 KiB 有界缓冲以减少小块读取的网络往返，WebDAV 移除目录预取并沿用 HTTP 流缓冲，清理旧的大量元数据缓存。
+
+- 歌词页补回立体歌词开关，并与播放页歌词显示菜单共用实时设置；角度也同步。补齐 AM 普通、沉浸、横屏和独立歌词页的立体效果；顶部信息区与底部控制区的边缘虚化固定在视口，立体旋转后仍有柔和过渡。
+
+- 首页在线音乐移除 WebDAV；音乐来源只显示当前来源设置。频谱查看新增每次询问，内置频谱可调用其他应用。
+- 海报墙堆叠保留适当间隙并错落排列；下层封面长按松手可置顶，拖动可在同组任意层插入或换组，每组最多 10 张并保存层序。播放保留原完整弹窗，后方叠放相邻弹窗，左右滑动切歌，移除上一曲和下一曲按钮。
+- 对照 Folia 重做凝彩的大色块逐字拼贴、绘光的光场与飘散径迹、回环的倾斜椭圆字素环；新增商籁的大小字穿插与几何线稿。保留全局字体和独立歌词配色。
+- 全局搜索返回进入前的底栏页面，悬浮底栏的返回图标与目标一致；远程曲库搜索、音质和红心筛选合并后台标签更新，保留完成结果，避免筛选进度反复重置。
+
+- 修复 TTML 重叠演唱和逐字 LRC/ELRC 的多行高亮；拉长音文字与发光同步逐字羽化，限制旧播放采样停滞时的时钟提前。
+- Beautiful Lyrics 背景支持非当前行歌词模糊，补齐设置与音频信息页面的应用字体。
+- 歌词分享新增旧版 1.2.7、Spotify、杂志、电影感、拍立得、书法等样式；旧版补齐圆角，网易云样式支持 Halcyon 或自定义署名。
+
+- 彩虹色歌词改为整句渐变：当前高亮行共用一条七彩光谱，每个字只取自己所在位置的色段，逐字不再各自循环一遍彩虹，长时间观看不再晃眼睛。
+
+### 音乐库与扫描
+
+- 首页支持按任意歌曲标签配置自定义分类（如编曲家 / ARRANGER），接入显示与排序及 JSON / ZIP 备份恢复；流派、年份和自定义分类可批量写入对应标签，分隔符设置统一为可保存或取消的底部面板。
+
+- WebDAV、SMB、FTP / FTPS 和 SFTP 支持在音乐库设置中管理，递归扫描共享目录、搜索、分类及连续播放；SFTP 支持服务器密钥指纹确认与变化拦截。
+- 搜索「所有」页的文件夹歌单分类默认开启，兼容旧分类设置和备份；修复 Release 混淆导致艺术家传记的繁转简匹配组件初始化失败。
+- 空曲库可以下拉刷新，修正空状态说明；音质筛选使用底部面板并实际应用到曲库。
+- 曲库分析与音质筛选复用缓存，减少重复构建；双指缩放进入详细列表后请求原始高清封面。
+- 文件夹卡片随宽度自动排列并居中，显示调节入口仅放在文件夹层次结构首页。
+- 修复非沉浸专辑页的随机播放入口与按钮高度，移除首页和文件夹长按的多余遮罩。
+
+- 从「本地扫描目录」移除文件夹只保存设置并提示，不再自动触发扫描（与勾选行为保持一致，需要更新音乐库时手动扫描即可）。
+
+### 播放页与视频
+
+- 收缩迷你播放条支持左右滑动，并显示切歌方向与目标歌曲提示。
+- 横屏新增经典分栏布局：左侧大封面与右侧动态背景渐变衔接，歌名、艺术家长文本循环滚动，顶部播放控制下方保留歌词区域。
+- Miuix 横屏侧边栏默认收起并支持背景模糊；可视化增加彩虹色选项，缩短波形进度指示线。
+- 歌曲、专辑和 MV 评论恢复应用内评论界面。
+- 设置新增「其他 → 视频播放器」，支持外部调用、播放视频和 M3U/M3U8、视频下载及 MP4 导出。
+- 普通视频隐藏歌手和伴奏入口，提供 0.5x–5x 倍速侧栏；默认长按临时 2x，松手恢复原倍速，长按倍速可自定义。
+
+### 设置与界面
+
+- 统一底栏返回规则：子页面逐级返回，其他标签主页回到首页，首页主页直接退出；搜索优先收起输入法，底栏搜索回到进入前的标签，其他搜索入口按页面栈返回。仅当前 Pager 页面接收返回，防止相邻隐藏页面拦截以及切换动画期间的旧页面覆盖返回目标。
+
+- 恢复音符与海浪背景的「传统」应用图标作为可选项，并同步应用内通知图标。
+
+- 新增「打开应用进入播放界面」（设置 → 外观 → 底栏入口 → 启动时打开）：开启后打开应用直接进入当前播放界面，而不是启动页。
+
+### 远程曲库
+
+- 自建的 Navidrome / OpenSubsonic / Emby / WebDAV 服务器可以直接填写 `http://` 明文地址（含公网 IPv6），不再强制 HTTPS；只有在地址里内嵌账号密码时才会拒绝，并且 HTTPS 请求不会被允许跳转到 HTTP。使用 HTTP 时服务器编辑页会提示数据可能在网络中被窃听。
+
+English Changelog
+
+### Lyrics
+
+- Fixed overlapping TTML vocals and simultaneous word-timed LRC/ELRC lines. Held-note text and glow now share the timed feather mask, with bounded interpolation when playback samples stall.
+- Beautiful Lyrics backgrounds support inactive-line blur; settings and audio information surfaces follow the application font.
+- Added historical 1.2.7, Spotify, magazine, cinematic, polaroid, calligraphy and other lyric-card styles. The historical card has rounded corners; NetEase cards use Halcyon or a custom footer name.
+
+- Rainbow lyrics now paint one gradient per line: the highlighted line shares a single seven-color spectrum and each character only shows its own slice, instead of every character sweeping the whole rainbow.
+
+### Library and scanning
+
+- Empty libraries support pull-to-refresh and show accurate guidance. Audio-quality filtering uses a bottom sheet and applies to the library.
+- Library analysis and quality filters reuse cached results. Pinching into detailed rows loads original high-resolution artwork.
+- Folder cards wrap according to available width and center their contents; display controls appear at the hierarchy root.
+- Restored shuffle in non-immersive album pages, refined action heights, and removed extra long-press overlays.
+
+- Removing a folder from Local scan directories only saves the selection and shows a hint; it no longer starts a scan on its own (matching the row checkbox). Run a manual scan when the change should apply.
+
+### Player and video
+
+- Collapsed mini players support horizontal swipes with direction and target-song previews.
+- Added a classic landscape split with a full-height cover, a transition into the shared dynamic background, marquee metadata, compact header controls and a larger lyric area.
+- Miuix landscape navigation starts collapsed and supports background blur. Visualizers have a rainbow option; waveform seek markers are shorter.
+- Song, album and MV comments open the native comments interface.
+- Added Other → Video player for external intents, video and M3U/M3U8 playback, downloads and MP4 export.
+- Generic videos hide artist and accompaniment actions and offer a 0.5x–5x speed sidebar. Hold for temporary 2x by default, release to restore the selected speed, and customize the hold speed in the sidebar.
+
+### Settings and interface
+
+- Restored the traditional note-and-wave launcher icon as an optional choice and synchronized in-app notification icons.
+
+- New "Open the player on launch" switch (Settings → Appearance → Bottom bar entries → Startup destination): opening the app goes straight to the now-playing screen instead of the startup page.
+
+### Remote libraries
+
+- Self-hosted Navidrome / OpenSubsonic / Emby / WebDAV servers may use a plain `http://` address (including a public IPv6 one) instead of requiring HTTPS. Credentials embedded in the address stay rejected and an HTTPS origin is never allowed to redirect down to HTTP; the server editor warns that HTTP traffic can be intercepted.
+
+Version
+- Version name: `1.3.0`
+- Version code: `40`
+
 # 1.2.9
 
 From `1.2.8` to `1.2.9`.

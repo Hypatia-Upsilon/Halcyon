@@ -1,6 +1,8 @@
 package com.ella.music.ui.category
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import com.ella.music.R
 import com.ella.music.data.model.Album
@@ -342,7 +344,8 @@ internal fun List<Album>.sortedForMetadataAlbumDetail(
 @Composable
 internal fun String.categoryTitle(): String {
     val context = LocalContext.current
-    return when (this) {
+    val categories by com.ella.music.data.SettingsManager.getInstance(context).customMetadataCategories.collectAsState(initial = emptyList())
+    return categories.firstOrNull { it.type == this }?.name ?: when (this) {
         "genre" -> context.getString(R.string.category_genre)
         "year" -> context.getString(R.string.category_year)
         "composer" -> context.getString(R.string.category_composer)
@@ -375,12 +378,6 @@ internal val PERSON_METADATA_CATEGORY_TYPES = setOf("composer", "arranger", "lyr
 
 internal fun Long.formatDuration(): String {
     return formatPlaybackDuration()
-}
-
-internal fun Long.formatDateText(context: android.content.Context): String {
-    if (this <= 0L) return context.getString(R.string.folder_unknown_modified_time)
-    val millis = if (this < 10_000_000_000L) this * 1000L else this
-    return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(millis))
 }
 
 internal fun Long.formatDateTimeText(context: android.content.Context): String {

@@ -7,7 +7,6 @@ import com.ella.music.data.model.Song
 import java.io.StringReader
 import java.io.Reader
 import java.io.Writer
-import org.json.JSONArray
 import org.json.JSONObject
 
 internal data class SavedQueue(
@@ -73,7 +72,8 @@ internal data class PendingPlaylist(
     val songs: List<Song>,
     val startIndex: Int,
     val honorShuffle: Boolean = true,
-    val resetQueueLock: Boolean = true
+    val resetQueueLock: Boolean = true,
+    val startPlayback: Boolean = true
 )
 
 internal fun shouldHydrateSavedQueue(

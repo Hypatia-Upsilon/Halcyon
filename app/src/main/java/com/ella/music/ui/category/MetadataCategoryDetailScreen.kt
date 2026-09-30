@@ -1,5 +1,8 @@
 package com.ella.music.ui.category
 
+import com.ella.music.ui.components.dragSelectList
+import com.ella.music.ui.components.dragSelectGrid
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -67,6 +70,7 @@ import com.ella.music.ui.components.RestoreListScrollAfterSearch
 import com.ella.music.ui.components.LocateCurrentSongFloatingButton
 import com.ella.music.ui.components.ShuffleAllSummaryButton
 import com.ella.music.ui.components.SideIndexListEndPadding
+import com.ella.music.ui.components.ScrollIndicatorListEndPadding
 import com.ella.music.ui.components.SongItem
 import com.ella.music.ui.components.DirectionalSortModeField
 import com.ella.music.ui.components.SortDropdownMenu
@@ -82,12 +86,8 @@ import com.ella.music.ui.components.EllaSmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.Search
-import top.yukonga.miuix.kmp.icon.extended.Add
-import top.yukonga.miuix.kmp.icon.extended.AddFolder
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Delete
-import top.yukonga.miuix.kmp.icon.extended.Play
-import top.yukonga.miuix.kmp.icon.extended.Forward
 import top.yukonga.miuix.kmp.icon.extended.SelectAll
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlinx.coroutines.Job
@@ -629,8 +629,14 @@ fun MetadataCategoryDetailScreen(
             } else {
             LazyColumn(
                 state = listState,
+                modifier = Modifier.fillMaxSize().dragSelectList(listState, selection, currentSelectionIds),
                 contentPadding = PaddingValues(
-                    end = if (showSongSideIndex) SideIndexListEndPadding else 0.dp,
+                    end = when {
+                        !showSongSideIndex -> 0.dp
+                        sortMode in setOf(MetadataDetailSongSortMode.Title, MetadataDetailSongSortMode.TitleDesc,
+                            MetadataDetailSongSortMode.FileName, MetadataDetailSongSortMode.FileNameDesc) -> SideIndexListEndPadding
+                        else -> ScrollIndicatorListEndPadding
+                    },
                     bottom = 120.dp
                 )
             ) {
@@ -888,8 +894,8 @@ fun MetadataCategoryDetailScreen(
                 currentItemIndex = currentSongItemIndex,
                 locateRequest = locateCurrentSongRequest,
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = LibraryFloatingControlsEndPadding, bottom = LibraryFloatingControlsBottomPadding)
+                .align(Alignment.BottomEnd)
+                .padding(end = LibraryFloatingControlsEndPadding, bottom = LibraryFloatingControlsBottomPadding)
             )
             FloatingSelectionControls(
                 visible = selection.selectionMode && currentSelectionIds.isNotEmpty(),
@@ -897,6 +903,7 @@ fun MetadataCategoryDetailScreen(
                 allSelected = currentSelectionIds.isNotEmpty() && selectedVisibleCount == currentSelectionIds.size,
                 onRangeSelect = { selection.applyRangeSelection(currentSelectionIds, currentSelectionIndexById) },
                 onSelectAll = { selection.toggleSelectAll(currentSelectionIds) },
+                onInvertSelection = { selection.invertSelection(currentSelectionIds) },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = LibraryFloatingControlsEndPadding, bottom = LibraryFloatingControlsBottomPadding)

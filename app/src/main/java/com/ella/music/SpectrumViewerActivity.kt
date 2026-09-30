@@ -67,8 +67,7 @@ import com.ella.music.data.model.Song
 import com.ella.music.ui.components.EllaMiuixChip
 import com.ella.music.ui.components.EllaSmallTopAppBar
 import com.ella.music.ui.components.SpectrumViewerLauncher
-import com.ella.music.ui.components.openSongSpectrumWithAspectPro
-import com.ella.music.ui.components.openSongSpectrumWithKaspek
+import com.ella.music.ui.components.SpectrumViewerChoiceSheet
 import com.ella.music.ui.theme.EllaTheme
 import com.ella.music.ui.theme.THEME_FOLLOW_SYSTEM
 import java.io.File
@@ -109,6 +108,7 @@ private fun SpectrumViewerScreen(song: Song, onBack: () -> Unit) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val activity = context as? ComponentActivity
+    var showExternalApps by remember { mutableStateOf(false) }
     var scanToken by remember { mutableIntStateOf(0) }
     var scanState by remember { mutableStateOf<SpectrumScanState>(SpectrumScanState.Loading) }
 
@@ -205,14 +205,9 @@ private fun SpectrumViewerScreen(song: Song, onBack: () -> Unit) {
                     Spacer(Modifier.width(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         EllaMiuixChip(
-                            stringResource(R.string.spectrum_open_aspect_pro),
+                            stringResource(R.string.spectrum_open_external),
                             selected = false,
-                            onClick = { openSongSpectrumWithAspectPro(context, song) }
-                        )
-                        EllaMiuixChip(
-                            stringResource(R.string.spectrum_open_kaspek),
-                            selected = false,
-                            onClick = { openSongSpectrumWithKaspek(context, song) }
+                            onClick = { showExternalApps = true }
                         )
                     }
                 }
@@ -280,20 +275,24 @@ private fun SpectrumViewerScreen(song: Song, onBack: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally)
                 ) {
                     EllaMiuixChip(
-                        stringResource(R.string.spectrum_open_aspect_pro),
-                        selected = false,
-                        onClick = { openSongSpectrumWithAspectPro(context, song) }
-                    )
-                    EllaMiuixChip(
-                        stringResource(R.string.spectrum_open_kaspek),
-                        selected = false,
-                        onClick = { openSongSpectrumWithKaspek(context, song) }
-                    )
+                            stringResource(R.string.spectrum_open_external),
+                            selected = false,
+                            onClick = { showExternalApps = true }
+                        )
                 }
             }
             Spacer(Modifier.height(if (isLandscape) 8.dp else 18.dp))
         }
     }
+    SpectrumViewerChoiceSheet(
+        show = showExternalApps,
+        externalOnly = true,
+        onDismiss = { showExternalApps = false },
+        onSelect = { viewerId ->
+            showExternalApps = false
+            SpectrumViewerLauncher.open(context, song, viewerId)
+        }
+    )
 }
 
 private sealed interface SpectrumScanState {
@@ -485,6 +484,14 @@ private fun SpectrumFrequencyAxis(
     isDark: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val appStyle = MiuixTheme.textStyles.main
+    val fontResolver = androidx.compose.ui.platform.LocalFontFamilyResolver.current
+    val axisTypeface = fontResolver.resolve(
+        appStyle.fontFamily,
+        appStyle.fontWeight ?: androidx.compose.ui.text.font.FontWeight.Bold,
+        appStyle.fontStyle ?: androidx.compose.ui.text.font.FontStyle.Normal,
+        appStyle.fontSynthesis ?: androidx.compose.ui.text.font.FontSynthesis.All
+    ).value as? android.graphics.Typeface
     val label = maxFrequencyHz?.formatSpectrumFrequency() ?: unknownFrequencyLabel
     val onSurface = MiuixTheme.colorScheme.onSurface
     val onSurfaceSummary = MiuixTheme.colorScheme.onSurfaceVariantSummary
@@ -505,7 +512,7 @@ private fun SpectrumFrequencyAxis(
             color = textNativeColor
             textSize = 10.sp.toPx()
             textAlign = android.graphics.Paint.Align.RIGHT
-            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+            typeface = axisTypeface
         }
         val axisX = size.width - 5.dp.toPx()
         val axisTop = 27.dp.toPx()

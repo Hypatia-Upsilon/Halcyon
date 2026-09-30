@@ -1,5 +1,8 @@
 package com.ella.music.ui.album
 
+import com.ella.music.ui.components.dragSelectList
+import com.ella.music.ui.components.dragSelectGrid
+
 import android.graphics.Bitmap
 import android.widget.Toast
 import com.ella.music.ui.components.EllaMiuixBottomSheet
@@ -54,7 +57,6 @@ import com.ella.music.data.model.UserPlaylist
 import com.ella.music.data.model.formatPlaybackDuration
 import com.ella.music.data.model.albumIdentityId
 import com.ella.music.data.model.playlistIdentityKey
-import com.ella.music.data.matchesArtistName
 import com.ella.music.data.artistNamesForSong
 import com.ella.music.data.splitArtistNames
 import com.ella.music.data.splitGenreNames
@@ -75,6 +77,7 @@ import com.ella.music.ui.components.FloatingSelectionControls
 import com.ella.music.ui.components.LibraryFloatingControlsBottomPadding
 import com.ella.music.ui.components.LibraryFloatingControlsEndPadding
 import com.ella.music.ui.components.LazyListScrollIndicator
+import com.ella.music.ui.components.ScrollIndicatorListEndPadding
 import com.ella.music.ui.components.RestoreListScrollAfterSearch
 import com.ella.music.ui.components.LocateCurrentSongFloatingButton
 import com.ella.music.ui.components.SongMoreActionHost
@@ -99,13 +102,9 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.Search
-import top.yukonga.miuix.kmp.icon.extended.Add
-import top.yukonga.miuix.kmp.icon.extended.AddFolder
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.Download
-import top.yukonga.miuix.kmp.icon.extended.Forward
-import top.yukonga.miuix.kmp.icon.extended.Play
 import top.yukonga.miuix.kmp.icon.extended.SelectAll
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.ui.graphics.Color
@@ -601,8 +600,8 @@ fun AlbumDetailScreen(
             EllaCenteredLoadingIndicator()
         } else LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 120.dp)
+            modifier = Modifier.fillMaxSize().dragSelectList(listState, selection, remember(sortedAlbumSongs) { sortedAlbumSongs.map { it.id } }),
+            contentPadding = PaddingValues(bottom = 120.dp, end = if (showScrollIndicator) ScrollIndicatorListEndPadding else 0.dp)
         ) {
             item {
                 AlbumHeader(
@@ -610,6 +609,11 @@ fun AlbumDetailScreen(
                     albumCoverModel = albumPreviewModel,
                     hasNeteaseAlbum = !neteaseAlbumUrl.isNullOrBlank(),
                     onNeteaseAlbumClick = { neteaseAlbumUrl?.let { com.ella.music.data.netease.NeteaseLinks.openWebUrl(context, it) } },
+                    onNeteaseCommentsClick = {
+                        neteaseAlbumUrl?.let(com.ella.music.data.netease.NeteaseLinks::parseWebUrl)?.second?.let {
+                            com.ella.music.data.netease.NeteaseLinks.open(context, com.ella.music.data.netease.NeteaseLinkKind.AlbumComment, it)
+                        }
+                    },
                     onAlbumArtistClick = {
                         val albumArtist = album?.albumArtist?.takeIf { it.isNotBlank() }
                             ?: return@AlbumHeader
@@ -666,6 +670,12 @@ fun AlbumDetailScreen(
                         albumDuration.formatPlaybackDuration(),
                         com.ella.music.ui.components.sortLabel(sortMode.labelRes, sortMode.isDescending())
                     ),
+                    leadingContent = {
+                        com.ella.music.ui.components.ShuffleAllSummaryButton(
+                            visible = !albumUsesImmersiveHeader && sortedAlbumSongs.isNotEmpty(),
+                            onClick = ::shuffleAlbumAndStart
+                        )
+                    },
                 )
             }
 
@@ -739,7 +749,7 @@ fun AlbumDetailScreen(
                     }
                 }
             } else {
-                itemsIndexed(sortedAlbumSongs) { index, song ->
+                itemsIndexed(sortedAlbumSongs, key = { _, song -> song.id }) { index, song ->
                     AlbumSongRow(
                         song = song,
                         index = index,
@@ -1076,6 +1086,7 @@ fun AlbumDetailScreen(
             allSelected = sortedAlbumSongs.isNotEmpty() && selectedVisibleCount == sortedAlbumSongs.size,
             onRangeSelect = { selection.applyRangeSelection(sortedAlbumSongs.map { it.id }, sortedAlbumSongIndexById) },
             onSelectAll = { selection.toggleSelectAll(sortedAlbumSongs.map { it.id }) },
+            onInvertSelection = { selection.invertSelection(sortedAlbumSongs.map { it.id }) },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = LibraryFloatingControlsEndPadding, bottom = LibraryFloatingControlsBottomPadding)
@@ -1167,6 +1178,7 @@ fun AlbumDetailScreen(
         if (coverPreviewVisible && albumPreviewModel != null) {
             CoverPreviewDialog(
                 model = albumPreviewModel!!,
+                imageKind = com.ella.music.data.ExportImageKind.Album,
                 title = album?.name
                     ?.takeUnless(com.ella.music.data.LibraryNormalizer::isGeneratedUnknownAlbumPlaceholder)
                     ?: stringResource(R.string.player_unknown_album),

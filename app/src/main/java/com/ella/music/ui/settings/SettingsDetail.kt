@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.verticalScroll
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
@@ -29,7 +28,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -43,7 +41,6 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import com.ella.music.ui.components.EllaSmallTopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
-import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 enum class SettingsDetailMode {
@@ -72,6 +69,8 @@ fun SettingsDetailScreen(
     onNavigateToOpenSubsonicConfig: (() -> Unit)? = null,
     onNavigateToEmbyConfig: (() -> Unit)? = null,
     onNavigateToWebDavConfig: (() -> Unit)? = null,
+    onNavigateToSmbConfig: (() -> Unit)? = null,
+    onNavigateToTransferConfig: ((String) -> Unit)? = null,
     onNavigateToLyricPluginSources: () -> Unit = {},
     onNavigateToLastFmSettings: () -> Unit = {},
     onNavigateToBottomNavigationSettings: () -> Unit = {},
@@ -126,6 +125,7 @@ fun SettingsDetailScreen(
         )
     )
     val homeLibraryTileItems = listOf(
+        HomePreferenceItem("poster_wall", stringResource(R.string.poster_wall_title), stringResource(R.string.poster_wall_summary)),
         HomePreferenceItem("artist", stringResource(R.string.settings_library_tile_artist), stringResource(R.string.settings_library_tile_artist_summary)),
         HomePreferenceItem("album", stringResource(R.string.settings_library_tile_album), stringResource(R.string.settings_library_tile_album_summary)),
         HomePreferenceItem("recent_playback", stringResource(R.string.recent_playback_title), stringResource(R.string.settings_home_section_recent_playback_summary)),
@@ -141,8 +141,7 @@ fun SettingsDetailScreen(
     )
     val homeOnlineTileItems = listOf(
         HomePreferenceItem("musicfree", "MusicFree", stringResource(R.string.home_import_api_source)),
-        HomePreferenceItem("lx", "LX Music", stringResource(R.string.home_import_api_source)),
-        HomePreferenceItem("webdav", "WebDAV", stringResource(R.string.home_connect_cloud_music))
+        HomePreferenceItem("lx", "LX Music", stringResource(R.string.home_import_api_source))
     )
     val effectiveMode = if (showOnlyLyrics) SettingsDetailMode.Lyrics else mode
     var showHomeDisplayPage by remember(initialHomeDisplay) { mutableStateOf(initialHomeDisplay) }
@@ -275,6 +274,8 @@ fun SettingsDetailScreen(
                         onOpenOpenSubsonicConfig = onNavigateToOpenSubsonicConfig,
                         onOpenEmbyConfig = onNavigateToEmbyConfig,
                         onOpenWebDavConfig = onNavigateToWebDavConfig,
+                        onOpenSmbConfig = onNavigateToSmbConfig,
+                        onOpenTransferConfig = onNavigateToTransferConfig,
                         mainViewModel = mainViewModel
                     )
                     SettingsScanSection(highlightKey = highlightKey)

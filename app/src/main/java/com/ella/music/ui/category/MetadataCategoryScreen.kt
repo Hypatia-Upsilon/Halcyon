@@ -1,5 +1,8 @@
 package com.ella.music.ui.category
 
+import com.ella.music.ui.components.dragSelectList
+import com.ella.music.ui.components.dragSelectGrid
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -25,6 +28,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import com.ella.music.ui.components.rememberBackgroundBrowseCalculation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -79,12 +83,8 @@ import com.ella.music.ui.components.EllaSmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.Search
-import top.yukonga.miuix.kmp.icon.extended.Add
-import top.yukonga.miuix.kmp.icon.extended.AddFolder
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Delete
-import top.yukonga.miuix.kmp.icon.extended.Play
-import top.yukonga.miuix.kmp.icon.extended.Forward
 import top.yukonga.miuix.kmp.icon.extended.Pin
 import top.yukonga.miuix.kmp.icon.extended.SelectAll
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -92,16 +92,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.ella.music.data.ActionMenuIds
 import com.ella.music.data.tagIdentityKey
-import com.ella.music.ui.components.ActionMenuCommonIcons
 import com.ella.music.ui.components.AddToPlaylistSheet
 import com.ella.music.ui.components.ConfirmDangerDialog
 import com.ella.music.ui.components.CreatePlaylistAndAddSheet
-import com.ella.music.ui.components.EllaMiuixActionMenuGroup
 import com.ella.music.ui.components.EllaMiuixBottomSheet
-import com.ella.music.ui.components.EllaMiuixMenuItem
-import com.ella.music.ui.components.actionMenuIcon
 import com.ella.music.ui.components.createPlaylistOrShowDuplicateToast
 import com.ella.music.ui.components.requestPinnedEllaShortcut
 import com.ella.music.ui.components.shareLocalSongs
@@ -136,7 +131,7 @@ fun MetadataCategoryScreen(
     val sortIndex by sortIndexFlow.collectAsState(initial = LibrarySortUiState.metadataCategorySortIndex(type))
     val availableSortModes = remember(type) { MetadataCategorySortMode.entries.filter { it.availableFor(type) } }
     val sortMode = availableSortModes.getOrElse(sortIndex) { MetadataCategorySortMode.Name }
-    val sortedItems = remember(resolvedItems, type, sortMode) { resolvedItems.sortedForCategory(type, sortMode) }
+    val sortedItems by rememberBackgroundBrowseCalculation(emptyList<MetadataCategoryItem>(), resolvedItems, type, sortMode) { resolvedItems.sortedForCategory(type, sortMode) }
     val playlists by mainViewModel.playlists.collectAsState()
     val scanExcludeFolders by mainViewModel.settingsManager.scanExcludeFolders.collectAsState(initial = "")
     val blockedFolders = remember(scanExcludeFolders) { scanExcludeFolders.toFolderSettingList() }
@@ -159,6 +154,7 @@ fun MetadataCategoryScreen(
     var searchQuery by remember { mutableStateOf("") }
     val selection = rememberLibrarySelectionState<String>()
     var categoryMenuItem by remember { mutableStateOf<MetadataCategoryItem?>(null) }
+    var batchCategory by rememberSaveable(type) { mutableStateOf<String?>(null) }
     var folderToBlock by remember { mutableStateOf<String?>(null) }
     var playlistPickerSongs by remember { mutableStateOf<List<Song>?>(null) }
     var createPlaylistSongs by remember { mutableStateOf<List<Song>?>(null) }
@@ -492,6 +488,7 @@ fun MetadataCategoryScreen(
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(safeGridColumns),
                     state = gridState,
+                    modifier = Modifier.fillMaxSize().dragSelectGrid(gridState, selection, currentSelectionKeys),
                     contentPadding = PaddingValues(
                         end = if (showCategorySideIndex) SideIndexListEndPadding else 0.dp,
                         bottom = 120.dp
@@ -579,6 +576,7 @@ fun MetadataCategoryScreen(
                     allSelected = currentSelectionKeys.isNotEmpty() && selectedVisibleCount == currentSelectionKeys.size,
                     onRangeSelect = { selection.applyRangeSelection(currentSelectionKeys, currentSelectionIndexByName) },
                     onSelectAll = ::toggleSelectAllVisibleItems,
+                onInvertSelection = { selection.invertSelection(currentSelectionKeys) },
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(end = LibraryFloatingControlsEndPadding, bottom = LibraryFloatingControlsBottomPadding)
@@ -728,9 +726,19 @@ fun MetadataCategoryScreen(
                         pendingDeleteSongs = mainViewModel.getSongsForMetadataCategory(type, item.name)
                         categoryMenuItem = null
                     }
-                )
+                ) + if (com.ella.music.data.metadataCategoryEditKey(type) != null) listOf(
+                    com.ella.music.ui.components.LibraryEntityAction(
+                        title = stringResource(R.string.category_batch_edit),
+                        icon = com.ella.music.ui.components.ActionMenuCommonIcons.edit,
+                        onClick = { batchCategory = item.name; categoryMenuItem = null }
+                    )
+                ) else emptyList()
             )
         }
+    }
+
+    if (com.ella.music.data.metadataCategoryEditKey(type) != null) {
+        MetadataCategoryBatchSheet(type, batchCategory, mainViewModel) { batchCategory = null }
     }
 
     associateFolderPaths?.let { sourceFolders ->

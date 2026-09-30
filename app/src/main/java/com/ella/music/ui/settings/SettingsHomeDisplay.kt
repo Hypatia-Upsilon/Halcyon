@@ -1,20 +1,5 @@
 package com.ella.music.ui.settings
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
@@ -22,39 +7,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.ella.music.R
 import com.ella.music.data.SettingsManager
-import com.ella.music.ui.components.EllaMiuixAction
-import com.ella.music.ui.components.EllaMiuixActionRow
-import com.ella.music.ui.components.EllaMiuixBottomSheet
 import com.ella.music.ui.components.ReorderableSelectionItem
 import com.ella.music.ui.components.ReorderableSelectionSheet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.preference.ArrowPreference
-import top.yukonga.miuix.kmp.basic.BasicComponent
-import top.yukonga.miuix.kmp.basic.Button
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.ColorPicker
-import top.yukonga.miuix.kmp.basic.ColorSpace
 import top.yukonga.miuix.kmp.basic.DropdownItem
-import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.basic.Check
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
-import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.util.Locale
 
 internal data class HomePreferenceItem(
@@ -135,8 +100,6 @@ internal fun HomeDisplaySettingsPage(
     val hiddenTopBarActionIds = remember(hiddenTopBarActions) { hiddenTopBarActions.csvIdSet() }
     val hiddenOnlineTileIds = remember(hiddenOnlineTiles) { hiddenOnlineTiles.csvIdSet() }
 
-
-
     var showSectionSheet by remember { mutableStateOf(false) }
     var showTopBarActionSheet by remember { mutableStateOf(false) }
     var showOnlineTileSheet by remember { mutableStateOf(false) }
@@ -196,7 +159,9 @@ internal fun HomeDisplaySettingsPage(
         } // search-anchor:end
 
     }
-    HomeTileEditors(tileItems, highlightKey)
+    val customCategories by styleSettings.customMetadataCategories.collectAsState(initial = emptyList())
+    CustomCategorySettings(styleSettings)
+    HomeTileEditors(tileItems + customCategories.map { HomePreferenceItem(it.type, it.name, it.tagKey) }, highlightKey)
     SmallTitle(text = stringResource(R.string.settings_home_online_grid_title))
     SettingsCardGroup(highlight = highlightKey == "home_online_tiles") {
         val enabledOnlineTitles = orderedOnlineTiles.filter { it.id !in hiddenOnlineTileIds }.map { it.title }
@@ -226,7 +191,6 @@ internal fun HomeDisplaySettingsPage(
         } // search-anchor:end
 
     }
-
 
     val sectionSelectionItems = remember(orderedSections, hiddenSectionIds) {
         orderedSections.map {
@@ -335,8 +299,6 @@ internal fun HomeDisplaySettingsPage(
     )
 }
 
-
-
 @Composable
 internal fun LyricSourcePriorityBlock(
     items: List<LyricSourcePreferenceItem>,
@@ -431,8 +393,6 @@ private fun String.csvIdSet(): Set<String> =
         .filter { it.isNotBlank() }
         .toSet()
 
-
-
 private fun String.csvIds(defaultValue: String): List<String> {
     val ids = csvIdSet().toList()
     val defaults = defaultValue.csvIdSet().toList()
@@ -451,7 +411,8 @@ private fun HomeTileEditors(items: List<HomePreferenceItem>, highlightKey: Strin
     listOf(true, false).forEach { shortcut ->
         val selected = if (shortcut) shortcuts else features
         val ids = selected.split(',').filter { it.isNotBlank() }
-        val defaults = SettingsManager.DEFAULT_HOME_LIBRARY_TILE_ORDER.split(',').let { if (shortcut) it.take(4) else it.drop(4) }
+        val shortcutCount = com.ella.music.data.defaultHomeShortcutCount(context.resources.configuration.smallestScreenWidthDp)
+        val defaults = SettingsManager.DEFAULT_HOME_LIBRARY_TILE_ORDER.split(',').let { if (shortcut) it.take(shortcutCount) else it.drop(shortcutCount) }
         val ordered = (ids.mapNotNull { id -> items.find { it.id == id } } + items.filter { it.id !in ids })
         var show by remember { mutableStateOf(false) }
         val title = stringResource(if (shortcut) R.string.settings_home_shortcuts else R.string.settings_home_features)

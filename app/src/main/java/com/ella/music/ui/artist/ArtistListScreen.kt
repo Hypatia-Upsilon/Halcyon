@@ -1,16 +1,14 @@
 package com.ella.music.ui.artist
 
-import com.ella.music.data.ActionMenuIds
-import com.ella.music.ui.components.ActionMenuCommonIcons
-import com.ella.music.ui.components.EllaMiuixActionMenuGroup
+import com.ella.music.ui.components.dragSelectList
+import com.ella.music.ui.components.dragSelectGrid
+
 import com.ella.music.ui.components.EllaMiuixBottomSheet
-import com.ella.music.ui.components.actionMenuIcon
 import com.ella.music.ui.folder.musicSortKey
 
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
@@ -28,6 +26,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import com.ella.music.ui.components.rememberBackgroundBrowseCalculation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -61,7 +60,6 @@ import com.ella.music.ui.components.AddToPlaylistSheet
 import com.ella.music.ui.components.ConfirmDangerDialog
 import com.ella.music.ui.components.CreatePlaylistAndAddSheet
 import com.ella.music.ui.components.createPlaylistOrShowDuplicateToast
-import com.ella.music.ui.components.EllaMiuixMenuItem
 import com.ella.music.ui.components.EllaCenteredLoadingIndicator
 import com.ella.music.ui.components.rememberSongDeleteRequester
 import com.ella.music.ui.components.requestPinnedEllaShortcut
@@ -77,6 +75,7 @@ import com.ella.music.ui.components.LazyListScrollIndicator
 import com.ella.music.ui.components.RestoreListScrollAfterSearch
 import com.ella.music.ui.components.ShuffleAllSummaryButton
 import com.ella.music.ui.components.SideIndexListEndPadding
+import com.ella.music.ui.components.ScrollIndicatorListEndPadding
 import com.ella.music.ui.components.DirectionalSortModeField
 import com.ella.music.ui.components.SortDropdownMenu
 import com.ella.music.ui.components.directionalSortModeDropdownItems
@@ -93,12 +92,8 @@ import com.ella.music.ui.components.EllaSmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.Search
-import top.yukonga.miuix.kmp.icon.extended.Add
-import top.yukonga.miuix.kmp.icon.extended.AddFolder
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Delete
-import top.yukonga.miuix.kmp.icon.extended.Play
-import top.yukonga.miuix.kmp.icon.extended.Forward
 import top.yukonga.miuix.kmp.icon.extended.Pin
 import top.yukonga.miuix.kmp.icon.extended.SelectAll
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -297,7 +292,7 @@ fun ArtistListScreen(
     val artistDurations = aggregate?.artistDurations.orEmpty()
     val participatedAlbumCounts = aggregate?.participatedAlbumCounts.orEmpty()
     val releaseAlbumCounts = aggregate?.releaseAlbumCounts.orEmpty()
-    val filteredArtists = remember(artists, searchQuery, sortMode, artistDurations, participatedAlbumCounts, releaseAlbumCounts, pinnedArtistKeys) {
+    val filteredArtists by rememberBackgroundBrowseCalculation(emptyList<Artist>(), artists, searchQuery, sortMode, artistDurations, participatedAlbumCounts, releaseAlbumCounts, pinnedArtistKeys) {
         val filtered = if (searchQuery.isBlank()) {
             artists
         } else {
@@ -360,7 +355,7 @@ fun ArtistListScreen(
     val filteredArtistKeys = remember(filteredArtists) {
         filteredArtists.map { it.name.tagIdentityKey() }
     }
-    val randomArtistSongs = remember(filteredArtists, songs, showAlbumArtists, parseFeaturedArtists, nameSplitRevision) {
+    val randomArtistSongs by rememberBackgroundBrowseCalculation(emptyList<Song>(), filteredArtists, songs, showAlbumArtists, parseFeaturedArtists, nameSplitRevision) {
         val visibleArtistKeys = filteredArtists.mapTo(mutableSetOf()) { it.name.tagIdentityKey() }
         songs.filter { song ->
             val names = if (showAlbumArtists) {
@@ -633,9 +628,13 @@ fun ArtistListScreen(
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().dragSelectList(listState, selection, filteredArtistKeys, itemIdsByKey = remember(filteredArtists) { filteredArtists.associate { (it.name as Any) to listOf(it.name.tagIdentityKey()) } }),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        end = if (showArtistSideIndex) SideIndexListEndPadding else 0.dp,
+                        end = when {
+                            !showArtistSideIndex -> 0.dp
+                            sortMode in setOf(ArtistSortMode.Name, ArtistSortMode.NameDesc) -> SideIndexListEndPadding
+                            else -> ScrollIndicatorListEndPadding
+                        },
                         bottom = 160.dp
                     )
                 ) {
@@ -735,6 +734,7 @@ fun ArtistListScreen(
                     allSelected = filteredArtists.isNotEmpty() && selectedVisibleArtistCount == filteredArtists.size,
                     onRangeSelect = { selection.applyRangeSelection(filteredArtistKeys, artistIndexByKey) },
                     onSelectAll = { selection.toggleSelectAll(filteredArtistKeys) },
+                    onInvertSelection = { selection.invertSelection(filteredArtistKeys) },
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(end = LibraryFloatingControlsEndPadding, bottom = LibraryFloatingControlsBottomPadding)

@@ -12,10 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.ella.music.R
 import com.ella.music.ui.components.EllaSearchBar
@@ -23,17 +19,12 @@ import com.ella.music.ui.components.SongSelectionActionRow
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Add
-import top.yukonga.miuix.kmp.icon.extended.AddFolder
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.icon.extended.Delete
-import top.yukonga.miuix.kmp.icon.extended.Forward
-import top.yukonga.miuix.kmp.icon.extended.Play
 import top.yukonga.miuix.kmp.icon.extended.Playlist
 import top.yukonga.miuix.kmp.icon.extended.Share
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-
 
 @Composable
 internal fun LibrarySearchTopBar(
@@ -93,6 +84,7 @@ internal fun LibrarySearchFilterBar(
     albumResultsCount: Int,
     artistResultsCount: Int,
     playlistResultsCount: Int,
+    folderPlaylistResultsCount: Int,
     categoryResultsByType: Map<String, List<*>>,
     onFilterChange: (SearchFilter) -> Unit
 ) {
@@ -111,7 +103,7 @@ internal fun LibrarySearchFilterBar(
         visibleFilters.forEach { item ->
             val baseLabel = stringResource(item.labelRes())
             val itemCount = when (item) {
-                SearchFilter.All -> songResultsCount + albumResultsCount + artistResultsCount + playlistResultsCount + categoryResultsByType.values.sumOf { it.size }
+                SearchFilter.All -> songResultsCount + albumResultsCount + artistResultsCount + playlistResultsCount + folderPlaylistResultsCount + categoryResultsByType.values.sumOf { it.size }
                 SearchFilter.Songs -> if (filter in listOf(SearchFilter.All, SearchFilter.Songs) || duplicatesOnlyActive) songResultsCount else 0
                 SearchFilter.MusicVideos -> if (filter == SearchFilter.MusicVideos) songResultsCount else 0
                 SearchFilter.Lyrics -> if (filter == SearchFilter.Lyrics) songResultsCount else 0
@@ -119,6 +111,7 @@ internal fun LibrarySearchFilterBar(
                 SearchFilter.Artists -> artistResultsCount
                 SearchFilter.Playlists -> playlistResultsCount
                 SearchFilter.Folders -> categoryResultsByType["folder"].orEmpty().size
+                SearchFilter.FolderPlaylists -> folderPlaylistResultsCount
                 SearchFilter.Composers -> categoryResultsByType["composer"].orEmpty().size
                 SearchFilter.Arrangers -> categoryResultsByType["arranger"].orEmpty().size
                 SearchFilter.Lyricists -> categoryResultsByType["lyricist"].orEmpty().size
@@ -249,6 +242,7 @@ internal fun LibrarySearchSelectionToolbar(
     allSelected: Boolean,
     onRangeSelect: () -> Unit,
     onSelectAll: () -> Unit,
+    onInvertSelection: () -> Unit,
     onPlayNext: () -> Unit,
     onAddToPlaylist: () -> Unit,
     onAddToQueue: () -> Unit,
@@ -263,6 +257,7 @@ internal fun LibrarySearchSelectionToolbar(
         allSelected = allSelected,
         onRangeSelect = onRangeSelect,
         onSelectAll = onSelectAll,
+        onInvertSelection = onInvertSelection,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
     )
     Row(

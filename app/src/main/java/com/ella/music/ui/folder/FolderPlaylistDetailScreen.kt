@@ -1,5 +1,8 @@
 package com.ella.music.ui.folder
 
+import com.ella.music.ui.components.dragSelectList
+import com.ella.music.ui.components.dragSelectGrid
+
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -41,7 +44,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextDecoration
@@ -85,6 +87,9 @@ import com.ella.music.ui.components.ellaPageBackground
 import com.ella.music.ui.components.requestPinnedEllaShortcut
 import com.ella.music.ui.components.shareLocalSongs
 import com.ella.music.ui.navigation.Screen
+import com.ella.music.ui.playlist.shouldApplyPersistedPlaylistOrder
+import com.ella.music.ui.settings.findComponentActivity
+import androidx.lifecycle.lifecycleScope
 import com.ella.music.ui.home.HomeRatingFilterUiState
 import com.ella.music.ui.home.RatingFilterMenu
 import com.ella.music.ui.playlist.ImmediateOrLongPressDragGestureDetector
@@ -101,11 +106,7 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Add
-import top.yukonga.miuix.kmp.icon.extended.AddFolder
 import top.yukonga.miuix.kmp.icon.extended.Back
-import top.yukonga.miuix.kmp.icon.extended.Play
-import top.yukonga.miuix.kmp.icon.extended.Forward
 import top.yukonga.miuix.kmp.icon.extended.SelectAll
 import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.More
@@ -113,7 +114,7 @@ import top.yukonga.miuix.kmp.icon.basic.Search
 import androidx.compose.ui.graphics.Color
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.rememberReorderableLazyListState
+import com.ella.music.ui.components.rememberEllaReorderableLazyListState
 
 @Composable
 fun FolderPlaylistDetailScreen(
@@ -130,6 +131,7 @@ fun FolderPlaylistDetailScreen(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val scope = rememberCoroutineScope()
+    val saveScope = context.findComponentActivity()?.lifecycleScope ?: scope
     val songs by mainViewModel.songs.collectAsState()
     val playlists by mainViewModel.settingsManager.folderPlaylists.collectAsState(initial = emptyList())
     val openPlayerOnPlay by mainViewModel.settingsManager.openPlayerOnPlay.collectAsState(initial = false)
@@ -252,13 +254,23 @@ fun FolderPlaylistDetailScreen(
             playlist?.folderOrder.orEmpty()
         )
     }
-    var manualSongs by remember(customSongs) { mutableStateOf(customSongs) }
-    var manualFolderEntries by remember(customFolderEntries) { mutableStateOf(customFolderEntries) }
+    var manualSongs by remember(playlistId) { mutableStateOf(customSongs) }
+    var manualFolderEntries by remember(playlistId) { mutableStateOf(customFolderEntries) }
+    var songOrderDirty by remember(playlistId) { mutableStateOf(false) }
+    var folderOrderDirty by remember(playlistId) { mutableStateOf(false) }
     LaunchedEffect(customSongs) {
-        manualSongs = customSongs
+        if (shouldApplyPersistedPlaylistOrder(songOrderDirty,
+                customSongs.map { it.playlistIdentityKey() }, manualSongs.map { it.playlistIdentityKey() })) {
+            manualSongs = customSongs
+            songOrderDirty = false
+        }
     }
     LaunchedEffect(customFolderEntries) {
-        manualFolderEntries = customFolderEntries
+        if (shouldApplyPersistedPlaylistOrder(folderOrderDirty,
+                customFolderEntries.map { it.path }, manualFolderEntries.map { it.path })) {
+            manualFolderEntries = customFolderEntries
+            folderOrderDirty = false
+        }
     }
     val songReorderEnabled = selectionMode &&
         selectedTab == FolderPlaylistTab.Songs &&
@@ -269,8 +281,8 @@ fun FolderPlaylistDetailScreen(
         selectedTab == FolderPlaylistTab.Folders &&
         folderSortMode == FolderPlaylistFolderSortMode.Custom &&
         detailQuery.isBlank()
-    val displayedSongSource = if (songReorderEnabled) manualSongs else sortedPlaylistSongs
-    val displayedFolderSource = if (folderReorderEnabled) manualFolderEntries else sortedFolderEntries
+    val displayedSongSource = if (songReorderEnabled || (songOrderDirty && ratingFilter.isUnfiltered() && songSortMode == FolderPlaylistSongSortMode.Custom)) manualSongs else sortedPlaylistSongs
+    val displayedFolderSource = if (folderReorderEnabled || (folderOrderDirty && folderSortMode == FolderPlaylistFolderSortMode.Custom)) manualFolderEntries else sortedFolderEntries
     val displayedSongs = remember(displayedSongSource, detailQuery) {
         if (detailQuery.isBlank()) {
             displayedSongSource
@@ -390,64 +402,74 @@ fun FolderPlaylistDetailScreen(
             }
         }
     }
-    val songReorderableState = rememberReorderableLazyListState(
+    val songReorderableState = rememberEllaReorderableLazyListState(
         lazyListState = songsListState,
         onMove = { from, to ->
-            if (!songReorderEnabled) return@rememberReorderableLazyListState
+            if (!songReorderEnabled) return@rememberEllaReorderableLazyListState
             val fromSong = reorderableSongs.getOrNull(from.index - FolderPlaylistSongsHeaderCount)
-                ?: return@rememberReorderableLazyListState
+                ?: return@rememberEllaReorderableLazyListState
             val toSong = reorderableSongs.getOrNull(to.index - FolderPlaylistSongsHeaderCount)
-                ?: return@rememberReorderableLazyListState
+                ?: return@rememberEllaReorderableLazyListState
             val fromIndex = manualSongs.indexOfFirst { it.playlistIdentityKey() == fromSong.playlistIdentityKey() }
             val toIndex = manualSongs.indexOfFirst { it.playlistIdentityKey() == toSong.playlistIdentityKey() }
             if (fromIndex !in manualSongs.indices || toIndex !in manualSongs.indices) {
-                return@rememberReorderableLazyListState
+                return@rememberEllaReorderableLazyListState
             }
-            manualSongs = manualSongs.moveSelectedItemsAsBlock(
+            val moved = manualSongs.moveSelectedItemsAsBlock(
                 from = fromIndex,
                 to = toIndex,
                 selectedKeys = selectedSongKeys,
                 keyOf = { it.playlistIdentityKey() }
             )
+            if (moved != manualSongs) {
+                manualSongs = moved
+                songOrderDirty = true
+            }
         }
     )
-    val folderReorderableState = rememberReorderableLazyListState(
+    val folderReorderableState = rememberEllaReorderableLazyListState(
         lazyListState = foldersListState,
         onMove = { from, to ->
-            if (!folderReorderEnabled) return@rememberReorderableLazyListState
+            if (!folderReorderEnabled) return@rememberEllaReorderableLazyListState
             val fromEntry = reorderableFolderEntries.getOrNull(from.index - 1)
-                ?: return@rememberReorderableLazyListState
+                ?: return@rememberEllaReorderableLazyListState
             val toEntry = reorderableFolderEntries.getOrNull(to.index - 1)
-                ?: return@rememberReorderableLazyListState
+                ?: return@rememberEllaReorderableLazyListState
             val fromIndex = manualFolderEntries.indexOfFirst { it.path == fromEntry.path }
             val toIndex = manualFolderEntries.indexOfFirst { it.path == toEntry.path }
             if (fromIndex !in manualFolderEntries.indices || toIndex !in manualFolderEntries.indices) {
-                return@rememberReorderableLazyListState
+                return@rememberEllaReorderableLazyListState
             }
-            manualFolderEntries = manualFolderEntries.moveSelectedItemsAsBlock(
+            val moved = manualFolderEntries.moveSelectedItemsAsBlock(
                 from = fromIndex,
                 to = toIndex,
                 selectedKeys = selectedFolderPaths,
                 keyOf = FolderPlaylistFolderEntry::path
             )
+            if (moved != manualFolderEntries) {
+                manualFolderEntries = moved
+                folderOrderDirty = true
+            }
         }
     )
     fun persistSongOrder() {
         playlist?.let { target ->
-            scope.launch {
+            val keys = manualSongs.map { it.playlistIdentityKey() }
+            saveScope.launch {
                 mainViewModel.settingsManager.setFolderPlaylistSongOrder(
                     target.id,
-                    manualSongs.map { it.playlistIdentityKey() }
+                    keys
                 )
             }
         }
     }
     fun persistFolderOrder() {
         playlist?.let { target ->
-            scope.launch {
+            val paths = manualFolderEntries.map { it.path }
+            saveScope.launch {
                 mainViewModel.settingsManager.setFolderPlaylistFolderOrder(
                     target.id,
-                    manualFolderEntries.map { it.path }
+                    paths
                 )
             }
         }
@@ -469,6 +491,8 @@ fun FolderPlaylistDetailScreen(
     }
 
     fun exitSelection() {
+        if (songOrderDirty) persistSongOrder()
+        if (folderOrderDirty) persistFolderOrder()
         selectionMode = false
         selectedSongKeys = emptySet()
         selectedFolderPaths = emptySet()
@@ -844,7 +868,7 @@ fun FolderPlaylistDetailScreen(
             FolderPlaylistTab.Songs -> {
                 LazyColumn(
                     state = songsListState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().dragSelectList(songsListState, selectionMode, displayedKeysForTab, currentSelectedKeys, onSelectionChange = { setSelectedKeys(it); rangeAnchorKey = null; rangeTargetKey = null }, onToggle = ::toggleKey, excludedEndWidth = 112.dp),
                     contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 130.dp)
                 ) {
                     item {
@@ -997,7 +1021,7 @@ fun FolderPlaylistDetailScreen(
             FolderPlaylistTab.Folders -> {
                 LazyColumn(
                     state = foldersListState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().dragSelectList(foldersListState, selectionMode, displayedKeysForTab, currentSelectedKeys, onSelectionChange = { setSelectedKeys(it); rangeAnchorKey = null; rangeTargetKey = null }, onToggle = ::toggleKey, excludedEndWidth = 112.dp),
                     contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 130.dp)
                 ) {
                     item {
@@ -1143,8 +1167,8 @@ fun FolderPlaylistDetailScreen(
                 locateRequest = locateCurrentSongRequest,
                 enabled = selectedTab == FolderPlaylistTab.Songs && !selectionMode,
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = LibraryFloatingControlsEndPadding, bottom = LibraryFloatingControlsBottomPadding)
+                .align(Alignment.BottomEnd)
+                .padding(end = LibraryFloatingControlsEndPadding, bottom = LibraryFloatingControlsBottomPadding)
             )
             FloatingSelectionControls(
                 visible = selectionMode && displayedKeysForTab.isNotEmpty(),
@@ -1152,6 +1176,10 @@ fun FolderPlaylistDetailScreen(
                 allSelected = displayedKeysForTab.isNotEmpty() && selectedVisibleCount == displayedKeysForTab.size,
                 onRangeSelect = ::applyRangeSelection,
                 onSelectAll = ::selectAllCurrent,
+                onInvertSelection = {
+                    setSelectedKeys(com.ella.music.ui.components.invertedSelection(displayedKeysForTab, currentSelectedKeys))
+                    rangeAnchorKey = null; rangeTargetKey = null; selectionMode = true
+                },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = LibraryFloatingControlsEndPadding, bottom = LibraryFloatingControlsBottomPadding)

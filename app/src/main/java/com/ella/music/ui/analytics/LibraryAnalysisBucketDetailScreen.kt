@@ -1,5 +1,8 @@
 package com.ella.music.ui.analytics
 
+import com.ella.music.ui.components.dragSelectList
+import com.ella.music.ui.components.dragSelectGrid
+
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -62,7 +65,7 @@ import com.ella.music.ui.components.LocateCurrentSongFloatingButton
 import com.ella.music.ui.components.RememberPlaybackSourceScreen
 import com.ella.music.ui.components.RestoreListScrollAfterSearch
 import com.ella.music.ui.components.ShuffleAllSummaryButton
-import com.ella.music.ui.components.SideIndexListEndPadding
+import com.ella.music.ui.components.ScrollIndicatorListEndPadding
 import com.ella.music.ui.components.SongItem
 import com.ella.music.ui.components.SongMoreActionHost
 import com.ella.music.ui.components.SortDropdownMenu
@@ -396,7 +399,7 @@ internal fun LibraryAnalysisBucketDetailScreen(
                     listState = listState
                 )
                 val showScrollIndicator = sortedSongs.size > 30
-                val listEndInset = if (showScrollIndicator) SideIndexListEndPadding else 0.dp
+                val listEndInset = if (showScrollIndicator) ScrollIndicatorListEndPadding else 0.dp
                 Box(modifier = Modifier.fillMaxSize()) {
                     Column(modifier = Modifier.fillMaxSize()) {
                         com.ella.music.ui.components.SortSummaryHeader(
@@ -423,7 +426,7 @@ internal fun LibraryAnalysisBucketDetailScreen(
                         )
                         LazyColumn(
                             state = listState,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().dragSelectList(listState, selection, sortedSongIdsForSelection, itemIdsByKey = remember(sortedSongs) { sortedSongs.associate { (it.playlistIdentityKey() as Any) to listOf(it.id) } }),
                             contentPadding = PaddingValues(end = listEndInset, bottom = 120.dp)
                         ) {
                             itemsIndexed(
@@ -499,6 +502,7 @@ internal fun LibraryAnalysisBucketDetailScreen(
                             selection.applyRangeSelection(sortedSongIdsForSelection, sortedSongIndexByIdForSelection)
                         },
                         onSelectAll = { selection.toggleSelectAll(sortedSongIdsForSelection) },
+                        onInvertSelection = { selection.invertSelection(sortedSongIdsForSelection) },
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .padding(

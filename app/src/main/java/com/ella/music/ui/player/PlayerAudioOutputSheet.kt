@@ -19,7 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
@@ -186,24 +185,24 @@ internal fun AudioOutputInfoSheetContent(
 }
 
 @Composable
-private fun AudioOutputInfoSection(title: String, content: @Composable ColumnScope.() -> Unit) {
+internal fun AudioOutputInfoSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     Text(
         text = title,
         fontSize = 13.sp,
         fontWeight = FontWeight.Bold,
         color = MiuixTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 8.dp, top = 12.dp, bottom = 5.dp)
+        modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 5.dp)
     )
     PlayerActionMenuGroup(content = content)
 }
 
 @Composable
-private fun AudioOutputInfoRow(
+internal fun AudioOutputInfoRow(
     label: String,
     value: String,
     forceLtrValue: Boolean = false
 ) {
-    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp)) {
+    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = label,
@@ -216,7 +215,7 @@ private fun AudioOutputInfoRow(
                 lineHeight = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = MiuixTheme.colorScheme.onSurface,
-                style = TextStyle(
+                style = MiuixTheme.textStyles.main.copy(
                     textDirection = if (forceLtrValue) TextDirection.Ltr else TextDirection.Content
                 ),
                 modifier = Modifier.padding(top = 3.dp)

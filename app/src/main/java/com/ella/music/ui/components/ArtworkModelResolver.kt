@@ -18,6 +18,7 @@ import kotlinx.coroutines.withContext
 
 enum class ArtworkUsage {
     ListThumbnail,
+    LibraryDetail,
     LibraryGrid,
     ArtistImage,
     MiniPlayer
@@ -32,6 +33,7 @@ private val ArtworkUsage.cacheFamily: String
     get() = when (this) {
         ArtworkUsage.ListThumbnail,
         ArtworkUsage.LibraryGrid -> "library"
+        ArtworkUsage.LibraryDetail -> "library-original"
         ArtworkUsage.ArtistImage -> "artist"
         ArtworkUsage.MiniPlayer -> "mini-player"
     }
@@ -49,7 +51,9 @@ fun rememberSongArtworkState(
     albumArtUri: Uri?,
     loadCoverArt: ((Song) -> Bitmap?)?,
     usage: ArtworkUsage,
-    showDefaultWhenMissing: Boolean = true
+    showDefaultWhenMissing: Boolean = true,
+    loadOriginalCoverArt: ((Song) -> Any?)? = null,
+    cacheVariant: String? = null
 ): SongArtworkState {
     val coverUrl = song?.coverUrl?.takeIf {
         it.isNotBlank() && !it.isMediaStoreAlbumArtworkUri()
@@ -66,7 +70,8 @@ fun rememberSongArtworkState(
         song?.fileSize,
         coverUrl,
         albumArtUri,
-        cacheFamily
+        cacheFamily,
+        cacheVariant
     ) {
         song?.let { current ->
             listOf(
@@ -78,14 +83,14 @@ fun rememberSongArtworkState(
                 current.fileSize.toString(),
                 coverUrl.orEmpty(),
                 albumArtUri?.toString().orEmpty()
-            ).joinToString("|")
+            ).let { parts -> if (cacheVariant == null) parts else parts + cacheVariant }.joinToString("|")
         }
     }
     val shouldTryEmbedded = song != null &&
         coverUrl == null &&
-        loadCoverArt != null &&
+        (loadCoverArt != null || loadOriginalCoverArt != null) &&
         when (usage) {
-            ArtworkUsage.ListThumbnail -> true
+            ArtworkUsage.ListThumbnail, ArtworkUsage.LibraryDetail -> true
             // Library grid cards are much larger than list thumbnails and must resolve through
             // their own high-resolution loader/cache entry instead of upscaling the 128 px model.
             ArtworkUsage.LibraryGrid -> true
@@ -108,48 +113,57 @@ fun rememberSongArtworkState(
         else -> coverUrl ?: albumArtUri
     }
 
-    val state by produceState(
-        initialValue = SongArtworkState(
-            model = initialModel,
-            showDefaultCover = showDefaultWhenMissing && initialModel == null && !shouldTryEmbedded
-        ),
-        song?.id,
-        song?.path,
-        song?.title,
-        song?.artist,
-        song?.album,
-        song?.albumArtist,
-        song?.dateModified,
-        song?.fileSize,
-        coverUrl,
-        albumArtUri,
-        cacheFamily,
-        shouldTryEmbedded,
-        resolutionGeneration
-    ) {
-        val currentSong = song
-        value = if (currentSong == null) {
-            SongArtworkState(null, showDefaultWhenMissing)
-        } else if (!shouldTryEmbedded) {
-            SongArtworkState(initialModel, showDefaultWhenMissing && initialModel == null)
-        } else {
-            val embeddedCover = withContext(Dispatchers.IO) {
-                runCatching {
-                    CoverLoadLimiter.run { loadCoverArt.invoke(currentSong) }
-                }.getOrNull()
+    // Changing produceState's inputs restarts its loader but retains the remembered value.
+    // A different song needs a fresh state before the mini player paints its next frame.
+    val state = androidx.compose.runtime.key(cacheKey) {
+        val resolvedState by produceState(
+            initialValue = SongArtworkState(
+                model = initialModel,
+                showDefaultCover = showDefaultWhenMissing && initialModel == null && !shouldTryEmbedded
+            ),
+            song?.id,
+            song?.path,
+            song?.title,
+            song?.artist,
+            song?.album,
+            song?.albumArtist,
+            song?.dateModified,
+            song?.fileSize,
+            coverUrl,
+            albumArtUri,
+            cacheFamily,
+            shouldTryEmbedded,
+            loadOriginalCoverArt,
+            cacheVariant,
+            resolutionGeneration
+        ) {
+            val currentSong = song
+            value = if (currentSong == null) {
+                SongArtworkState(null, showDefaultWhenMissing)
+            } else if (!shouldTryEmbedded) {
+                SongArtworkState(initialModel, showDefaultWhenMissing && initialModel == null)
+            } else {
+                val embeddedCover = withContext(Dispatchers.IO) {
+                    runCatching {
+                        CoverLoadLimiter.run {
+                            loadOriginalCoverArt?.invoke(currentSong) ?: loadCoverArt?.invoke(currentSong)
+                        }
+                    }.getOrNull()
+                }
+                val resolved: Any? = coverUrl ?: embeddedCover ?: albumArtUri
+                // Bitmap models are cached too: keeping them alive lets a layout switch (list /
+                // two-column / grid) display instantly instead of flashing placeholders and
+                // re-running the async cover load.
+                if (resolved != null && cacheKey != null) {
+                    ArtworkModelMemoryCache.put(cacheKey, resolved)
+                }
+                SongArtworkState(
+                    model = resolved,
+                    showDefaultCover = showDefaultWhenMissing && resolved == null
+                )
             }
-            val resolved: Any? = coverUrl ?: embeddedCover ?: albumArtUri
-            // Bitmap models are cached too: keeping them alive lets a layout switch (list /
-            // two-column / grid) display instantly instead of flashing placeholders and
-            // re-running the async cover load.
-            if (resolved != null && cacheKey != null) {
-                ArtworkModelMemoryCache.put(cacheKey, resolved)
-            }
-            SongArtworkState(
-                model = resolved,
-                showDefaultCover = showDefaultWhenMissing && resolved == null
-            )
         }
+        resolvedState
     }
     return state
 }
@@ -163,7 +177,8 @@ private object ArtworkModelMemoryCache {
     // so library cells do not fall back to DefaultAlbumCover on return.
     private val cache = object : LruCache<String, Any>(32 * 1024) {
         override fun sizeOf(key: String, value: Any): Int = when (value) {
-            is Bitmap -> value.byteCount / 1024
+            is Bitmap -> (value.byteCount / 1024).coerceAtLeast(1)
+            is ByteArray -> (value.size / 1024).coerceAtLeast(1)
             else -> 1
         }
     }

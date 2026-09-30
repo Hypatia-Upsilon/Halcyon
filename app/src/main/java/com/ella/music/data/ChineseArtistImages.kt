@@ -75,5 +75,37 @@ internal fun preferredArtistImageMatch(query: String, names: List<String>): Int 
     if (exact >= 0) return exact
     val decorated = names.indexOfFirst { it.substringBefore('(').substringBefore('（').trim() == target }
     if (decorated >= 0) return decorated
-    return names.indexOfFirst { artistImageNameMatches(target, it) }
+    return names.indices.filter { artistImageNameMatches(target, names[it]) }
+        .minByOrNull { artistNameCaseRank(target, names[it].substringBefore('(').substringBefore('（').trim()) } ?: -1
 }
+
+internal fun artistBiographyScriptCandidates(name: String): List<String> {
+    val clean = name.trim()
+    if (clean.none { it in '\u3400'..'\u9fff' }) return listOf(clean)
+    return listOf(clean, com.github.houbb.opencc4j.util.ZhConverterUtil.toSimple(clean)).distinct()
+}
+
+internal fun artistBiographyNameMatches(query: String, candidate: String): Boolean {
+    if (query.trim().equals(candidate.trim(), ignoreCase = true)) return true
+    val clean = candidate.substringBefore('(').substringBefore('（').trim()
+    if (query.trim().equals(clean, ignoreCase = true)) return true
+    return artistBiographyScriptCandidates(query).any { it.equals(clean, ignoreCase = true) }
+}
+
+internal fun artistBiographyNameCandidates(name: String): List<String> =
+    artistBiographyScriptCandidates(name).flatMap { clean ->
+        val lower = clean.lowercase(java.util.Locale.ROOT)
+        val title = lower.split(Regex("\\s+")).joinToString(" ") { it.replaceFirstChar(Char::titlecase) }
+        listOf(clean, title, lower, clean.uppercase(java.util.Locale.ROOT))
+    }.distinct()
+
+internal fun artistNameCaseRank(query: String, candidate: String): Int {
+    val priorities = artistBiographyNameCandidates(query)
+    return priorities.indexOf(candidate.trim()).takeIf { it >= 0 } ?: priorities.size
+}
+
+internal fun artistBiographyCandidateIndices(query: String, names: List<String>): List<Int> =
+    names.indices.filter { artistBiographyNameMatches(query, names[it]) }.sortedWith(
+        compareBy<Int> { artistNameCaseRank(query, names[it].substringBefore('(').substringBefore('（').trim()) }
+            .thenBy { if (names[it].trim() == query.trim()) 0 else 1 }
+    )

@@ -1,12 +1,14 @@
 package com.ella.music.ui.artist
 
+import com.ella.music.ui.components.dragSelectList
+import com.ella.music.ui.components.dragSelectGrid
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -33,7 +35,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -53,10 +54,12 @@ import com.ella.music.data.model.playlistIdentityKey
 import com.ella.music.ui.LibrarySortUiState
 import com.ella.music.ui.components.ConfirmDangerDialog
 import com.ella.music.ui.components.CoverPreviewDialog
+import com.ella.music.ui.components.ArtistPickerContent
 import com.ella.music.ui.components.EllaMiuixBottomSheet
 import com.ella.music.ui.components.EllaCenteredLoadingIndicator
 import com.ella.music.ui.components.FastIndexBar
 import com.ella.music.ui.components.LazyListScrollIndicator
+import com.ella.music.ui.components.ScrollIndicatorListEndPadding
 import com.ella.music.ui.components.RestoreListScrollAfterSearch
 import com.ella.music.ui.components.LibraryFloatingControlsBottomPadding
 import com.ella.music.ui.components.LibraryFloatingControlsEndPadding
@@ -82,12 +85,8 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.Search
-import top.yukonga.miuix.kmp.icon.extended.Add
-import top.yukonga.miuix.kmp.icon.extended.AddFolder
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Delete
-import top.yukonga.miuix.kmp.icon.extended.Forward
-import top.yukonga.miuix.kmp.icon.extended.Play
 import top.yukonga.miuix.kmp.icon.extended.SelectAll
 import top.yukonga.miuix.kmp.icon.extended.Share
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -103,6 +102,7 @@ fun ArtistScreen(
     onAlbumClick: (Long) -> Unit,
     onArtistClick: (String) -> Unit = {},
     onMetadataCategoryClick: (String, String) -> Unit = { _, _ -> },
+    onOpenLastFmSettings: () -> Unit = {},
     onNavigateToPlayer: () -> Unit
 ) {
     val context = LocalContext.current
@@ -148,6 +148,7 @@ fun ArtistScreen(
     var musicVideoRevision by remember { mutableStateOf(0) }
     var pendingDeleteMusicVideos by remember { mutableStateOf<List<ArtistMusicVideo>>(emptyList()) }
     var musicVideoMenuTarget by remember { mutableStateOf<ArtistMusicVideo?>(null) }
+    var musicVideoArtistChoices by remember { mutableStateOf<List<String>>(emptyList()) }
     var showIntroduction by rememberSaveable(artistName) { mutableStateOf(false) }
     var artistCoverPreviewVisible by remember(artistName) { mutableStateOf(false) }
     var musicVideoInfoTarget by remember { mutableStateOf<ArtistMusicVideo?>(null) }
@@ -549,6 +550,7 @@ fun ArtistScreen(
         ArtistIntroductionScreen(
             artistName = artistName,
             songs = artistSongs,
+            onOpenLastFmSettings = onOpenLastFmSettings,
             coverModel = customArtistCoverAssets
                 .firstOrNull { it.kind == ArtistCoverKind.Image }
                 ?.uri
@@ -608,8 +610,8 @@ fun ArtistScreen(
         } else {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 120.dp)
+            modifier = Modifier.fillMaxSize().dragSelectList(listState, selection, currentSelectionIds, itemIdsByKey = remember(currentSelectionIds, sortedArtistMusicVideos) { currentSelectionIds.associate { (it as Any) to listOf(it) } + sortedArtistMusicVideos.associate { ("${it.song.id}:${it.source.failureKey}" as Any) to listOf(it.song.id) } }),
+            contentPadding = PaddingValues(bottom = 120.dp, end = if (showScrollIndicator) ScrollIndicatorListEndPadding else 0.dp)
         ) {
             item {
                 ArtistHeader(
@@ -719,7 +721,7 @@ fun ArtistScreen(
                         )
                     }
 
-                    itemsIndexed(sortedArtistSongs) { index, song ->
+                    itemsIndexed(sortedArtistSongs, key = { _, song -> song.id }) { index, song ->
                         val selected = song.id in selection.selectedIds
                         val albumArtUri = remember(song.albumId) {
                             song.albumId
@@ -937,7 +939,8 @@ fun ArtistScreen(
                         ArtistBiographyPanel(
                             artistName = artistName,
                             songs = artistSongs,
-                            downloadMode = artistBioDownload
+                            downloadMode = artistBioDownload,
+                            onOpenLastFmSettings = onOpenLastFmSettings
                         )
                     }
                 }
@@ -1255,6 +1258,7 @@ fun ArtistScreen(
             allSelected = currentSelectionIds.isNotEmpty() && selectedVisibleCount == currentSelectionIds.size,
             onRangeSelect = { selection.applyRangeSelection(currentSelectionIds, currentSelectionIndexById) },
             onSelectAll = { selection.toggleSelectAll(currentSelectionIds) },
+            onInvertSelection = { selection.invertSelection(currentSelectionIds) },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = LibraryFloatingControlsEndPadding, bottom = LibraryFloatingControlsBottomPadding)
@@ -1292,16 +1296,41 @@ fun ArtistScreen(
         musicVideoMenuTarget?.let { item ->
             EllaMiuixBottomSheet(
                 show = true,
-                title = item.song.title,
+                title = stringResource(R.string.player_more_actions),
                 onDismissRequest = { musicVideoMenuTarget = null }
             ) {
-                ArtistMusicVideoActionMenu(
+                com.ella.music.ui.components.MusicVideoActionMenu(
+                    song = item.song,
+                    onNavigateToArtist = onArtistClick,
                     onShare = {
                         MusicVideoLauncher.share(context, item.source.uri, item.song.title)
                     },
                     onInfo = { musicVideoInfoTarget = item },
                     onDelete = { pendingDeleteMusicVideos = listOf(item) },
-                    onDismiss = { musicVideoMenuTarget = null }
+                    onDismiss = { musicVideoMenuTarget = null },
+                    onArtistPickerRequested = { artists ->
+                        musicVideoMenuTarget = null
+                        musicVideoArtistChoices = artists
+                    }
+                )
+            }
+        }
+
+        if (musicVideoArtistChoices.isNotEmpty()) {
+            EllaMiuixBottomSheet(
+                show = true,
+                enableNestedScroll = false,
+                title = stringResource(R.string.song_more_select_artist),
+                onDismissRequest = { musicVideoArtistChoices = emptyList() }
+            ) {
+                ArtistPickerContent(
+                    artists = musicVideoArtistChoices,
+                    mainViewModel = mainViewModel,
+                    onArtistSelected = { artist ->
+                        musicVideoArtistChoices = emptyList()
+                        onArtistClick(artist)
+                    },
+                    onDismiss = { musicVideoArtistChoices = emptyList() }
                 )
             }
         }
@@ -1322,8 +1351,7 @@ fun ArtistScreen(
                             title = item.metadata.fileName,
                             mimeType = item.metadata.mimeType
                         )
-                    },
-                    onDismiss = { musicVideoInfoTarget = null }
+                    }
                 )
             }
         }
@@ -1364,6 +1392,7 @@ fun ArtistScreen(
                     initialIndex = initialIdx,
                     title = artistPreviewTitle,
                     saveName = artistName,
+                    imageKind = com.ella.music.data.ExportImageKind.Artist,
                     onDismiss = { artistCoverPreviewVisible = false }
                 )
             }

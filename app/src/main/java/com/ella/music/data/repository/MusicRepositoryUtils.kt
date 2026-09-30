@@ -52,6 +52,10 @@ internal fun Song.searchSnapshotKey(): String =
 internal fun Song.isWebDavRemoteSong(): Boolean =
     path.isHttpAudioSource() && onlineSource.isBlank()
 
+internal fun Song.isFileLibraryRemoteSong(): Boolean = isWebDavRemoteSong() ||
+    path.startsWith("smb://", true) || path.startsWith("ftp://", true) ||
+    path.startsWith("ftps://", true) || path.startsWith("sftp://", true)
+
 internal fun Song.webDavCacheExtension(): String =
     fileName.substringAfterLast('.', path.substringBefore('?').substringBefore('#').substringAfterLast('.', "audio"))
         .ifBlank { "audio" }
@@ -92,6 +96,11 @@ internal fun Song.effectiveLocalPathForMetadataBlocking(
     allowFullDownload: Boolean = false
 ): String {
     if (path.isContentAudioSource()) return path
+    RemoteAudioCache.localFileIfCached(this)?.let { return it.absolutePath }
+    if (path.startsWith("smb://", true)) return com.ella.music.data.smb.SmbMetadataCache.metadataFile(
+        settingsManager.applicationContext, this)?.absolutePath ?: path
+    if (path.startsWith("ftp://", true) || path.startsWith("ftps://", true) || path.startsWith("sftp://", true))
+        return com.ella.music.data.ftp.TransferMetadataCache.metadataFile(settingsManager.applicationContext, this)?.absolutePath ?: path
     if (!path.isHttpAudioSource()) return path
     val fullCache = webDavFullCacheFile(remoteAudioCacheDir)
     if (fullCache.exists() && fullCache.length() > 0L) return fullCache.absolutePath
@@ -152,19 +161,6 @@ internal suspend fun loadWebDavConfig(settingsManager: SettingsManager): WebDavC
         password = settingsManager.webDavPassword.first(),
         customHeaders = settingsManager.webDavCustomHeaders.first()
     )
-}
-
-internal fun downloadWebDavMetadataHeader(song: Song, config: WebDavConfig, cacheDir: File): File? {
-    val target = song.webDavHeaderCacheFile(cacheDir)
-    if (target.exists() && target.length() > 0L) {
-        val usable = when {
-            song.isLikelyFlacAudio() -> WebDavClient.isFlacMetadataCacheUsable(target, song.fileSize)
-            song.supportsSparseWebDavMetadataWindow() -> song.fileSize <= 0L || target.length() >= song.fileSize
-            else -> false
-        }
-        if (usable) return target
-    }
-    return WebDavClient.downloadHeaderToFile(song.path, config, target)
 }
 
 internal fun downloadHttpMetadataHeader(song: Song, httpClient: OkHttpClient, cacheDir: File): File? {

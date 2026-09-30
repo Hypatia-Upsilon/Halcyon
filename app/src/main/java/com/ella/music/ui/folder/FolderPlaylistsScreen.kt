@@ -1,8 +1,10 @@
 package com.ella.music.ui.folder
 
+import com.ella.music.ui.components.dragSelectList
+import com.ella.music.ui.components.dragSelectGrid
+
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,7 +38,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ella.music.R
@@ -48,14 +49,8 @@ import com.ella.music.data.playbackSourcesForSongs
 import com.ella.music.ui.LibrarySortUiState
 import com.ella.music.ui.components.ConfirmDangerDialog
 import com.ella.music.ui.components.EllaSearchBar
-import com.ella.music.ui.components.EllaMiuixActionMenuGroup
 import com.ella.music.ui.components.EllaMiuixBottomSheet
-import com.ella.music.ui.components.EllaMiuixMenuItem
 import com.ella.music.ui.components.EllaSmallTopAppBar
-import com.ella.music.ui.components.ActionMenuCommonIcons
-import com.ella.music.ui.components.actionMenuIcon
-import com.ella.music.data.ActionMenuIds
-import top.yukonga.miuix.kmp.icon.extended.Refresh
 import com.ella.music.data.model.FAVORITES_PLAYLIST_ID
 import com.ella.music.data.model.UserPlaylist
 import com.ella.music.ui.components.AddToPlaylistSheet
@@ -89,18 +84,16 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Add
-import top.yukonga.miuix.kmp.icon.extended.AddFolder
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.Play
 import top.yukonga.miuix.kmp.icon.extended.Pin
 import top.yukonga.miuix.kmp.icon.extended.SelectAll
-import top.yukonga.miuix.kmp.icon.extended.Forward
 import top.yukonga.miuix.kmp.icon.extended.Playlist
 import top.yukonga.miuix.kmp.icon.basic.Search
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.rememberReorderableLazyListState
+import com.ella.music.ui.components.rememberEllaReorderableLazyListState
 
 @Composable
 fun FolderPlaylistsScreen(
@@ -163,6 +156,7 @@ fun FolderPlaylistsScreen(
     var pendingDelete by remember { mutableStateOf<FolderPlaylist?>(null) }
     var searchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    val folderDisplayColumns = rememberFolderDisplaySettings().columns
     val listState = rememberLazyListState()
     RestoreListScrollAfterSearch(
         searchExpanded = searchExpanded,
@@ -219,7 +213,11 @@ fun FolderPlaylistsScreen(
     val reorderEnabled = selection.selectionMode &&
         sortMode == FolderPlaylistSortMode.Custom &&
         searchQuery.isBlank()
-    val customPlaylistsSource = if (reorderEnabled) manualCustomPlaylists else sortedPlaylists
+    val customPlaylistsSource = when {
+        reorderEnabled || (manualCustomOrderDirty && sortMode == FolderPlaylistSortMode.Custom) -> manualCustomPlaylists
+        manualCustomOrderDirty && sortMode == FolderPlaylistSortMode.CustomDesc -> manualCustomPlaylists.asReversed()
+        else -> sortedPlaylists
+    }
     val filteredPlaylists = remember(customPlaylistsSource, searchQuery) {
         val query = searchQuery.trim()
         if (query.isBlank()) {
@@ -251,20 +249,20 @@ fun FolderPlaylistsScreen(
             filteredPlaylists.filter { it.id == draggedPlaylistId || it.id !in draggedSelectionIds }
         }
     }
-    val reorderableLazyListState = rememberReorderableLazyListState(
+    val reorderableLazyListState = rememberEllaReorderableLazyListState(
         lazyListState = listState,
         onMove = { from, to ->
-            if (!reorderEnabled) return@rememberReorderableLazyListState
+            if (!reorderEnabled) return@rememberEllaReorderableLazyListState
             val fromIndex = from.index
             val toIndex = to.index
             val fromPlaylist = reorderablePlaylists.getOrNull(fromIndex)
-                ?: return@rememberReorderableLazyListState
+                ?: return@rememberEllaReorderableLazyListState
             val toPlaylist = reorderablePlaylists.getOrNull(toIndex)
-                ?: return@rememberReorderableLazyListState
+                ?: return@rememberEllaReorderableLazyListState
             val sourceIndex = manualCustomPlaylists.indexOfFirst { it.id == fromPlaylist.id }
             val targetIndex = manualCustomPlaylists.indexOfFirst { it.id == toPlaylist.id }
             if (sourceIndex !in manualCustomPlaylists.indices || targetIndex !in manualCustomPlaylists.indices) {
-                return@rememberReorderableLazyListState
+                return@rememberEllaReorderableLazyListState
             }
             manualCustomPlaylists = manualCustomPlaylists.moveSelectedItemsAsBlock(
                 from = sourceIndex,
@@ -276,11 +274,17 @@ fun FolderPlaylistsScreen(
         }
     )
     fun persistManualFolderPlaylistOrder() {
+        val ids = manualCustomPlaylists.map(FolderPlaylist::id)
         scope.launch {
             mainViewModel.settingsManager.setFolderPlaylistCustomOrder(
-                manualCustomPlaylists.map(FolderPlaylist::id)
+                ids
             )
         }
+    }
+    fun applyManualFolderPlaylistOrder(ids: List<String>) {
+        manualCustomPlaylists = playlists.applyFolderPlaylistCustomOrder(ids)
+        manualCustomOrderDirty = true
+        scope.launch { mainViewModel.settingsManager.setFolderPlaylistCustomOrder(ids) }
     }
     val randomFolderPlaylistSongs = remember(filteredPlaylists, songs) {
         filteredPlaylists
@@ -382,7 +386,9 @@ fun FolderPlaylistsScreen(
                 stringResource(R.string.folder_playlist_title)
             },
             color = ellaPageBackground(),
-            titleEndPadding = 192.dp,
+            // Six selection actions occupy the right side. Keep the title gesture area clear of
+            // the first (pin) action so it remains reliably tappable on narrow screens.
+            titleEndPadding = if (selection.selectionMode) 304.dp else 192.dp,
             onDoubleTapTitle = { scope.launch { listState.animateScrollToItem(0) } },
             navigationIcon = {
                 if (showBackButton || selection.selectionMode) {
@@ -397,16 +403,14 @@ fun FolderPlaylistsScreen(
                 }
             },
             actions = {
+
                 if (selection.selectionMode) {
                     IconButton(onClick = {
                         val keys = selection.selectedIdsInSelectionOrder()
                         if (keys.isNotEmpty()) {
-                            scope.launch {
-                                val orderedIds = keys + customSortedPlaylists
-                                    .map(FolderPlaylist::id)
-                                    .filterNot { it in keys }
-                                mainViewModel.settingsManager.setFolderPlaylistCustomOrder(orderedIds)
-                            }
+                            val orderedIds = keys + customSortedPlaylists
+                                .map(FolderPlaylist::id).filterNot { it in keys }
+                            applyManualFolderPlaylistOrder(orderedIds)
                             selection.finishSelectionMode()
                         }
                     }) {
@@ -628,11 +632,24 @@ fun FolderPlaylistsScreen(
             }
             Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
             LazyColumn(
+                horizontalAlignment = Alignment.CenterHorizontally,
                 state = listState,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().dragSelectList(listState, selection, displayedPlaylistIds, excludedEndWidth = 112.dp),
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 130.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                if (folderDisplayColumns > 1 && !selection.selectionMode) {
+                    items(reorderablePlaylists.chunked(folderDisplayColumns), key = { it.first().id }) { row ->
+                        AdaptiveFolderRow(row, folderDisplayColumns, { it.id }) { playlist ->
+                            FolderPlaylistTile(playlist.name, songCountMap[playlist] ?: 0,
+                                coverModelMap[playlist],
+                                onClick = { onOpenPlaylist(playlist.id) },
+                                onLongClick = { selection.selectionMode = true; selection.toggleSelection(playlist.id) },
+                                onMore = { moreMenuTarget = playlist },
+                                onSync = { scope.launch { mainViewModel.refreshFolderPlaylistFolders(playlist.folders) } })
+                        }
+                    }
+                } else {
                 itemsIndexed(reorderablePlaylists, key = { _, playlist -> playlist.id }) { _, playlist ->
                     val songCount = songCountMap[playlist] ?: 0
                     val duration = durationMap[playlist] ?: 0L
@@ -690,6 +707,7 @@ fun FolderPlaylistsScreen(
                         )
                     }
                 }
+                }
             }
             FloatingSelectionControls(
                 visible = selection.selectionMode && displayedPlaylistIds.isNotEmpty(),
@@ -697,6 +715,7 @@ fun FolderPlaylistsScreen(
                 allSelected = displayedPlaylistIds.isNotEmpty() && selectedVisibleCount == displayedPlaylistIds.size,
                 onRangeSelect = { selection.applyRangeSelection(displayedPlaylistIds, displayedIndexById) },
                 onSelectAll = ::selectAllPlaylists,
+                onInvertSelection = { selection.invertSelection(displayedPlaylistIds) },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = LibraryFloatingControlsEndPadding, bottom = LibraryFloatingControlsBottomPadding)
@@ -712,11 +731,9 @@ fun FolderPlaylistsScreen(
             onDismissRequest = { moreMenuTarget = null },
             actions = listOf(
                 com.ella.music.ui.components.LibraryEntityActions.pinToTop {
-                    scope.launch {
-                        mainViewModel.settingsManager.setFolderPlaylistCustomOrder(
-                            (listOf(playlist.id) + customSortedPlaylists.map(FolderPlaylist::id)).distinct()
-                        )
-                    }
+                    applyManualFolderPlaylistOrder(
+                        (listOf(playlist.id) + customSortedPlaylists.map(FolderPlaylist::id)).distinct()
+                    )
                     moreMenuTarget = null
                 },
                 com.ella.music.ui.components.LibraryEntityActions.refresh {

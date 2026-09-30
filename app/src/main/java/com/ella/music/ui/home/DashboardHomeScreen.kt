@@ -1,7 +1,6 @@
 package com.ella.music.ui.home
 
 import com.ella.music.data.netease.toNeteaseHistorySong
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -31,11 +30,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ella.music.R
+import com.ella.music.ui.components.rememberBackgroundBrowseCalculation
 import com.ella.music.data.CategoryResumeKeys
 import com.ella.music.data.SettingsManager
 import com.ella.music.data.model.Song
 import com.ella.music.data.model.FolderPlaylist
-import com.ella.music.data.model.playlistIdentityKey
 import com.ella.music.data.artistNamesForSong
 import com.ella.music.data.splitArtistNames
 import com.ella.music.data.tagIdentityKey
@@ -85,6 +84,7 @@ fun HomeScreen(
     onNavigateToWebDav: () -> Unit,
     onNavigateToAnalytics: () -> Unit,
     onNavigateToRecentPlayback: () -> Unit = {},
+    onNavigateToPosterWall: () -> Unit = {},
     onNavigateToAiChat: () -> Unit = {},
     onNavigateToMetadataCategory: (String) -> Unit,
     onNavigateToPlayer: () -> Unit,
@@ -160,6 +160,10 @@ fun HomeScreen(
         mainViewModel.getMetadataCategoryCounts(listOf("folder", "genre", "year", "composer", "arranger", "lyricist"))
     }
     val folderCount = metadataCategoryCounts["folder"] ?: 0
+    val customCategories by settingsManager.customMetadataCategories.collectAsState(initial = emptyList())
+    val customCategoryCounts by rememberBackgroundBrowseCalculation(emptyMap<String, Int>(), songs, customCategories, nameSplitRevision) {
+        mainViewModel.getMetadataCategoryCounts(customCategories.map { it.type })
+    }
     val genreCount = metadataCategoryCounts["genre"] ?: 0
     val yearCount = metadataCategoryCounts["year"] ?: 0
     val composerCount = metadataCategoryCounts["composer"] ?: 0
@@ -288,14 +292,14 @@ fun HomeScreen(
                 homeSectionOrder.csvIds(SettingsManager.DEFAULT_HOME_SECTION_ORDER)
             }
             val hiddenTiles = remember(homeHiddenLibraryTiles) { homeHiddenLibraryTiles.csvIdSet() }
-            val tileOrder = remember(homeLibraryTileOrder) {
+            val tileOrder = remember(homeLibraryTileOrder, customCategories) {
                 val defaults = SettingsManager.DEFAULT_HOME_LIBRARY_TILE_ORDER.csvIds(
                     SettingsManager.DEFAULT_HOME_LIBRARY_TILE_ORDER
                 )
-                val configured = homeLibraryTileOrder.csvIds(
+                val configured = (homeLibraryTileOrder.csvIds(
                     SettingsManager.DEFAULT_HOME_LIBRARY_TILE_ORDER
-                )
-                if ("recent_playback" in configured) {
+                ) + customCategories.map { it.type }).distinct()
+                val withRecent = if ("recent_playback" in configured) {
                     configured
                 } else {
                     val recentPlaybackIndex = defaults.indexOf("recent_playback")
@@ -304,6 +308,9 @@ fun HomeScreen(
                         defaultIndex >= 0 && defaultIndex > recentPlaybackIndex
                     }.takeIf { it >= 0 } ?: configured.size
                     configured.toMutableList().apply { add(insertAt, "recent_playback") }
+                }
+                if ("poster_wall" in withRecent) withRecent else withRecent.toMutableList().apply {
+                    add((indexOf("recent_playback") + 1).coerceIn(0, size), "poster_wall")
                 }
             }
             val hiddenOnlineTiles = remember(homeHiddenOnlineTiles) { homeHiddenOnlineTiles.csvIdSet() }
@@ -324,9 +331,17 @@ fun HomeScreen(
                 composerCount,
                 arrangerCount,
                 lyricistCount,
-                playbackHistory.size
+                playbackHistory.size,
+                customCategories,
+                customCategoryCounts
             ) {
                 val all = mapOf(
+                    "poster_wall" to HomeTileSpec(
+                        "poster_wall", context.getString(R.string.poster_wall_title),
+                        context.getString(R.string.poster_wall_summary),
+                        Screen.PosterWall.route, onNavigateToPosterWall,
+                        icon = com.ella.music.ui.poster.PosterWallIcon
+                    ),
                     "artist" to HomeTileSpec(
                         "artist", context.getString(R.string.category_artist),
                         context.getString(R.string.home_count_artists, artistCount),
@@ -402,13 +417,18 @@ fun HomeScreen(
                         { onNavigateToMetadataCategory("lyricist") }
                     )
                 )
-                tileOrder.mapNotNull { all[it] }
+                val customTiles = customCategories.associate { category ->
+                    category.type to HomeTileSpec(category.type, category.name,
+                        context.getString(R.string.category_count_general, customCategoryCounts[category.type] ?: 0),
+                        Screen.MetadataCategory.createRoute(category.type),
+                        { onNavigateToMetadataCategory(category.type) }, icon = MiuixIcons.Regular.Music)
+                }
+                tileOrder.mapNotNull { all[it] ?: customTiles[it] }
             }
             val onlineTiles = remember(context, onlineTileOrder, hiddenOnlineTiles) {
                 val all = mapOf(
                     "musicfree" to HomeTileSpec("musicfree", "MusicFree", context.getString(R.string.home_import_api_source), Screen.MusicFreeOnline.route, onNavigateToMusicFreeOnline),
-                    "lx" to HomeTileSpec("lx", "LX Music", context.getString(R.string.home_import_api_source), Screen.LxOnline.route, onNavigateToLxOnline),
-                    "webdav" to HomeTileSpec("webdav", "WebDAV", context.getString(R.string.home_connect_cloud_music), Screen.WebDav.route, onNavigateToWebDav)
+                    "lx" to HomeTileSpec("lx", "LX Music", context.getString(R.string.home_import_api_source), Screen.LxOnline.route, onNavigateToLxOnline)
                 )
                 onlineTileOrder.mapNotNull { all[it] }.filterNot { it.id in hiddenOnlineTiles }
             }

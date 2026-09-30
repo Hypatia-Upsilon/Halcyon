@@ -12,7 +12,6 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import com.ella.music.data.remote.RemoteMusicProvider
 import androidx.annotation.StringRes
 import com.ella.music.R
 import org.json.JSONObject
@@ -45,10 +44,6 @@ data class LxSourceConfig(
     val script: String
 )
 
-data class OnlineSourceSelection(
-    val provider: RemoteMusicProvider
-)
-
 enum class BottomBarGlassEffect {
     Blur,
     LiquidGlass
@@ -74,6 +69,8 @@ class SettingsManager(private val context: Context) :
     LibrarySettingsAccess by LibrarySettingsAccessImpl(context),
     SortSettingsAccess by SortSettingsAccessImpl(context),
     RemoteSourceSettingsAccess by RemoteSourceSettingsAccessImpl(context) {
+
+    internal val applicationContext: Context get() = context.applicationContext
 
     val musicFreePlugins: Flow<List<MusicFreePluginConfig>> = context.dataStore.data.map { it.musicFreePlugins() }
     val selectedMusicFreePluginId: Flow<String> = context.dataStore.data.map { it[KEY_MUSICFREE_SELECTED_PLUGIN_ID].orEmpty() }
@@ -122,13 +119,6 @@ class SettingsManager(private val context: Context) :
                 prefs[KEY_MUSICFREE_PLUGINS_JSON] = plugins.toMusicFreeJson()
                 prefs[KEY_MUSICFREE_SELECTED_PLUGIN_ID] = selected.id
             }
-        }
-    }
-
-    suspend fun clearMusicFreePlugins() {
-        context.dataStore.edit {
-            it.remove(KEY_MUSICFREE_PLUGINS_JSON)
-            it.remove(KEY_MUSICFREE_SELECTED_PLUGIN_ID)
         }
     }
 
@@ -195,6 +185,20 @@ class SettingsManager(private val context: Context) :
             ?.toSet()
             ?.takeIf { it.isNotEmpty() }
             ?: DEFAULT_RECENT_PLAYBACK_COLLECTION_TYPES.split(',').toSet()
+    }
+
+    val recentPlaybackFolderTypes: Flow<Set<String>> = context.dataStore.data.map {
+        parseRecentPlaybackTypes(it[KEY_RECENT_PLAYBACK_FOLDER_TYPES], setOf("folder", "nested_folder"))
+    }
+    val recentPlaybackMvTypes: Flow<Set<String>> = context.dataStore.data.map {
+        parseRecentPlaybackTypes(it[KEY_RECENT_PLAYBACK_MV_TYPES], setOf("local", "online"))
+    }
+
+    suspend fun setRecentPlaybackFolderTypes(types: Set<String>) {
+        context.dataStore.edit { it[KEY_RECENT_PLAYBACK_FOLDER_TYPES] = types.sorted().joinToString(",") }
+    }
+    suspend fun setRecentPlaybackMvTypes(types: Set<String>) {
+        context.dataStore.edit { it[KEY_RECENT_PLAYBACK_MV_TYPES] = types.sorted().joinToString(",") }
     }
 
     suspend fun setRecentPlaybackLimit(tab: String, limit: Int) {
@@ -271,6 +275,7 @@ class SettingsManager(private val context: Context) :
         val KEY_APP_DISPLAY_SCALE_PERCENT = intPreferencesKey("app_display_scale_percent")
         val KEY_APP_LANGUAGE = stringPreferencesKey("app_language")
         val KEY_APP_ICON_STYLE = stringPreferencesKey("app_icon_style")
+        val KEY_RECENTS_ICON_FOLLOWS_SYSTEM_THEME = booleanPreferencesKey("recents_icon_follows_system_theme")
         val KEY_WIDGET_SAFE_LAYOUT = booleanPreferencesKey("widget_safe_layout")
         val KEY_LIBRARY_SOURCE = stringPreferencesKey("library_source")
         val KEY_BOTTOM_BAR_STYLE = stringPreferencesKey("bottom_bar_style")
@@ -301,6 +306,20 @@ class SettingsManager(private val context: Context) :
         val KEY_SAMSUNG_FLOATING_LYRIC_TRANSLATION = booleanPreferencesKey("samsung_floating_lyric_translation")
         val KEY_STATUS_BAR_ALLOW_PHONETIC = booleanPreferencesKey("status_bar_allow_phonetic")
         val KEY_DESKTOP_LYRIC_ENABLED = booleanPreferencesKey("desktop_lyric_enabled")
+        val KEY_DESKTOP_LYRIC_WORD_LIFT = booleanPreferencesKey("desktop_lyric_word_lift")
+        val KEY_SMB_URL = stringPreferencesKey("smb_url")
+        val KEY_SMB_USERNAME = stringPreferencesKey("smb_username")
+        val KEY_SMB_DOMAIN = stringPreferencesKey("smb_domain")
+        val KEY_SMB_PROTOCOL = stringPreferencesKey("smb_protocol")
+        val KEY_FTP_CONFIG = stringPreferencesKey("ftp_config")
+        val KEY_SFTP_CONFIG = stringPreferencesKey("sftp_config")
+        val KEY_ARTIST_IMAGE_SAVE_LOCATION = stringPreferencesKey("artist_image_save_location")
+        val KEY_MV_DOWNLOAD_LOCATION = stringPreferencesKey("mv_download_location")
+        val KEY_MV_DOWNLOAD_TEMPLATE = stringPreferencesKey("mv_download_template")
+        val KEY_POSTER_WALL_SOURCE = stringPreferencesKey("poster_wall_source")
+        val KEY_POSTER_WALL_STACK_LAYOUTS = stringPreferencesKey("poster_wall_stack_layouts")
+        val KEY_POSTER_WALL_STACKED = booleanPreferencesKey("poster_wall_stacked")
+        val KEY_SPOTIFY_CANVAS_ENABLED = booleanPreferencesKey("spotify_canvas_enabled")
         val KEY_DESKTOP_LYRIC_HIDE_WHEN_PAUSED = booleanPreferencesKey("desktop_lyric_hide_when_paused")
         val KEY_DESKTOP_LYRIC_HIDE_IN_LANDSCAPE = booleanPreferencesKey("desktop_lyric_hide_in_landscape")
         val KEY_DESKTOP_LYRIC_HIDE_ON_PLAYER_PAGE = booleanPreferencesKey("desktop_lyric_hide_on_player_page")
@@ -344,6 +363,7 @@ class SettingsManager(private val context: Context) :
         val KEY_FOLDER_NAME_AS_ALBUM_WHEN_MISSING = booleanPreferencesKey("folder_name_as_album_when_missing")
         val KEY_REPLAYGAIN_ENABLED = booleanPreferencesKey("replaygain_enabled")
         val KEY_REPLAYGAIN_MODE = intPreferencesKey("replaygain_mode")
+        val KEY_REPLAYGAIN_PREAMP_HUNDREDTHS_DB = intPreferencesKey("replaygain_preamp_hundredths_db")
         val KEY_RESUME_PLAYBACK_POSITION = booleanPreferencesKey("resume_playback_position")
         val KEY_AUDIO_FOCUS_DISABLED = booleanPreferencesKey("audio_focus_disabled")
         val KEY_SHUFFLE_MODE = intPreferencesKey("shuffle_mode")
@@ -429,6 +449,7 @@ class SettingsManager(private val context: Context) :
         val KEY_SONG_INFO_LAYOUT = stringPreferencesKey("song_info_layout")
         val KEY_QUEUE_TOOLBAR_LAYOUT = stringPreferencesKey("queue_toolbar_layout")
         val KEY_PLAYER_LANDSCAPE_STYLE = intPreferencesKey("player_landscape_style")
+        val KEY_PLAYER_CLOCK_COLOR = intPreferencesKey("player_clock_color")
         val KEY_PLAYER_KEEP_SCREEN_ON = booleanPreferencesKey("player_keep_screen_on")
         val KEY_PLAYER_LANDSCAPE_HIDE_SYSTEM_BARS = booleanPreferencesKey("player_landscape_hide_system_bars")
         val KEY_PLAYER_HDR_GLOW = booleanPreferencesKey("player_hdr_glow")
@@ -448,6 +469,7 @@ class SettingsManager(private val context: Context) :
         val KEY_HIDE_SYSTEM_BARS = booleanPreferencesKey("hide_system_bars")
         val KEY_PLAYER_DYNAMIC_FLOW_ENABLED = booleanPreferencesKey("player_dynamic_flow_enabled")
         val KEY_PLAYER_APPLE_FLOW_SPEED = intPreferencesKey("player_apple_flow_speed")
+        val KEY_AUDIO_VISUALIZER_RAINBOW = booleanPreferencesKey("audio_visualizer_rainbow")
         val KEY_AUDIO_VISUALIZER_ENABLED = booleanPreferencesKey("audio_visualizer_enabled")
         val KEY_AUDIO_VISUALIZER_BLUR = intPreferencesKey("audio_visualizer_blur")
         val KEY_HOME_FEATURE_STYLE = intPreferencesKey("home_feature_style")
@@ -511,6 +533,7 @@ class SettingsManager(private val context: Context) :
         val KEY_USB_DAC_MODE = booleanPreferencesKey("usb_dac_mode")
         val KEY_DYNAMIC_COVER_ENABLED = booleanPreferencesKey("dynamic_cover_enabled")
         val KEY_MUSIC_VIDEO_SYNC_ENABLED = booleanPreferencesKey("music_video_sync_enabled")
+        val KEY_VIDEO_HOLD_SPEED_PERCENT = intPreferencesKey("video_hold_speed_percent")
         val KEY_MUSIC_VIDEO_CAPTURE_SUBTITLES = booleanPreferencesKey("music_video_capture_subtitles")
         val KEY_MUSIC_VIDEO_STRETCH_ENABLED = booleanPreferencesKey("music_video_stretch_enabled")
         val KEY_MUSIC_VIDEO_ORIENTATION = intPreferencesKey("music_video_orientation")
@@ -529,6 +552,7 @@ class SettingsManager(private val context: Context) :
         val KEY_ARTIST_IMAGE_DOWNLOAD = intPreferencesKey("artist_image_download")
         val KEY_ARTIST_IMAGE_SOURCES = stringPreferencesKey("artist_image_sources")
         val KEY_ARTIST_IMAGE_REGION = stringPreferencesKey("artist_image_region")
+        val KEY_ARTIST_SPOTIFY_REGION = stringPreferencesKey("artist_spotify_region")
         val KEY_SPOTIFY_CLIENT_ID = stringPreferencesKey("spotify_client_id")
         val KEY_SPOTIFY_CLIENT_SECRET = stringPreferencesKey("spotify_client_secret")
         const val BG_EFFECT_OS2 = 0
@@ -586,9 +610,13 @@ class SettingsManager(private val context: Context) :
         val KEY_ARTIST_BIO_DOWNLOAD = intPreferencesKey("artist_bio_download")
         val KEY_ARTIST_BIO_LASTFM_LANG = stringPreferencesKey("artist_bio_lastfm_lang")
         val KEY_ARTIST_BIO_SOURCE = stringPreferencesKey("artist_bio_source")
+        val KEY_ARTIST_BIO_MATCH_RULES = stringPreferencesKey("artist_bio_match_rules")
         val KEY_METADATA_EDITOR_ID = stringPreferencesKey("metadata_editor_id")
         val KEY_LYRIC_TIMING_EDITOR_ID = stringPreferencesKey("lyric_timing_editor_id")
         val KEY_SPECTRUM_VIEWER_ID = stringPreferencesKey("spectrum_viewer_id")
+        const val SLEEP_TIMER_MAX_HOURS = 6
+        const val SLEEP_TIMER_MIN_MINUTES = 1
+        const val SLEEP_TIMER_MAX_MINUTES = SLEEP_TIMER_MAX_HOURS * 60 + 59
         val KEY_SLEEP_TIMER_CUSTOM_MINUTES = intPreferencesKey("sleep_timer_custom_minutes")
         val KEY_SLEEP_TIMER_STOP_AFTER_CURRENT = booleanPreferencesKey("sleep_timer_stop_after_current")
         val KEY_SHORTCUT_LIBRARY_LABEL = stringPreferencesKey("shortcut_library_label")
@@ -616,6 +644,7 @@ class SettingsManager(private val context: Context) :
         val KEY_NETEASE_MV_RESOLUTION = intPreferencesKey("netease_mv_resolution")
         val KEY_NETEASE_MV_DOWNLOAD_RESOLUTION = intPreferencesKey("netease_mv_download_resolution")
         val KEY_NETEASE_QUALITY = stringPreferencesKey("netease_quality")
+        val KEY_NETEASE_PLAYBACK_PROVIDER = stringPreferencesKey("netease_playback_provider")
         val KEY_LX_SOURCE_URL = stringPreferencesKey("lx_source_url")
         val KEY_LX_SOURCE_NAME = stringPreferencesKey("lx_source_name")
         val KEY_LX_SOURCE_SCRIPT = stringPreferencesKey("lx_source_script")
@@ -647,6 +676,8 @@ class SettingsManager(private val context: Context) :
         val KEY_OPEN_PLAYER_FROM_NOTIFICATION = booleanPreferencesKey("open_player_from_notification")
         val KEY_STARTUP_AUTO_PLAY = booleanPreferencesKey("startup_auto_play")
         val KEY_STARTUP_PLAY_MODE = intPreferencesKey("startup_play_mode")
+        // Open the app straight into the now-playing surface (settings → 底部导航 → 启动页).
+        val KEY_STARTUP_OPEN_PLAYER = booleanPreferencesKey("startup_open_player")
         val KEY_BLUETOOTH_AUTO_PLAY = booleanPreferencesKey("bluetooth_auto_play")
         val KEY_LYRIC_FONT_NAME = stringPreferencesKey("lyric_font_name")
         val KEY_LYRIC_FONT_PATH = stringPreferencesKey("lyric_font_path")
@@ -686,6 +717,7 @@ class SettingsManager(private val context: Context) :
         val KEY_FULL_TAG_SEARCH_PROMPT_HANDLED = booleanPreferencesKey("full_tag_search_prompt_handled")
         val KEY_COVER_EXPORT_FOLDER_URI = stringPreferencesKey("cover_export_folder_uri")
         val KEY_SEARCH_ALL_CATEGORY_TYPES = stringPreferencesKey("search_all_category_types")
+        val KEY_SEARCH_ALL_CATEGORY_TYPES_VERSION = intPreferencesKey("search_all_category_types_version")
         val KEY_SEARCH_ALL_SONG_MATCH_TYPES = stringPreferencesKey("search_all_song_match_types")
         val KEY_SONG_RATING_DISPLAY_MODE = intPreferencesKey("song_rating_display_mode")
         val KEY_INITIAL_SCAN_PROMPT_HANDLED = booleanPreferencesKey("initial_scan_prompt_handled")
@@ -724,12 +756,16 @@ class SettingsManager(private val context: Context) :
         val KEY_RECENT_PLAYBACK_LIMITS = stringPreferencesKey("recent_playback_limits")
         val KEY_RECENT_PLAYBACK_SHOW_DATES = stringPreferencesKey("recent_playback_show_dates")
         val KEY_RECENT_PLAYBACK_COLLECTION_TYPES = stringPreferencesKey("recent_playback_collection_types")
+        val KEY_RECENT_PLAYBACK_FOLDER_TYPES = stringPreferencesKey("recent_playback_folder_types")
+        val KEY_RECENT_PLAYBACK_MV_TYPES = stringPreferencesKey("recent_playback_mv_types")
         val KEY_HOME_FEATURE_WALLPAPER_URI = stringPreferencesKey("home_feature_wallpaper_uri")
         // This URI points to device-local app storage. Legacy JSON excludes the path; ZIP backups
         // carry the referenced image and restore it into the target app's private directory.
         const val BACKUP_EXCLUDED_HOME_FEATURE_WALLPAPER_URI = "home_feature_wallpaper_uri"
         val KEY_HOME_AI_MIX_VISIBLE = booleanPreferencesKey("home_ai_mix_visible")
         val KEY_CONTINUE_PLAYBACK_ROW_VISIBLE = booleanPreferencesKey("continue_playback_row_visible")
+        val KEY_LIBRARY_CONTINUE_PLAYBACK_ROW_VISIBLE = booleanPreferencesKey("library_continue_playback_row_visible")
+        val KEY_CATEGORY_CONTINUE_PLAYBACK_ROW_VISIBLE = booleanPreferencesKey("category_continue_playback_row_visible")
         val KEY_HOME_RECENT_SECTION_MODE = intPreferencesKey("home_recent_section_mode")
         val KEY_HOME_SECTION_ORDER_UPDATED = booleanPreferencesKey("home_section_order_updated")
         val KEY_HOME_SECTION_ORDER = stringPreferencesKey("home_section_order")
@@ -737,7 +773,11 @@ class SettingsManager(private val context: Context) :
         val KEY_HOME_TOP_BAR_ACTION_ORDER = stringPreferencesKey("home_top_bar_action_order")
         val KEY_HOME_HIDDEN_TOP_BAR_ACTIONS = stringPreferencesKey("home_hidden_top_bar_actions")
         val KEY_HOME_SHORTCUT_ITEMS = stringPreferencesKey("home_shortcut_items")
+        val KEY_CUSTOM_METADATA_CATEGORIES = stringPreferencesKey("custom_metadata_categories")
         val KEY_HOME_FEATURE_ITEMS = stringPreferencesKey("home_feature_items")
+        val KEY_HOME_POSTER_WALL_CONFIGURED = booleanPreferencesKey("home_poster_wall_configured")
+        val KEY_POSTER_WALL_INFINITE_SCROLL = booleanPreferencesKey("poster_wall_infinite_scroll")
+        val KEY_POSTER_WALL_LYRIC_STYLE = intPreferencesKey("poster_wall_lyric_style")
         val KEY_HOME_LIBRARY_TILE_ORDER = stringPreferencesKey("home_library_tile_order")
         val KEY_HOME_HIDDEN_LIBRARY_TILES = stringPreferencesKey("home_hidden_library_tiles")
         val KEY_HOME_ONLINE_TILE_ORDER = stringPreferencesKey("home_online_tile_order")
@@ -821,12 +861,25 @@ class SettingsManager(private val context: Context) :
         const val PLAYER_LANDSCAPE_STYLE_WIDE = 0
         const val PLAYER_LANDSCAPE_STYLE_COVER_FLOW = 2
         const val PLAYER_LANDSCAPE_STYLE_MUSIC_VIDEO = 3
+        const val PLAYER_LANDSCAPE_STYLE_CLASSIC_SPLIT = 4
+        const val PLAYER_LANDSCAPE_STYLE_COVER_CLOCK = 5
         const val DEFAULT_PLAYER_LANDSCAPE_STYLE = PLAYER_LANDSCAPE_STYLE_WIDE
+        const val PLAYER_CLOCK_COLOR_COVER = 0
+        const val PLAYER_CLOCK_COLOR_WHITE = 1
+        const val PLAYER_CLOCK_COLOR_LIGHT_GRAY = 2
+        const val DEFAULT_PLAYER_CLOCK_COLOR = PLAYER_CLOCK_COLOR_COVER
+
+        fun normalizePlayerClockColor(color: Int?): Int = when (color) {
+            PLAYER_CLOCK_COLOR_COVER, PLAYER_CLOCK_COLOR_WHITE, PLAYER_CLOCK_COLOR_LIGHT_GRAY -> color
+            else -> DEFAULT_PLAYER_CLOCK_COLOR
+        }
 
         fun normalizePlayerLandscapeStyle(style: Int?): Int = when (style) {
             PLAYER_LANDSCAPE_STYLE_WIDE,
             PLAYER_LANDSCAPE_STYLE_COVER_FLOW,
-            PLAYER_LANDSCAPE_STYLE_MUSIC_VIDEO -> style
+            PLAYER_LANDSCAPE_STYLE_MUSIC_VIDEO,
+            PLAYER_LANDSCAPE_STYLE_CLASSIC_SPLIT,
+            PLAYER_LANDSCAPE_STYLE_COVER_CLOCK -> style
             else -> DEFAULT_PLAYER_LANDSCAPE_STYLE
         }
 
@@ -955,12 +1008,6 @@ class SettingsManager(private val context: Context) :
         // index 1 means that it keeps those pixels as an empty inset.
         const val SYSTEM_BARS_HIDDEN_SPACE_USE = 0
         const val SYSTEM_BARS_HIDDEN_SPACE_NOT_USE = 1
-
-        fun systemBarsReserveSpaceForSelection(index: Int): Boolean =
-            index == SYSTEM_BARS_HIDDEN_SPACE_NOT_USE
-
-        fun systemBarsSelectionForReserveSpace(reserveSpace: Boolean): Int =
-            if (reserveSpace) SYSTEM_BARS_HIDDEN_SPACE_NOT_USE else SYSTEM_BARS_HIDDEN_SPACE_USE
 
         const val DEFAULT_APP_FONT_SCALE_PERCENT = 100
         const val APP_FONT_SCALE_MIN_PERCENT = 75
@@ -1117,6 +1164,9 @@ class SettingsManager(private val context: Context) :
         const val LIBRARY_SOURCE_OPENSUBSONIC = "opensubsonic"
         const val LIBRARY_SOURCE_EMBY = "emby"
         const val LIBRARY_SOURCE_WEBDAV = "webdav"
+        const val LIBRARY_SOURCE_SMB = "smb"
+        const val LIBRARY_SOURCE_FTP = "ftp"
+        const val LIBRARY_SOURCE_SFTP = "sftp"
 
         fun normalizeLibrarySource(source: String): String = when (source) {
             LIBRARY_SOURCE_NETEASE -> LIBRARY_SOURCE_NETEASE
@@ -1124,6 +1174,9 @@ class SettingsManager(private val context: Context) :
             LIBRARY_SOURCE_OPENSUBSONIC -> LIBRARY_SOURCE_OPENSUBSONIC
             LIBRARY_SOURCE_EMBY -> LIBRARY_SOURCE_EMBY
             LIBRARY_SOURCE_WEBDAV -> LIBRARY_SOURCE_WEBDAV
+            LIBRARY_SOURCE_SMB -> LIBRARY_SOURCE_SMB
+            LIBRARY_SOURCE_FTP -> LIBRARY_SOURCE_FTP
+            LIBRARY_SOURCE_SFTP -> LIBRARY_SOURCE_SFTP
             else -> LIBRARY_SOURCE_LOCAL
         }
 
@@ -1137,15 +1190,18 @@ class SettingsManager(private val context: Context) :
         const val APP_LANGUAGE_RU = "ru"
         const val APP_LANGUAGE_TR = "tr"
         const val APP_LANGUAGE_AR = "ar"
+        const val DEFAULT_RECENTS_ICON_FOLLOWS_SYSTEM_THEME = true
         const val APP_ICON_STYLE_DEFAULT = "default"
         const val APP_ICON_STYLE_ANIME = "anime"
         const val APP_ICON_STYLE_LOLI = "loli"
+        const val APP_ICON_STYLE_TRADITIONAL = "traditional"
         const val BOTTOM_DOCK_ITEM_HOME = "home"
         const val BOTTOM_DOCK_ITEM_LIBRARY = "library"
         const val BOTTOM_DOCK_ITEM_SEARCH = "search"
         const val BOTTOM_DOCK_ITEM_PLAYLISTS = "playlists"
         const val BOTTOM_DOCK_ITEM_FOLDER = "folder"
         const val BOTTOM_DOCK_ITEM_FOLDER_TREE = "folder_tree"
+        const val BOTTOM_DOCK_ITEM_FOLDER_PLAYLISTS = "folder_playlist"
         const val BOTTOM_DOCK_ITEM_ARTIST = "artist"
         const val BOTTOM_DOCK_ITEM_ALBUM = "album"
         const val BOTTOM_DOCK_ITEM_SCAN_SETTINGS = "scan_settings"
@@ -1232,7 +1288,7 @@ class SettingsManager(private val context: Context) :
                 .distinct()
                 .take(2)
         }
-        val SEARCH_ALL_CATEGORY_TYPES = setOf("folder", "composer", "arranger", "lyricist", "genre", "year")
+        val SEARCH_ALL_CATEGORY_TYPES = setOf("folder", "folder_playlist", "composer", "arranger", "lyricist", "genre", "year")
         val SEARCH_ALL_SONG_MATCH_TYPES = linkedSetOf(
             "title", "artist", "album", "file_name", "translated_name", "alias", "comment", "tag",
             "lyricist", "composer", "arranger", "album_artist", "genre", "year", "lyrics"
@@ -1314,21 +1370,13 @@ class SettingsManager(private val context: Context) :
         @StringRes
         val DEFAULT_SHORTCUT_FOLDER_LABEL_RES = R.string.settings_shortcut_folder
 
-        fun defaultShortcutLibraryLabel(context: Context): String =
-            context.getString(DEFAULT_SHORTCUT_LIBRARY_LABEL_RES)
-
-        fun defaultShortcutPlaylistsLabel(context: Context): String =
-            context.getString(DEFAULT_SHORTCUT_PLAYLISTS_LABEL_RES)
-
-        fun defaultShortcutFolderLabel(context: Context): String =
-            context.getString(DEFAULT_SHORTCUT_FOLDER_LABEL_RES)
         const val DEFAULT_HOME_SECTION_ORDER = "library,online,recent"
         const val DEFAULT_HOME_TOP_BAR_ACTION_ORDER = "shuffle,analytics,ai,settings"
         const val DEFAULT_RANDOM_SORT_SEED = 0
         const val HOME_RECENT_SECTION_MODE_PLAYED = 0
         const val HOME_RECENT_SECTION_MODE_ADDED = 1
-        const val DEFAULT_HOME_LIBRARY_TILE_ORDER = "artist,album,recent_playback,folder,folder_tree,folder_playlist,playlist,genre,year,composer,arranger,lyricist"
-        const val DEFAULT_HOME_ONLINE_TILE_ORDER = "lx,musicfree,webdav"
+        const val DEFAULT_HOME_LIBRARY_TILE_ORDER = "artist,album,recent_playback,poster_wall,folder,folder_tree,folder_playlist,playlist,genre,year,composer,arranger,lyricist"
+        const val DEFAULT_HOME_ONLINE_TILE_ORDER = "lx,musicfree"
         const val LEGACY_DEFAULT_ARTIST_SEPARATORS = "/\nfeat.\n&\n,"
         const val DEFAULT_ARTIST_SEPARATORS = "/\nfeat.\n&\n,\n、"
         const val DEFAULT_GENRE_SEPARATORS = ";"
@@ -1351,6 +1399,7 @@ class SettingsManager(private val context: Context) :
             BOTTOM_DOCK_ITEM_PLAYLISTS,
             BOTTOM_DOCK_ITEM_FOLDER,
             BOTTOM_DOCK_ITEM_FOLDER_TREE,
+            BOTTOM_DOCK_ITEM_FOLDER_PLAYLISTS,
             BOTTOM_DOCK_ITEM_ARTIST,
             BOTTOM_DOCK_ITEM_ALBUM,
             BOTTOM_DOCK_ITEM_SCAN_SETTINGS,
@@ -1479,6 +1528,52 @@ class SettingsManager(private val context: Context) :
     val desktopLyricOpacity get() = desktopLyricSettings.desktopLyricOpacity
     val desktopLyricTextColor get() = desktopLyricSettings.desktopLyricTextColor
     val desktopLyricGlowEnabled get() = desktopLyricSettings.desktopLyricGlowEnabled
+    val desktopLyricWordLift get() = desktopLyricSettings.desktopLyricWordLift
+    internal fun transferLibraryConfig(source: String): Flow<com.ella.music.data.ftp.TransferLibraryConfig> {
+        require(source in setOf(LIBRARY_SOURCE_FTP, LIBRARY_SOURCE_SFTP))
+        val key = if (source == LIBRARY_SOURCE_SFTP) KEY_SFTP_CONFIG else KEY_FTP_CONFIG
+        return context.dataStore.data.map { com.ella.music.data.ftp.TransferLibraryConfig.parse(it[key].orEmpty()) }
+    }
+    internal suspend fun setTransferLibraryConfig(source: String, config: com.ella.music.data.ftp.TransferLibraryConfig) {
+        require(source in setOf(LIBRARY_SOURCE_FTP, LIBRARY_SOURCE_SFTP))
+        val location = com.ella.music.data.ftp.TransferLocation.parse(config.url)
+        require((source == LIBRARY_SOURCE_SFTP) == (location.scheme == "sftp"))
+        val key = if (source == LIBRARY_SOURCE_SFTP) KEY_SFTP_CONFIG else KEY_FTP_CONFIG
+        context.dataStore.edit { it[key] = config.copy(url = location.url()).json() }
+    }
+    val smbUrl: Flow<String> = context.dataStore.data.map { it[KEY_SMB_URL] ?: "" }
+    val smbProtocol: Flow<String> = context.dataStore.data.map { it[KEY_SMB_PROTOCOL] ?: "auto" }
+    suspend fun setSmbProtocol(value: String) { context.dataStore.edit { it[KEY_SMB_PROTOCOL] = value } }
+    val smbUsername: Flow<String> = context.dataStore.data.map { it[KEY_SMB_USERNAME] ?: "" }
+    val smbDomain: Flow<String> = context.dataStore.data.map { it[KEY_SMB_DOMAIN] ?: "" }
+    suspend fun setSmbConfig(url: String, username: String, domain: String) { context.dataStore.edit {
+        it[KEY_SMB_URL] = url.trim(); it[KEY_SMB_USERNAME] = username.trim(); it[KEY_SMB_DOMAIN] = domain.trim()
+    } }
+    val artistImageSaveLocation: Flow<String> = context.dataStore.data.map { it[KEY_ARTIST_IMAGE_SAVE_LOCATION] ?: "default" }
+    val musicVideoDownloadLocation: Flow<String> = context.dataStore.data.map { it[KEY_MV_DOWNLOAD_LOCATION] ?: "default" }
+    val musicVideoDownloadTemplate: Flow<String> = context.dataStore.data.map { it[KEY_MV_DOWNLOAD_TEMPLATE] ?: "{artist} - {title}" }
+    val posterWallSource: Flow<String> = context.dataStore.data.map { it[KEY_POSTER_WALL_SOURCE].orEmpty() }
+    suspend fun setPosterWallSource(source: String) {
+        require(source == "queue" || source == "library")
+        context.dataStore.edit { it[KEY_POSTER_WALL_SOURCE] = source }
+    }
+    val posterWallStackLayouts: Flow<String> = context.dataStore.data.map { it[KEY_POSTER_WALL_STACK_LAYOUTS] ?: "{}" }
+    suspend fun setPosterWallStackLayout(scope: String, groups: String) {
+        context.dataStore.edit { prefs ->
+            val layouts = runCatching { org.json.JSONObject(prefs[KEY_POSTER_WALL_STACK_LAYOUTS] ?: "{}") }
+                .getOrElse { org.json.JSONObject() }
+            layouts.put(scope, org.json.JSONArray(groups))
+            prefs[KEY_POSTER_WALL_STACK_LAYOUTS] = layouts.toString()
+        }
+    }
+    val posterWallStacked: Flow<Boolean> = context.dataStore.data.map { it[KEY_POSTER_WALL_STACKED] ?: false }
+    suspend fun setArtistImageSaveLocation(value: String) { context.dataStore.edit { it[KEY_ARTIST_IMAGE_SAVE_LOCATION] = value.trim() } }
+    suspend fun setMusicVideoDownloadLocation(value: String) { context.dataStore.edit { it[KEY_MV_DOWNLOAD_LOCATION] = value.trim() } }
+    suspend fun setMusicVideoDownloadTemplate(value: String) { context.dataStore.edit { it[KEY_MV_DOWNLOAD_TEMPLATE] = value } }
+    suspend fun setPosterWallStacked(enabled: Boolean) { context.dataStore.edit { it[KEY_POSTER_WALL_STACKED] = enabled } }
+    val spotifyCanvasEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_SPOTIFY_CANVAS_ENABLED] ?: false }
+    suspend fun setSpotifyCanvasEnabled(enabled: Boolean) { context.dataStore.edit { it[KEY_SPOTIFY_CANVAS_ENABLED] = enabled } }
+    suspend fun setDesktopLyricWordLift(enabled: Boolean) = desktopLyricSettings.setDesktopLyricWordLift(enabled)
     val desktopLyricOutlineEnabled get() = desktopLyricSettings.desktopLyricOutlineEnabled
     val desktopLyricBackgroundMode get() = desktopLyricSettings.desktopLyricBackgroundMode
     val desktopLyricBackgroundOpacity get() = desktopLyricSettings.desktopLyricBackgroundOpacity
@@ -1526,6 +1621,34 @@ class SettingsManager(private val context: Context) :
      * Exports settings for the legacy JSON format by default. Device-local artwork is only
      * included when the caller is building an archive that also carries the actual file.
      */
+    val artistBiographyMatchRules: Flow<List<ArtistBiographyMatchRule>> = context.dataStore.data
+        .map { decodeArtistBiographyMatchRules(it[KEY_ARTIST_BIO_MATCH_RULES].orEmpty()) }
+
+    suspend fun setArtistBiographyMatchRules(rules: List<ArtistBiographyMatchRule>) {
+        context.dataStore.edit { it[KEY_ARTIST_BIO_MATCH_RULES] = encodeArtistBiographyMatchRules(rules) }
+    }
+
+    val customMetadataCategories: Flow<List<CustomMetadataCategory>> = context.dataStore.data
+        .map { decodeCustomCategories(it[KEY_CUSTOM_METADATA_CATEGORIES].orEmpty()) }
+
+    suspend fun setCustomMetadataCategories(items: List<CustomMetadataCategory>) {
+        val normalized = normalizeCustomCategories(items)
+        val currentFeatures = homeFeatureItems.first()
+        context.dataStore.edit { prefs ->
+            val oldIds = decodeCustomCategories(prefs[KEY_CUSTOM_METADATA_CATEGORIES].orEmpty()).map { it.type }.toSet()
+            val newIds = normalized.map { it.type }.toSet()
+            val removed = oldIds - newIds
+            val added = newIds - oldIds
+            prefs[KEY_CUSTOM_METADATA_CATEGORIES] = encodeCustomCategories(normalized)
+            fun updateCsv(key: Preferences.Key<String>, fallback: String, append: Collection<String> = emptyList()) {
+                prefs[key] = ((prefs[key] ?: fallback).split(',').filter { it.isNotBlank() && it !in removed } + append).distinct().joinToString(",")
+            }
+            updateCsv(KEY_HOME_FEATURE_ITEMS, currentFeatures, added)
+            updateCsv(KEY_HOME_LIBRARY_TILE_ORDER, DEFAULT_HOME_LIBRARY_TILE_ORDER, added)
+            if (prefs[KEY_HOME_SHORTCUT_ITEMS] != null) updateCsv(KEY_HOME_SHORTCUT_ITEMS, "")
+        }
+    }
+
     suspend fun exportSettingsJson(includeDeviceLocalAssets: Boolean = false): JSONObject {
         val prefs = context.dataStore.data.first()
         val payload = JSONObject()
@@ -1539,6 +1662,12 @@ class SettingsManager(private val context: Context) :
                 is String -> payload.put(key.name, value)
             }
         }
+        com.ella.music.data.netease.NeteaseLinks.exportBackup(context).let { links ->
+            links.keys().forEach { key -> payload.put(key, links.opt(key)) }
+        }
+        AuxiliarySettingsBackup.export(context).let { auxiliary ->
+            auxiliary.keys().forEach { key -> payload.put(key, auxiliary.opt(key)) }
+        }
         return payload
     }
 
@@ -1551,9 +1680,26 @@ class SettingsManager(private val context: Context) :
         payload: JSONObject,
         restoreDeviceLocalAssets: Boolean = false
     ) {
-        context.dataStore.edit { prefs ->
+        val existingFeatures = homeFeatureItems.first()
+        val restoredPreferences = context.dataStore.edit { prefs ->
             applySettingsRestore(prefs, payload, restoreDeviceLocalAssets, onKey = null)
+            if (SettingsBackupValueType.STRING.accepts(payload.opt(KEY_CUSTOM_METADATA_CATEGORIES.name))) {
+                val categories = decodeCustomCategories(prefs[KEY_CUSTOM_METADATA_CATEGORIES].orEmpty())
+                prefs[KEY_CUSTOM_METADATA_CATEGORIES] = encodeCustomCategories(categories)
+                val ids = categories.map { it.type }.toSet()
+                fun repairCsv(key: Preferences.Key<String>, fallback: String, append: Boolean) {
+                    if (payload.has(key.name)) return
+                    prefs[key] = ((prefs[key] ?: fallback).split(',').filter { it.isNotBlank() &&
+                        (!it.startsWith("tag_") || it in ids) } + if (append) ids else emptySet()).distinct().joinToString(",")
+                }
+                repairCsv(KEY_HOME_FEATURE_ITEMS, existingFeatures, true)
+                repairCsv(KEY_HOME_LIBRARY_TILE_ORDER, DEFAULT_HOME_LIBRARY_TILE_ORDER, true)
+                if (prefs[KEY_HOME_SHORTCUT_ITEMS] != null) repairCsv(KEY_HOME_SHORTCUT_ITEMS, "", false)
+            }
         }
+        refreshPinnedStateAfterRestore(restoredPreferences, payload.keys().asSequence().filter { it.startsWith("pinned_") }.toSet())
+        com.ella.music.data.netease.NeteaseLinks.restoreBackup(context, payload)
+        AuxiliarySettingsBackup.restore(context, payload)
     }
 
     /**
@@ -1568,6 +1714,8 @@ class SettingsManager(private val context: Context) :
             payload = JSONObject(),
             restoreDeviceLocalAssets = true
         ) { name, type -> schema[name] = type }
+        schema.putAll(com.ella.music.data.netease.NeteaseLinks.backupSchema())
+        schema.putAll(AuxiliarySettingsBackup.schema())
         return schema
     }
 
@@ -1580,19 +1728,19 @@ class SettingsManager(private val context: Context) :
         run<Unit> {
             fun setBoolean(key: Preferences.Key<Boolean>) {
                 onKey?.invoke(key.name, SettingsBackupValueType.BOOLEAN)
-                if (payload.has(key.name) && !payload.isNull(key.name)) prefs[key] = payload.optBoolean(key.name)
+                if (SettingsBackupValueType.BOOLEAN.accepts(payload.opt(key.name))) prefs[key] = payload.optBoolean(key.name)
             }
             fun setInt(key: Preferences.Key<Int>) {
                 onKey?.invoke(key.name, SettingsBackupValueType.INT)
-                if (payload.has(key.name) && !payload.isNull(key.name)) prefs[key] = payload.optInt(key.name)
+                if (SettingsBackupValueType.INT.accepts(payload.opt(key.name))) prefs[key] = payload.optInt(key.name)
             }
             fun setString(key: Preferences.Key<String>) {
                 onKey?.invoke(key.name, SettingsBackupValueType.STRING)
-                if (payload.has(key.name) && !payload.isNull(key.name)) prefs[key] = payload.optString(key.name)
+                if (SettingsBackupValueType.STRING.accepts(payload.opt(key.name))) prefs[key] = payload.optString(key.name)
             }
             fun setFontPath(key: Preferences.Key<String>) {
                 onKey?.invoke(key.name, SettingsBackupValueType.STRING)
-                restoreFontPath(prefs, key, payload, restoreDeviceLocalAssets)
+                if (SettingsBackupValueType.STRING.accepts(payload.opt(key.name))) restoreFontPath(prefs, key, payload, restoreDeviceLocalAssets)
             }
 
             setBoolean(KEY_LYRICON_ENABLED)
@@ -1621,6 +1769,18 @@ class SettingsManager(private val context: Context) :
             setBoolean(KEY_SAMSUNG_FLOATING_LYRIC_TRANSLATION)
             setBoolean(KEY_STATUS_BAR_ALLOW_PHONETIC)
             setBoolean(KEY_DESKTOP_LYRIC_ENABLED)
+            setBoolean(KEY_DESKTOP_LYRIC_WORD_LIFT)
+            setBoolean(KEY_SPOTIFY_CANVAS_ENABLED)
+            setString(KEY_ARTIST_IMAGE_SAVE_LOCATION)
+            setString(KEY_SMB_URL)
+            setString(KEY_SMB_USERNAME)
+            setString(KEY_SMB_DOMAIN)
+            setString(KEY_SMB_PROTOCOL)
+            setString(KEY_MV_DOWNLOAD_LOCATION)
+            setString(KEY_MV_DOWNLOAD_TEMPLATE)
+            setBoolean(KEY_POSTER_WALL_STACKED)
+            setString(KEY_POSTER_WALL_STACK_LAYOUTS)
+            setString(KEY_POSTER_WALL_SOURCE)
             setBoolean(KEY_DESKTOP_LYRIC_HIDE_WHEN_PAUSED)
             setBoolean(KEY_DESKTOP_LYRIC_HIDE_IN_LANDSCAPE)
             setBoolean(KEY_DESKTOP_LYRIC_HIDE_ON_PLAYER_PAGE)
@@ -1641,6 +1801,7 @@ class SettingsManager(private val context: Context) :
             setBoolean(KEY_HIDE_LYRIC_EXTRA_INFO)
             setBoolean(KEY_REPLAYGAIN_ENABLED)
             setInt(KEY_REPLAYGAIN_MODE)
+            setInt(KEY_REPLAYGAIN_PREAMP_HUNDREDTHS_DB)
             setBoolean(KEY_RESUME_PLAYBACK_POSITION)
             setBoolean(KEY_AUDIO_FOCUS_DISABLED)
             setBoolean(KEY_SHUFFLE_RESHUFFLE_ON_STARTUP)
@@ -1708,6 +1869,7 @@ class SettingsManager(private val context: Context) :
             setBoolean(KEY_MUSIC_VIDEO_LONG_PRESS_IMMERSIVE_LYRICS_ENABLED)
             setBoolean(KEY_MUSIC_VIDEO_IMMERSIVE_LYRICS_HIDE_SYSTEM_BARS)
             setBoolean(KEY_WIDGET_SAFE_LAYOUT)
+            setBoolean(KEY_RECENTS_ICON_FOLLOWS_SYSTEM_THEME)
             setString(KEY_HOME_SEARCH_TARGET)
             setBoolean(KEY_BOTTOM_DOCK_MERGE_SEARCH)
             setInt(KEY_SYSTEM_BARS_MODE)
@@ -1716,6 +1878,7 @@ class SettingsManager(private val context: Context) :
             setBoolean(KEY_HIDE_SYSTEM_BARS)
             setBoolean(KEY_PLAYER_DYNAMIC_FLOW_ENABLED)
             setInt(KEY_PLAYER_APPLE_FLOW_SPEED)
+            setBoolean(KEY_AUDIO_VISUALIZER_RAINBOW)
             setBoolean(KEY_AUDIO_VISUALIZER_ENABLED)
             setInt(KEY_AUDIO_VISUALIZER_STYLE)
             setInt(KEY_AUDIO_VISUALIZER_HEIGHT)
@@ -1749,9 +1912,17 @@ class SettingsManager(private val context: Context) :
             setInt(KEY_ARTIST_BIO_DOWNLOAD)
             setString(KEY_ARTIST_BIO_LASTFM_LANG)
             setString(KEY_ARTIST_BIO_SOURCE)
+            setString(KEY_ARTIST_BIO_MATCH_RULES)
             setInt(KEY_ARTIST_IMAGE_DOWNLOAD)
             setString(KEY_ARTIST_IMAGE_SOURCES)
             setString(KEY_ARTIST_IMAGE_REGION)
+            setString(KEY_ARTIST_SPOTIFY_REGION)
+            if (!payload.has(KEY_ARTIST_SPOTIFY_REGION.name) &&
+                SettingsBackupValueType.STRING.accepts(payload.opt(KEY_ARTIST_IMAGE_REGION.name))) {
+                prefs[KEY_ARTIST_SPOTIFY_REGION] = com.ella.music.data.lastfm.spotifyMarketForLastFmRegion(
+                    payload.getString(KEY_ARTIST_IMAGE_REGION.name)
+                )
+            }
             setString(KEY_SPOTIFY_CLIENT_ID)
             setString(KEY_SPOTIFY_CLIENT_SECRET)
             setBoolean(KEY_HOME_TILE_PIN_BUTTONS_VISIBLE)
@@ -1770,8 +1941,11 @@ class SettingsManager(private val context: Context) :
             setBoolean(KEY_OPEN_PLAYER_ON_PLAY)
             setBoolean(KEY_OPEN_PLAYER_FROM_NOTIFICATION)
             setBoolean(KEY_STARTUP_AUTO_PLAY)
+            setBoolean(KEY_STARTUP_OPEN_PLAYER)
             setBoolean(KEY_HOME_AI_MIX_VISIBLE)
             setBoolean(KEY_CONTINUE_PLAYBACK_ROW_VISIBLE)
+            setBoolean(KEY_LIBRARY_CONTINUE_PLAYBACK_ROW_VISIBLE)
+            setBoolean(KEY_CATEGORY_CONTINUE_PLAYBACK_ROW_VISIBLE)
             setBoolean(KEY_MCP_SERVER_ENABLED)
             setBoolean(KEY_WEB_MUSIC_SERVER_ENABLED)
             setBoolean(KEY_SLEEP_TIMER_STOP_AFTER_CURRENT)
@@ -1849,7 +2023,9 @@ class SettingsManager(private val context: Context) :
             setInt(KEY_PLAYER_TITLE_POSITION)
             setInt(KEY_PLAYER_PAGE_STYLE)
             setInt(KEY_PLAYER_LANDSCAPE_STYLE)
+            setInt(KEY_PLAYER_CLOCK_COLOR)
             setInt(KEY_MUSIC_VIDEO_ORIENTATION)
+            setInt(KEY_VIDEO_HOLD_SPEED_PERCENT)
             setInt(KEY_PLAYER_LYRIC_TEXT_ALIGN)
             setInt(KEY_PLAYER_MINI_LYRIC_SCALE)
             setInt(KEY_PLAYER_MINI_LYRIC_PRIMARY_SIZE)
@@ -1939,6 +2115,8 @@ class SettingsManager(private val context: Context) :
             setString(KEY_RECENT_PLAYBACK_LIMITS)
             setString(KEY_RECENT_PLAYBACK_SHOW_DATES)
             setString(KEY_RECENT_PLAYBACK_COLLECTION_TYPES)
+            setString(KEY_RECENT_PLAYBACK_FOLDER_TYPES)
+            setString(KEY_RECENT_PLAYBACK_MV_TYPES)
             setInt(KEY_SONG_RATING_DISPLAY_MODE)
 
             val dynamicSortKeyPrefixes = listOf(
@@ -1958,6 +2136,8 @@ class SettingsManager(private val context: Context) :
                 }
             }
 
+            setString(KEY_FTP_CONFIG)
+            setString(KEY_SFTP_CONFIG)
             setString(KEY_WEBDAV_URL)
             setString(KEY_WEBDAV_USERNAME)
             setString(KEY_WEBDAV_PASSWORD)
@@ -1980,6 +2160,7 @@ class SettingsManager(private val context: Context) :
             setString(KEY_MUSICFREE_PLUGINS_JSON)
             setString(KEY_MUSICFREE_SELECTED_PLUGIN_ID)
             setString(KEY_NETEASE_QUALITY)
+            setString(KEY_NETEASE_PLAYBACK_PROVIDER)
             setString(KEY_ONLINE_PLAYBACK_QUALITY)
             setString(KEY_NETEASE_DOWNLOAD_QUALITY)
             setInt(KEY_NETEASE_MV_RESOLUTION)
@@ -2058,7 +2239,11 @@ class SettingsManager(private val context: Context) :
             setString(KEY_HOME_HIDDEN_TOP_BAR_ACTIONS)
             setString(KEY_HOME_LIBRARY_TILE_ORDER)
             setString(KEY_HOME_SHORTCUT_ITEMS)
+            setString(KEY_CUSTOM_METADATA_CATEGORIES)
             setString(KEY_HOME_FEATURE_ITEMS)
+            setBoolean(KEY_HOME_POSTER_WALL_CONFIGURED)
+            setBoolean(KEY_POSTER_WALL_INFINITE_SCROLL)
+            setInt(KEY_POSTER_WALL_LYRIC_STYLE)
             setString(KEY_HOME_HIDDEN_LIBRARY_TILES)
             setString(KEY_APP_LANGUAGE)
             setString(KEY_SETTINGS_SEARCH_HISTORY)
@@ -2078,6 +2263,10 @@ class SettingsManager(private val context: Context) :
             setString(KEY_ARTIST_COVER_DOWNLOAD_FOLDER_URI)
             setString(KEY_COVER_EXPORT_FOLDER_URI)
             setString(KEY_SEARCH_ALL_CATEGORY_TYPES)
+            setInt(KEY_SEARCH_ALL_CATEGORY_TYPES_VERSION)
+            if (payload.has(KEY_SEARCH_ALL_CATEGORY_TYPES.name) && !payload.has(KEY_SEARCH_ALL_CATEGORY_TYPES_VERSION.name)) {
+                prefs.remove(KEY_SEARCH_ALL_CATEGORY_TYPES_VERSION)
+            }
             setString(KEY_SEARCH_ALL_SONG_MATCH_TYPES)
             setString(KEY_SPECTRUM_VIEWER_ID)
 
