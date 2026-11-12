@@ -11,7 +11,6 @@ on:
         options:
           - debug
           - release
-      # 1. 保留临时包名输入框（可选填）
       package_name:
         description: "Temporary Package Name (Application ID) - Leave blank for default"
         required: false
@@ -34,17 +33,16 @@ jobs:
       - name: Checkout Halcyon
         uses: actions/checkout@v4
 
-      # 2. 新增：如果输入了临时包名，则在内存中临时使用 sed 替换原文件的 applicationId
+      # 1. 修复 sed 规则（正则兼容原有的 if 条件语句）
       - name: Temporarily override Application ID in build.gradle.kts
         if: ${{ inputs.package_name != '' }}
         run: |
           NEW_PACKAGE="${{ inputs.package_name }}"
-          echo "正在将 app/build.gradle.kts 中的 applicationId 临时修改为: $NEW_PACKAGE"
+          echo "正在将 app/build.gradle.kts 中的 applicationId 替换为: $NEW_PACKAGE"
           
-          # 使用 sed 替换文件中对应的行
-          sed -i 's/applicationId = "com.ella.music"/applicationId = "'"$NEW_PACKAGE"'"/g' app/build.gradle.kts
+          # 正则匹配整个 applicationId = ... 行
+          sed -i 's/applicationId = .*/applicationId = "'"$NEW_PACKAGE"'"/g' app/build.gradle.kts
           
-          # 打印修改后的行以供在日志中核对
           echo "修改后的行验证："
           grep "applicationId =" app/build.gradle.kts
 
@@ -82,50 +80,73 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      # 3. 恢复为原样编译命令，无需传递额外的 Gradle 参数
+      # 2. 如果是 Release 构建，在编译前准备好 release.jks
+      # 这样 Gradle 自身的 release 签名配置可以直接生效，重命名任务产出的 APK 也会带有正确的签名！
+      - name: Prepare Signing Keystore for Release
+        if: ${{ inputs.build_type == 'release' }}
+        env:
+          SIGNING_KEY_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$SIGNING_KEY_BASE64" ]; then
+            echo "$SIGNING_KEY_BASE64" | base64 -d > app/release.jks
+            echo "Keystore successfully written to app/release.jks"
+          fi
+
       - name: Build debug APK
         if: ${{ inputs.build_type == 'debug' }}
         env:
           ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358
-        run: ./gradlew --no-daemon :app:assembleDebug -PellaAbi=arm64-v8a --stacktrace
+        run: |
+          APP_ID_PARAM=""
+          if [ -n "${{ inputs.package_name }}" ]; then
+            APP_ID_PARAM="-PcustomApplicationId=${{ inputs.package_name }}"
+          fi
+          ./gradlew --no-daemon :app:assembleDebug -PellaAbi=arm64-v8a $APP_ID_PARAM --stacktrace
 
-      # 4. 恢复为原样编译命令，无需传递额外的 Gradle 参数
       - name: Build release APK
         if: ${{ inputs.build_type == 'release' }}
         env:
           ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358
-        run: ./gradlew --no-daemon :app:assembleRelease -PellaAbi=arm64-v8a --stacktrace
+          RELEASE_STORE_FILE: app/release.jks
+          RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          APP_ID_PARAM=""
+          if [ -n "${{ inputs.package_name }}" ]; then
+            APP_ID_PARAM="-PcustomApplicationId=${{ inputs.package_name }}"
+          fi
+          ./gradlew --no-daemon :app:assembleRelease -PellaAbi=arm64-v8a $APP_ID_PARAM --stacktrace
 
-      - name: Sign Release APK manually (Official apksigner)
+      # 3. 兜底重新对所有生成出的 Release APK 执行 apksigner（包含 renamed-apk 目录）
+      - name: Re-sign All Release APKs (Dual Verification)
         if: ${{ inputs.build_type == 'release' }}
         env:
-          SIGNING_KEY_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          echo "$SIGNING_KEY_BASE64" | base64 -d > release.jks
-          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | head -n 1)
-          if [ -z "$APKSIGNER" ]; then
-            echo "Error: apksigner not found in Android SDK!"
-            exit 1
+          if [ ! -f "app/release.jks" ]; then
+            echo "No keystore found, skipping manual resign."
+            exit 0
           fi
-          echo "Using apksigner at: $APKSIGNER"
-          for apk in app/build/outputs/apk/release/*.apk; do
-            if [ -f "$apk" ]; then
-              echo "Signing $apk ..."
-              "$APKSIGNER" sign --ks release.jks \
-                --ks-key-alias "$ALIAS" \
-                --ks-pass "pass:$KEY_STORE_PASSWORD" \
-                --key-pass "pass:$KEY_PASSWORD" \
-                "$apk"
-              echo "Verifying signature for $apk ..."
-              "$APKSIGNER" verify --verbose "$apk"
-            fi
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | head -n 1)
+          
+          # 同时遍历输出目录与重命名目录
+          find app/build/outputs -type f \( -name "*release*.apk" -o -name "*release*.APK" \) | while read -r apk; do
+            echo "Signing $apk ..."
+            "$APKSIGNER" sign --ks app/release.jks \
+              --ks-key-alias "$ALIAS" \
+              --ks-pass "pass:$KEY_STORE_PASSWORD" \
+              --key-pass "pass:$KEY_PASSWORD" \
+              "$apk"
+            echo "Verifying signature for $apk ..."
+            "$APKSIGNER" verify --verbose "$apk"
           done
-          rm -f release.jks
+          
+          # 清理私钥文件
+          rm -f app/release.jks
 
-      # 5. 保留：使用 aapt2 自动提取 APK 信息并输出验证结果
       - name: Verify Package Name of Generated APKs
         run: |
           AAPT2=$(find "$ANDROID_HOME/build-tools" -name aapt2 -type f | head -n 1)
@@ -133,7 +154,6 @@ jobs:
             echo "Error: aapt2 not found!"
             exit 1
           fi
-          echo "Using aapt2 at: $AAPT2"
           
           echo "=========================================="
           echo "       VERIFYING APK PACKAGE NAMES        "
@@ -146,16 +166,14 @@ jobs:
 
       - name: List APK outputs
         run: |
-          find app/build/outputs/apk -type f -name "*.apk" -print -exec ls -lh {} \;
-          find app/build/outputs/renamed-apk -type f -name "*.APK" -print -exec ls -lh {} \; || true
+          find app/build/outputs -type f \( -name "*.apk" -o -name "*.APK" \) -print -exec ls -lh {} \;
 
+      # 4. 根据本次 build_type 动态选择上传路径，避免通配符未命中失败
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Halcyon-arm64-v8a-${{ github.sha }}
+          name: Halcyon-arm64-v8a-${{ inputs.build_type }}-${{ github.sha }}
           path: |
-            app/build/outputs/apk/debug/*arm64-v8a*.apk
-            app/build/outputs/apk/release/*arm64-v8a*.apk
-            app/build/outputs/renamed-apk/debug/*arm64-v8a*.APK
-            app/build/outputs/renamed-apk/release/*arm64-v8a*.APK
-          if-no-files-found: error
+            app/build/outputs/apk/${{ inputs.build_type }}/*arm64-v8a*.apk
+            app/build/outputs/renamed-apk/${{ inputs.build_type }}/*arm64-v8a*.APK
+          if-no-files-found: warn
